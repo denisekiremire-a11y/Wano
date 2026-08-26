@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AttendanceButtons } from "@/components/attendance-buttons";
 import { CalendarIcon } from "@/components/icons";
+import { PostComposer } from "@/components/post-composer";
 import {
   getAttendanceCounts,
   getEventAttendees,
@@ -9,6 +10,7 @@ import {
   getFollowedAttendees,
   getMyAttendance,
 } from "@/lib/data/events";
+import { getMediaPostsFor } from "@/lib/data/social";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { getSession } from "@/lib/session";
 
@@ -48,7 +50,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     }
   }
 
-  const attendees = await getEventAttendees(event.id);
+  const [attendees, media] = await Promise.all([getEventAttendees(event.id), getMediaPostsFor({ eventId: event.id })]);
 
   return (
     <main>
@@ -111,6 +113,38 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
             </ul>
           )}
         </div>
+
+        <section className="mt-8">
+          <h2 className="font-display text-lg font-semibold text-forest-900">Media</h2>
+          <p className="mt-1 text-sm text-forest-800/60">Photos and moments shared by attendees.</p>
+          {session?.role === "traveller" && (
+            <div className="mt-3">
+              <PostComposer eventId={event.id} placeholder={`Share something about ${event.title}…`} />
+            </div>
+          )}
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {media.length === 0 ? (
+              <p className="col-span-full rounded-xl border border-forest-900/10 bg-white p-6 text-center text-sm text-forest-800/60">
+                No media yet.
+              </p>
+            ) : (
+              media.map(({ post, authorUser, author }) => (
+                <div key={post.id} className="overflow-hidden rounded-xl border border-forest-900/10 bg-white">
+                  {post.imageUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={post.imageUrl} alt="" className="h-40 w-full object-cover" />
+                  )}
+                  <div className="p-3">
+                    <p className="text-sm text-forest-800/90">{post.content}</p>
+                    <p className="mt-1 text-xs text-forest-800/50">
+                      {author.displayName} · @{authorUser.username}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
       </section>
     </main>
   );

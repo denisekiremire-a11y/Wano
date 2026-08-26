@@ -467,8 +467,9 @@ export const follows = pgTable(
   (table) => [unique().on(table.followerId, table.followingId)],
 );
 
-// A social post — optionally tagged to a place or an event, which is how
-// user-generated content links back into Wano's discovery surfaces.
+// A social post — optionally tagged to a place, an event, or a club, which
+// is how user-generated content (including photos, via imageUrl) links back
+// into Wano's discovery surfaces and doubles as each one's media feed.
 export const posts = pgTable("posts", {
   id: uuid("id").primaryKey().defaultRandom(),
   travellerId: uuid("traveller_id")
@@ -478,6 +479,7 @@ export const posts = pgTable("posts", {
   imageUrl: text("image_url"),
   listingId: uuid("listing_id").references(() => listings.id, { onDelete: "set null" }),
   eventId: uuid("event_id").references(() => events.id, { onDelete: "set null" }),
+  clubId: uuid("club_id").references(() => clubs.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -592,7 +594,7 @@ export const eventAttendanceRelations = relations(eventAttendance, ({ one }) => 
 
 export const interestsRelations = relations(interests, ({ many }) => ({
   travellerInterests: many(travellerInterests),
-  clubMemberships: many(clubMemberships),
+  clubs: many(clubs),
 }));
 
 export const travellerInterestsRelations = relations(travellerInterests, ({ one }) => ({
@@ -603,11 +605,36 @@ export const travellerInterestsRelations = relations(travellerInterests, ({ one 
   interest: one(interests, { fields: [travellerInterests.interestId], references: [interests.id] }),
 }));
 
-// Wano Clubs — a member-joinable group built on the existing interest
-// taxonomy (one club per interest, e.g. "Nightlife", "Foodie"). Separate from
-// travellerInterests (personalization signal set at onboarding) since a
-// member can join/leave a club explicitly without changing their Home feed
-// personalization.
+export const clubStatusEnum = pgEnum("club_status", ["pending", "approved", "rejected"]);
+
+// Wano Clubs — a member-joinable community group, tagged to one interest
+// category (so a category like "Food & Dining" can hold many distinct
+// clubs, not just one). A vendor can submit a club from their dashboard
+// (status starts "pending"); admin reviews it, or can create a club
+// directly (status "approved" immediately). vendorProfileId is the
+// optional "run by" partner — a club doesn't need to belong to any vendor.
+export const clubs = pgTable("clubs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  interestId: uuid("interest_id")
+    .notNull()
+    .references(() => interests.id, { onDelete: "restrict" }),
+  vendorProfileId: uuid("vendor_profile_id").references(() => vendorProfiles.id, {
+    onDelete: "set null",
+  }),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  status: clubStatusEnum("status").notNull().default("pending"),
+  createdByUserId: uuid("created_by_user_id")
+    .notNull()
+    .references(() => users.id),
+  reviewedByUserId: uuid("reviewed_by_user_id").references(() => users.id),
+  reviewNotes: text("review_notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Separate from travellerInterests (personalization signal set at
+// onboarding) since joining a club is an explicit action that shouldn't
+// silently change Home feed personalization.
 export const clubMemberships = pgTable(
   "club_memberships",
   {
@@ -615,20 +642,29 @@ export const clubMemberships = pgTable(
     travellerId: uuid("traveller_id")
       .notNull()
       .references(() => travellerProfiles.id, { onDelete: "cascade" }),
-    interestId: uuid("interest_id")
+    clubId: uuid("club_id")
       .notNull()
-      .references(() => interests.id, { onDelete: "cascade" }),
+      .references(() => clubs.id, { onDelete: "cascade" }),
     joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [unique().on(table.travellerId, table.interestId)],
+  (table) => [unique().on(table.travellerId, table.clubId)],
 );
+
+export const clubsRelations = relations(clubs, ({ one, many }) => ({
+  interest: one(interests, { fields: [clubs.interestId], references: [interests.id] }),
+  vendorProfile: one(vendorProfiles, { fields: [clubs.vendorProfileId], references: [vendorProfiles.id] }),
+  createdBy: one(users, { fields: [clubs.createdByUserId], references: [users.id] }),
+  reviewedBy: one(users, { fields: [clubs.reviewedByUserId], references: [users.id] }),
+  memberships: many(clubMemberships),
+  posts: many(posts),
+}));
 
 export const clubMembershipsRelations = relations(clubMemberships, ({ one }) => ({
   traveller: one(travellerProfiles, {
     fields: [clubMemberships.travellerId],
     references: [travellerProfiles.id],
   }),
-  interest: one(interests, { fields: [clubMemberships.interestId], references: [interests.id] }),
+  club: one(clubs, { fields: [clubMemberships.clubId], references: [clubs.id] }),
 }));
 
 export const followsRelations = relations(follows, ({ one }) => ({
@@ -646,6 +682,7 @@ export const postsRelations = relations(posts, ({ one, many }) => ({
   traveller: one(travellerProfiles, { fields: [posts.travellerId], references: [travellerProfiles.id] }),
   listing: one(listings, { fields: [posts.listingId], references: [listings.id] }),
   event: one(events, { fields: [posts.eventId], references: [events.id] }),
+  club: one(clubs, { fields: [posts.clubId], references: [clubs.id] }),
   likes: many(postLikes),
   comments: many(postComments),
 }));
@@ -700,6 +737,7 @@ export const vendorProfilesRelations = relations(vendorProfiles, ({ one, many })
   listings: many(listings),
   documents: many(vendorDocuments),
   accreditationReviews: many(accreditationReviews),
+  clubs: many(clubs),
 }));
 
 export const journeysRelations = relations(journeys, ({ many }) => ({

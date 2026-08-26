@@ -6,7 +6,6 @@ import { z } from "zod";
 import { db } from "@/db";
 import { clubMemberships, follows, postComments, postLikes, posts } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
-import { getClubByKey } from "@/lib/data/social";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 import type { ActionState } from "@/lib/validation";
 
@@ -15,6 +14,7 @@ const postSchema = z.object({
   imageUrl: z.string().url().max(500).optional().or(z.literal("")),
   listingId: z.string().uuid().optional().or(z.literal("")),
   eventId: z.string().uuid().optional().or(z.literal("")),
+  clubId: z.string().uuid().optional().or(z.literal("")),
 });
 
 export async function createPostAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -24,6 +24,7 @@ export async function createPostAction(_prev: ActionState, formData: FormData): 
     imageUrl: formData.get("imageUrl") ?? "",
     listingId: formData.get("listingId") ?? "",
     eventId: formData.get("eventId") ?? "",
+    clubId: formData.get("clubId") ?? "",
   });
   if (!parsed.success) return { error: "Write something before you post." };
 
@@ -36,10 +37,14 @@ export async function createPostAction(_prev: ActionState, formData: FormData): 
     imageUrl: parsed.data.imageUrl || null,
     listingId: parsed.data.listingId || null,
     eventId: parsed.data.eventId || null,
+    clubId: parsed.data.clubId || null,
   });
 
   revalidatePath("/social");
   revalidatePath("/profile");
+  if (parsed.data.clubId) revalidatePath(`/social/clubs/${parsed.data.clubId}`);
+  if (parsed.data.listingId) revalidatePath(`/explore/${parsed.data.listingId}`);
+  if (parsed.data.eventId) revalidatePath(`/events/${parsed.data.eventId}`);
   return {};
 }
 
@@ -111,31 +116,23 @@ export async function toggleFollowAction(targetTravellerId: string) {
   revalidatePath("/profile");
 }
 
-export async function toggleClubMembershipAction(clubKey: string) {
+export async function toggleClubMembershipAction(clubId: string) {
   const session = await requireRole("traveller");
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
   if (!travellerProfile) throw new Error("Traveller profile not found.");
 
-  const interest = await getClubByKey(clubKey);
-  if (!interest) throw new Error("Club not found.");
-
   const [existing] = await db
     .select()
     .from(clubMemberships)
-    .where(
-      and(
-        eq(clubMemberships.travellerId, travellerProfile.id),
-        eq(clubMemberships.interestId, interest.id),
-      ),
-    )
+    .where(and(eq(clubMemberships.travellerId, travellerProfile.id), eq(clubMemberships.clubId, clubId)))
     .limit(1);
 
   if (existing) {
     await db.delete(clubMemberships).where(eq(clubMemberships.id, existing.id));
   } else {
-    await db.insert(clubMemberships).values({ travellerId: travellerProfile.id, interestId: interest.id });
+    await db.insert(clubMemberships).values({ travellerId: travellerProfile.id, clubId });
   }
 
   revalidatePath("/social");
-  revalidatePath(`/social/clubs/${clubKey}`);
+  revalidatePath(`/social/clubs/${clubId}`);
 }

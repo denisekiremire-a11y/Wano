@@ -16,6 +16,7 @@ export function PostCard({
   imageUrl,
   placeTitle,
   eventTitle,
+  clubTitle,
   createdAt,
   likeCount,
   commentCount,
@@ -30,6 +31,7 @@ export function PostCard({
   imageUrl?: string | null;
   placeTitle?: string | null;
   eventTitle?: string | null;
+  clubTitle?: string | null;
   createdAt: Date;
   likeCount: number;
   commentCount: number;
@@ -63,6 +65,7 @@ export function PostCard({
       )}
       {placeTitle && <p className="mt-2 text-xs text-forest-800/50">📍 {placeTitle}</p>}
       {eventTitle && <p className="mt-2 text-xs text-forest-800/50">🎟️ {eventTitle}</p>}
+      {clubTitle && <p className="mt-2 text-xs text-forest-800/50">👥 {clubTitle}</p>}
 
       <div className="mt-3 flex items-center gap-4 border-t border-forest-900/5 pt-3">
         <button

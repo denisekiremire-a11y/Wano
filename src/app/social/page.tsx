@@ -3,7 +3,7 @@ import { PostCard } from "@/components/post-card";
 import { PostComposer } from "@/components/post-composer";
 import { requireRole } from "@/lib/auth";
 import {
-  getClubs,
+  getClubCategories,
   getCommentsForPost,
   getEngagementCounts,
   getFeedPosts,
@@ -13,7 +13,6 @@ import {
 } from "@/lib/data/social";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { FollowButton } from "@/components/follow-button";
-import { ClubButton } from "@/components/club-button";
 
 export default async function SocialPage() {
   const session = await requireRole("traveller");
@@ -22,11 +21,11 @@ export default async function SocialPage() {
 
   const feed = await getFeedPosts();
   const postIds = feed.map((f) => f.post.id);
-  const [{ likeMap, commentMap }, likedIds, suggested, clubs] = await Promise.all([
+  const [{ likeMap, commentMap }, likedIds, suggested, categories] = await Promise.all([
     getEngagementCounts(postIds),
     getLikedPostIds(travellerProfile.id, postIds),
     getSuggestedPeople(travellerProfile.id),
-    getClubs(travellerProfile.id),
+    getClubCategories(),
   ]);
 
   const commentsByPost = await Promise.all(
@@ -55,21 +54,21 @@ export default async function SocialPage() {
 
         <div className="rounded-2xl border border-forest-900/10 bg-white p-4">
           <h2 className="font-display text-sm font-semibold text-forest-900">Wano Clubs</h2>
-          <p className="mt-0.5 text-xs text-forest-800/60">Find your people — join a club by interest.</p>
+          <p className="mt-0.5 text-xs text-forest-800/60">
+            Find your people — browse a category to see its clubs, or join one directly.
+          </p>
           <div className="mt-3 flex flex-wrap gap-2">
-            {clubs.map(({ interest, memberCount, joined }) => (
-              <div
+            {categories.map(({ interest, clubCount }) => (
+              <Link
                 key={interest.id}
-                className="flex items-center gap-2 rounded-full border border-forest-900/10 bg-forest-50/50 py-1 pr-1 pl-3"
+                href={`/social/clubs/category/${interest.key}`}
+                className="rounded-full border border-forest-900/10 bg-forest-50/50 px-3 py-1.5 text-xs font-medium text-forest-900 hover:bg-forest-50"
               >
-                <Link href={`/social/clubs/${interest.key}`} className="text-xs font-medium text-forest-900">
-                  {interest.label}{" "}
-                  <span className="font-normal text-forest-800/50">
-                    · {memberCount} {memberCount === 1 ? "member" : "members"}
-                  </span>
-                </Link>
-                <ClubButton clubKey={interest.key} initialJoined={joined} />
-              </div>
+                {interest.label}{" "}
+                <span className="font-normal text-forest-800/50">
+                  · {clubCount} {clubCount === 1 ? "club" : "clubs"}
+                </span>
+              </Link>
             ))}
           </div>
         </div>
@@ -79,7 +78,7 @@ export default async function SocialPage() {
             No posts yet — be the first to share something.
           </p>
         ) : (
-          feed.map(({ post, author, authorUser, listing, event }) => (
+          feed.map(({ post, author, authorUser, listing, event, club }) => (
             <PostCard
               key={post.id}
               postId={post.id}
@@ -89,6 +88,7 @@ export default async function SocialPage() {
               imageUrl={post.imageUrl}
               placeTitle={listing?.title}
               eventTitle={event?.title}
+              clubTitle={club?.name}
               createdAt={new Date(post.createdAt)}
               likeCount={likeMap.get(post.id) ?? 0}
               commentCount={commentMap.get(post.id) ?? 0}

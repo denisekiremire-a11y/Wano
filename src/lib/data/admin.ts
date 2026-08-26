@@ -148,6 +148,13 @@ export async function getAllListingsForAdmin() {
     .orderBy(vendorProfiles.businessName);
 }
 
+export async function getAllVendorProfilesForAdmin() {
+  return db
+    .select({ id: vendorProfiles.id, businessName: vendorProfiles.businessName })
+    .from(vendorProfiles)
+    .orderBy(vendorProfiles.businessName);
+}
+
 export async function getCampaignMetrics() {
   const journeyList = await db.select().from(journeys).orderBy(journeys.sortOrder);
   const allVendors = await db.select().from(vendorProfiles);

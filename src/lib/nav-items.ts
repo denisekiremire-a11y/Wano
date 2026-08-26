@@ -39,6 +39,7 @@ export function navItemsFor(role: SessionPayload["role"] | "guest"): NavItem[] {
       { href: "/vendor/dashboard/offer", label: "Offer", icon: "megaphone" },
       { href: "/vendor/dashboard/referrals", label: "Referrals", icon: "chart" },
       { href: "/vendor/dashboard/documents", label: "Documents", icon: "file" },
+      { href: "/vendor/dashboard/clubs", label: "Clubs", icon: "users" },
     ];
   }
   if (role === "admin") {
@@ -48,6 +49,7 @@ export function navItemsFor(role: SessionPayload["role"] | "guest"): NavItem[] {
       { href: "/admin/bookings", label: "Bookings", icon: "ticket" },
       { href: "/admin/travellers", label: "Members", icon: "grid" },
       { href: "/admin/promotions", label: "Deals", icon: "tag" },
+      { href: "/admin/clubs", label: "Clubs", icon: "chat" },
     ];
   }
   return [

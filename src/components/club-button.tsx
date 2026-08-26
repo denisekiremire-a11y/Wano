@@ -4,10 +4,10 @@ import { useOptimistic, useTransition } from "react";
 import { toggleClubMembershipAction } from "@/lib/actions/social-actions";
 
 export function ClubButton({
-  clubKey,
+  clubId,
   initialJoined,
 }: {
-  clubKey: string;
+  clubId: string;
   initialJoined: boolean;
 }) {
   const [joined, setOptimisticJoined] = useOptimistic(initialJoined);
@@ -20,7 +20,7 @@ export function ClubButton({
         e.preventDefault();
         startTransition(async () => {
           setOptimisticJoined(!joined);
-          await toggleClubMembershipAction(clubKey);
+          await toggleClubMembershipAction(clubId);
         });
       }}
       className={`flex-none rounded-full px-3 py-1.5 text-xs font-semibold transition ${

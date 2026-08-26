@@ -1,6 +1,16 @@
 import { and, eq, ilike, or } from "drizzle-orm";
 import { db } from "@/db";
-import { journeys, listingJourneys, listings, offers, promoCodes, vendorProfiles } from "@/db/schema";
+import {
+  journeys,
+  listingJourneys,
+  listings,
+  offers,
+  promoCodes,
+  savedListings,
+  travellerProfiles,
+  users,
+  vendorProfiles,
+} from "@/db/schema";
 import type { ListingType } from "@/lib/listing-type";
 
 export async function getJourneys() {
@@ -92,6 +102,33 @@ export async function searchListings(filters: ListingSearchFilters = {}) {
       and(eq(promoCodes.listingId, listings.id), eq(promoCodes.active, true)),
     )
     .where(and(...conditions));
+}
+
+/** A single listing (with offer/vendor/promo) for the detail page — not
+ * gated to trusted/active, so an admin link still resolves; the page itself
+ * decides what to show for an inactive/unaccredited listing. */
+export async function getListingById(listingId: string) {
+  const [row] = await db
+    .select({ listing: listings, offer: offers, vendor: vendorProfiles, promo: promoCodes })
+    .from(listings)
+    .innerJoin(vendorProfiles, eq(listings.vendorProfileId, vendorProfiles.id))
+    .leftJoin(offers, eq(offers.listingId, listings.id))
+    .leftJoin(promoCodes, and(eq(promoCodes.listingId, listings.id), eq(promoCodes.active, true)))
+    .where(eq(listings.id, listingId))
+    .limit(1);
+  return row ?? null;
+}
+
+/** Travellers who've saved a listing — the "people interested" list on its
+ * detail page (there's no RSVP concept for a place the way events have one). */
+export async function getInterestedTravellers(listingId: string) {
+  return db
+    .select({ traveller: travellerProfiles, user: users })
+    .from(savedListings)
+    .innerJoin(travellerProfiles, eq(travellerProfiles.id, savedListings.travellerId))
+    .innerJoin(users, eq(users.id, travellerProfiles.userId))
+    .where(eq(savedListings.listingId, listingId))
+    .orderBy(savedListings.createdAt);
 }
 
 export async function getDistinctListingLocations() {

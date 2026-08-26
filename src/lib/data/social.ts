@@ -2,6 +2,7 @@ import { and, count, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import {
   clubMemberships,
+  clubs,
   events,
   follows,
   interests,
@@ -11,6 +12,7 @@ import {
   posts,
   travellerProfiles,
   users,
+  vendorProfiles,
 } from "@/db/schema";
 
 export async function getFeedPosts(limit = 30) {
@@ -21,12 +23,14 @@ export async function getFeedPosts(limit = 30) {
       authorUser: users,
       listing: listings,
       event: events,
+      club: clubs,
     })
     .from(posts)
     .innerJoin(travellerProfiles, eq(travellerProfiles.id, posts.travellerId))
     .innerJoin(users, eq(users.id, travellerProfiles.userId))
     .leftJoin(listings, eq(listings.id, posts.listingId))
     .leftJoin(events, eq(events.id, posts.eventId))
+    .leftJoin(clubs, eq(clubs.id, posts.clubId))
     .orderBy(desc(posts.createdAt))
     .limit(limit);
   return rows;
@@ -34,11 +38,33 @@ export async function getFeedPosts(limit = 30) {
 
 export async function getPostsByTraveller(travellerId: string) {
   return db
-    .select({ post: posts, listing: listings, event: events })
+    .select({ post: posts, listing: listings, event: events, club: clubs })
     .from(posts)
     .leftJoin(listings, eq(listings.id, posts.listingId))
     .leftJoin(events, eq(events.id, posts.eventId))
+    .leftJoin(clubs, eq(clubs.id, posts.clubId))
     .where(eq(posts.travellerId, travellerId))
+    .orderBy(desc(posts.createdAt));
+}
+
+/** Media feed for a listing/club/event detail page — posts tagged to it,
+ * newest first, for display as a photo/moments grid. */
+export async function getMediaPostsFor(target: { listingId?: string; clubId?: string; eventId?: string }) {
+  const condition = target.listingId
+    ? eq(posts.listingId, target.listingId)
+    : target.clubId
+      ? eq(posts.clubId, target.clubId)
+      : target.eventId
+        ? eq(posts.eventId, target.eventId)
+        : undefined;
+  if (!condition) return [];
+
+  return db
+    .select({ post: posts, author: travellerProfiles, authorUser: users })
+    .from(posts)
+    .innerJoin(travellerProfiles, eq(travellerProfiles.id, posts.travellerId))
+    .innerJoin(users, eq(users.id, travellerProfiles.userId))
+    .where(condition)
     .orderBy(desc(posts.createdAt));
 }
 
@@ -118,54 +144,118 @@ export async function getSuggestedPeople(excludeTravellerId: string, limit = 5) 
   return rows.filter((r) => r.traveller.id !== excludeTravellerId).slice(0, limit);
 }
 
-/** Wano Clubs — one per interest, with member counts and whether the given
- * traveller has joined. `viewerTravellerId` is optional so this can render
- * for a signed-out preview too, if ever needed. */
-export async function getClubs(viewerTravellerId?: string) {
-  const [allInterests, memberCounts, viewerMemberships] = await Promise.all([
+export async function getAllInterests() {
+  return db.select().from(interests).orderBy(interests.sortOrder);
+}
+
+/** Categories to browse clubs by (the interest taxonomy), each with a count
+ * of *approved* clubs inside it — so "Food & Dining" can hold many distinct
+ * clubs instead of being a club itself. */
+export async function getClubCategories() {
+  const [allInterests, clubCounts] = await Promise.all([
     db.select().from(interests).orderBy(interests.sortOrder),
     db
-      .select({ interestId: clubMemberships.interestId, total: count() })
-      .from(clubMemberships)
-      .groupBy(clubMemberships.interestId),
-    viewerTravellerId
-      ? db
-          .select({ interestId: clubMemberships.interestId })
-          .from(clubMemberships)
-          .where(eq(clubMemberships.travellerId, viewerTravellerId))
-      : Promise.resolve([]),
+      .select({ interestId: clubs.interestId, total: count() })
+      .from(clubs)
+      .where(eq(clubs.status, "approved"))
+      .groupBy(clubs.interestId),
   ]);
-
-  const countMap = new Map(memberCounts.map((r) => [r.interestId, r.total]));
-  const joinedSet = new Set(viewerMemberships.map((r) => r.interestId));
-
+  const countMap = new Map(clubCounts.map((r) => [r.interestId, r.total]));
   return allInterests.map((interest) => ({
     interest,
-    memberCount: countMap.get(interest.id) ?? 0,
-    joined: joinedSet.has(interest.id),
+    clubCount: countMap.get(interest.id) ?? 0,
   }));
 }
 
-export async function getClubByKey(key: string) {
-  const [interest] = await db.select().from(interests).where(eq(interests.key, key)).limit(1);
-  return interest ?? null;
+export async function getApprovedClubsByCategory(interestKey: string, viewerTravellerId?: string) {
+  const [interest] = await db.select().from(interests).where(eq(interests.key, interestKey)).limit(1);
+  if (!interest) return { interest: null, clubs: [] };
+
+  const rows = await db
+    .select({ club: clubs, vendorProfile: vendorProfiles })
+    .from(clubs)
+    .leftJoin(vendorProfiles, eq(vendorProfiles.id, clubs.vendorProfileId))
+    .where(and(eq(clubs.interestId, interest.id), eq(clubs.status, "approved")))
+    .orderBy(desc(clubs.createdAt));
+
+  const clubIds = rows.map((r) => r.club.id);
+  const [memberCounts, viewerMemberships] = await Promise.all([
+    clubIds.length
+      ? db
+          .select({ clubId: clubMemberships.clubId, total: count() })
+          .from(clubMemberships)
+          .where(inArray(clubMemberships.clubId, clubIds))
+          .groupBy(clubMemberships.clubId)
+      : Promise.resolve([]),
+    viewerTravellerId && clubIds.length
+      ? db
+          .select({ clubId: clubMemberships.clubId })
+          .from(clubMemberships)
+          .where(
+            and(eq(clubMemberships.travellerId, viewerTravellerId), inArray(clubMemberships.clubId, clubIds)),
+          )
+      : Promise.resolve([]),
+  ]);
+  const countMap = new Map(memberCounts.map((r) => [r.clubId, r.total]));
+  const joinedSet = new Set(viewerMemberships.map((r) => r.clubId));
+
+  return {
+    interest,
+    clubs: rows.map((r) => ({
+      ...r,
+      memberCount: countMap.get(r.club.id) ?? 0,
+      joined: joinedSet.has(r.club.id),
+    })),
+  };
 }
 
-export async function getClubMembers(interestId: string) {
+export async function getClubById(clubId: string) {
+  const [row] = await db
+    .select({ club: clubs, interest: interests, vendorProfile: vendorProfiles })
+    .from(clubs)
+    .innerJoin(interests, eq(interests.id, clubs.interestId))
+    .leftJoin(vendorProfiles, eq(vendorProfiles.id, clubs.vendorProfileId))
+    .where(eq(clubs.id, clubId))
+    .limit(1);
+  return row ?? null;
+}
+
+export async function getClubMembers(clubId: string) {
   return db
     .select({ traveller: travellerProfiles, user: users, joinedAt: clubMemberships.joinedAt })
     .from(clubMemberships)
     .innerJoin(travellerProfiles, eq(travellerProfiles.id, clubMemberships.travellerId))
     .innerJoin(users, eq(users.id, travellerProfiles.userId))
-    .where(eq(clubMemberships.interestId, interestId))
+    .where(eq(clubMemberships.clubId, clubId))
     .orderBy(clubMemberships.joinedAt);
 }
 
-export async function isClubMember(travellerId: string, interestId: string) {
+export async function isClubMember(travellerId: string, clubId: string) {
   const [row] = await db
     .select()
     .from(clubMemberships)
-    .where(and(eq(clubMemberships.travellerId, travellerId), eq(clubMemberships.interestId, interestId)))
+    .where(and(eq(clubMemberships.travellerId, travellerId), eq(clubMemberships.clubId, clubId)))
     .limit(1);
   return row != null;
+}
+
+/** A vendor's own submitted clubs (any status) — for their dashboard. */
+export async function getVendorClubs(vendorProfileId: string) {
+  return db
+    .select({ club: clubs, interest: interests })
+    .from(clubs)
+    .innerJoin(interests, eq(interests.id, clubs.interestId))
+    .where(eq(clubs.vendorProfileId, vendorProfileId))
+    .orderBy(desc(clubs.createdAt));
+}
+
+/** All clubs for the admin Clubs page — pending ones need review, the rest
+ * are just listed for visibility/management. */
+export async function getAllClubsForAdmin() {
+  return db
+    .select({ club: clubs, interest: interests, vendorProfile: vendorProfiles })
+    .from(clubs)
+    .innerJoin(interests, eq(interests.id, clubs.interestId))
+    .leftJoin(vendorProfiles, eq(vendorProfiles.id, clubs.vendorProfileId))
+    .orderBy(desc(clubs.createdAt));
 }

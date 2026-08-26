@@ -51,7 +51,12 @@ export function PartnerCard({
             <SaveButton listingId={listing.id} initialSaved={saved ?? false} />
           )}
         </div>
-        <p className="mt-1.5 font-display text-lg font-semibold text-forest-900">{listing.title}</p>
+        <Link
+          href={`/explore/${listing.id}`}
+          className="mt-1.5 block font-display text-lg font-semibold text-forest-900 hover:underline"
+        >
+          {listing.title}
+        </Link>
         <p className="text-sm text-forest-800/70">{vendor.businessName}</p>
         <p className="text-xs text-forest-800/50">{vendor.location}</p>
         {rating && (
