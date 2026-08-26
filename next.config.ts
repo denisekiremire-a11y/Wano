@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
       allowedOrigins: ["*.trycloudflare.com"],
+      // Default 1MB is too small for KYC document uploads (PDFs/photos).
+      bodySizeLimit: "10mb",
     },
   },
 };

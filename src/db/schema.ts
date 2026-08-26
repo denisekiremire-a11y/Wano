@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm";
 import {
   boolean,
   type AnyPgColumn,
+  customType,
   date,
   integer,
   numeric,
@@ -12,6 +13,12 @@ import {
   unique,
   uuid,
 } from "drizzle-orm/pg-core";
+
+const bytea = customType<{ data: Buffer }>({
+  dataType() {
+    return "bytea";
+  },
+});
 
 export const userRoleEnum = pgEnum("user_role", ["traveller", "vendor", "admin"]);
 export const accreditationStatusEnum = pgEnum("accreditation_status", [
@@ -195,14 +202,20 @@ export const offers = pgTable("offers", {
 
 // KYC document submitted by a vendor during onboarding. A vendor can submit
 // several (business registration, owner ID, tax certificate, ...); admin
-// reviews each independently.
+// reviews each independently. Either an uploaded file (fileData + friends) or
+// an external documentUrl is set — direct upload is the primary path, the
+// link stays supported for anything already hosted elsewhere.
 export const vendorDocuments = pgTable("vendor_documents", {
   id: uuid("id").primaryKey().defaultRandom(),
   vendorProfileId: uuid("vendor_profile_id")
     .notNull()
     .references(() => vendorProfiles.id, { onDelete: "cascade" }),
   docType: vendorDocTypeEnum("doc_type").notNull(),
-  documentUrl: text("document_url").notNull(),
+  documentUrl: text("document_url"),
+  fileName: text("file_name"),
+  fileMimeType: text("file_mime_type"),
+  fileSize: integer("file_size"),
+  fileData: bytea("file_data"),
   status: documentStatusEnum("status").notNull().default("pending"),
   notes: text("notes"),
   uploadedAt: timestamp("uploaded_at", { withTimezone: true }).notNull().defaultNow(),
@@ -556,6 +569,7 @@ export const travellerProfilesRelations = relations(travellerProfiles, ({ one, m
   posts: many(posts),
   eventAttendance: many(eventAttendance),
   dealClaims: many(dealClaims),
+  clubMemberships: many(clubMemberships),
 }));
 
 export const eventsRelations = relations(events, ({ one, many }) => ({
@@ -578,6 +592,7 @@ export const eventAttendanceRelations = relations(eventAttendance, ({ one }) => 
 
 export const interestsRelations = relations(interests, ({ many }) => ({
   travellerInterests: many(travellerInterests),
+  clubMemberships: many(clubMemberships),
 }));
 
 export const travellerInterestsRelations = relations(travellerInterests, ({ one }) => ({
@@ -586,6 +601,34 @@ export const travellerInterestsRelations = relations(travellerInterests, ({ one 
     references: [travellerProfiles.id],
   }),
   interest: one(interests, { fields: [travellerInterests.interestId], references: [interests.id] }),
+}));
+
+// Wano Clubs — a member-joinable group built on the existing interest
+// taxonomy (one club per interest, e.g. "Nightlife", "Foodie"). Separate from
+// travellerInterests (personalization signal set at onboarding) since a
+// member can join/leave a club explicitly without changing their Home feed
+// personalization.
+export const clubMemberships = pgTable(
+  "club_memberships",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    travellerId: uuid("traveller_id")
+      .notNull()
+      .references(() => travellerProfiles.id, { onDelete: "cascade" }),
+    interestId: uuid("interest_id")
+      .notNull()
+      .references(() => interests.id, { onDelete: "cascade" }),
+    joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique().on(table.travellerId, table.interestId)],
+);
+
+export const clubMembershipsRelations = relations(clubMemberships, ({ one }) => ({
+  traveller: one(travellerProfiles, {
+    fields: [clubMemberships.travellerId],
+    references: [travellerProfiles.id],
+  }),
+  interest: one(interests, { fields: [clubMemberships.interestId], references: [interests.id] }),
 }));
 
 export const followsRelations = relations(follows, ({ one }) => ({

@@ -48,12 +48,12 @@ export default async function VendorDocumentsPage() {
               <div>
                 <p className="font-medium text-forest-900">{docTypeLabels[doc.docType]}</p>
                 <a
-                  href={doc.documentUrl}
+                  href={`/api/vendor-documents/${doc.id}`}
                   target="_blank"
                   rel="noreferrer"
                   className="text-sm text-nile-700 hover:underline"
                 >
-                  View document
+                  {doc.fileName ?? "View document"}
                 </a>
                 {doc.notes && <p className="mt-1 text-xs text-forest-800/50">Note: {doc.notes}</p>}
               </div>

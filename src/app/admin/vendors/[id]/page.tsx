@@ -45,7 +45,7 @@ export default async function AdminVendorDetailPage({
                 key={doc.id}
                 documentId={doc.id}
                 docType={doc.docType}
-                documentUrl={doc.documentUrl}
+                fileName={doc.fileName}
                 status={doc.status}
               />
             ))}

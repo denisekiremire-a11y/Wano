@@ -37,20 +37,18 @@ export function DocumentForm() {
       </div>
 
       <div>
-        <label htmlFor="documentUrl" className="text-sm font-medium text-forest-900">
-          Document link
+        <label htmlFor="file" className="text-sm font-medium text-forest-900">
+          Document file
         </label>
         <input
-          id="documentUrl"
-          name="documentUrl"
-          type="url"
+          id="file"
+          name="file"
+          type="file"
           required
-          placeholder="https://drive.google.com/..."
-          className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          accept="application/pdf,image/jpeg,image/png,image/webp"
+          className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none file:mr-3 file:rounded-full file:border-0 file:bg-forest-800 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white focus:border-forest-600"
         />
-        <p className="mt-1 text-xs text-forest-800/50">
-          Upload to Google Drive/Dropbox and paste a shareable link — direct upload is coming soon.
-        </p>
+        <p className="mt-1 text-xs text-forest-800/50">PDF, JPG, PNG, or WebP — max 10MB.</p>
       </div>
 
       {state.error && <p className="text-sm text-red-700">{state.error}</p>}

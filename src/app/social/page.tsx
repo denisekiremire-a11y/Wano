@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { PostCard } from "@/components/post-card";
 import { PostComposer } from "@/components/post-composer";
 import { requireRole } from "@/lib/auth";
 import {
+  getClubs,
   getCommentsForPost,
   getEngagementCounts,
   getFeedPosts,
@@ -11,6 +13,7 @@ import {
 } from "@/lib/data/social";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { FollowButton } from "@/components/follow-button";
+import { ClubButton } from "@/components/club-button";
 
 export default async function SocialPage() {
   const session = await requireRole("traveller");
@@ -19,10 +22,11 @@ export default async function SocialPage() {
 
   const feed = await getFeedPosts();
   const postIds = feed.map((f) => f.post.id);
-  const [{ likeMap, commentMap }, likedIds, suggested] = await Promise.all([
+  const [{ likeMap, commentMap }, likedIds, suggested, clubs] = await Promise.all([
     getEngagementCounts(postIds),
     getLikedPostIds(travellerProfile.id, postIds),
     getSuggestedPeople(travellerProfile.id),
+    getClubs(travellerProfile.id),
   ]);
 
   const commentsByPost = await Promise.all(
@@ -49,8 +53,25 @@ export default async function SocialPage() {
 
         <PostComposer />
 
-        <div className="rounded-2xl border border-dashed border-forest-900/15 bg-forest-50/50 p-4 text-center text-sm text-forest-800/60">
-          Wano Clubs — find your people. Coming soon.
+        <div className="rounded-2xl border border-forest-900/10 bg-white p-4">
+          <h2 className="font-display text-sm font-semibold text-forest-900">Wano Clubs</h2>
+          <p className="mt-0.5 text-xs text-forest-800/60">Find your people — join a club by interest.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {clubs.map(({ interest, memberCount, joined }) => (
+              <div
+                key={interest.id}
+                className="flex items-center gap-2 rounded-full border border-forest-900/10 bg-forest-50/50 py-1 pr-1 pl-3"
+              >
+                <Link href={`/social/clubs/${interest.key}`} className="text-xs font-medium text-forest-900">
+                  {interest.label}{" "}
+                  <span className="font-normal text-forest-800/50">
+                    · {memberCount} {memberCount === 1 ? "member" : "members"}
+                  </span>
+                </Link>
+                <ClubButton clubKey={interest.key} initialJoined={joined} />
+              </div>
+            ))}
+          </div>
         </div>
 
         {feed.length === 0 ? (

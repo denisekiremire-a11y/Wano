@@ -4,8 +4,9 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
-import { follows, postComments, postLikes, posts } from "@/db/schema";
+import { clubMemberships, follows, postComments, postLikes, posts } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
+import { getClubByKey } from "@/lib/data/social";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 import type { ActionState } from "@/lib/validation";
 
@@ -108,4 +109,33 @@ export async function toggleFollowAction(targetTravellerId: string) {
 
   revalidatePath("/social");
   revalidatePath("/profile");
+}
+
+export async function toggleClubMembershipAction(clubKey: string) {
+  const session = await requireRole("traveller");
+  const travellerProfile = await getTravellerProfileByUserId(session.userId);
+  if (!travellerProfile) throw new Error("Traveller profile not found.");
+
+  const interest = await getClubByKey(clubKey);
+  if (!interest) throw new Error("Club not found.");
+
+  const [existing] = await db
+    .select()
+    .from(clubMemberships)
+    .where(
+      and(
+        eq(clubMemberships.travellerId, travellerProfile.id),
+        eq(clubMemberships.interestId, interest.id),
+      ),
+    )
+    .limit(1);
+
+  if (existing) {
+    await db.delete(clubMemberships).where(eq(clubMemberships.id, existing.id));
+  } else {
+    await db.insert(clubMemberships).values({ travellerId: travellerProfile.id, interestId: interest.id });
+  }
+
+  revalidatePath("/social");
+  revalidatePath(`/social/clubs/${clubKey}`);
 }

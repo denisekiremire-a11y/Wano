@@ -15,7 +15,12 @@ import {
   vendorProfiles,
 } from "@/db/schema";
 import { getJourneyTagsForListing } from "./journeys";
-import { getVendorListingFull, getVendorListingWithOffer, getVendorProfileById } from "./vendor";
+import {
+  getVendorListingFull,
+  getVendorListingWithOffer,
+  getVendorProfileById,
+  vendorDocumentListColumns,
+} from "./vendor";
 
 export async function getVendorDetail(vendorProfileId: string) {
   const vendorProfile = await getVendorProfileById(vendorProfileId);
@@ -26,7 +31,7 @@ export async function getVendorDetail(vendorProfileId: string) {
   const [listingRow, documents, reviews, allJourneys] = await Promise.all([
     getVendorListingFull(vendorProfileId),
     db
-      .select()
+      .select(vendorDocumentListColumns)
       .from(vendorDocuments)
       .where(eq(vendorDocuments.vendorProfileId, vendorProfileId))
       .orderBy(desc(vendorDocuments.uploadedAt)),
@@ -54,7 +59,7 @@ export async function getVendorApprovalQueue() {
       const [listingRow, pendingDocs] = await Promise.all([
         getVendorListingWithOffer(row.vendor.id),
         db
-          .select()
+          .select(vendorDocumentListColumns)
           .from(vendorDocuments)
           .where(eq(vendorDocuments.vendorProfileId, row.vendor.id)),
       ]);

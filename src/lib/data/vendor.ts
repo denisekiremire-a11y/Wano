@@ -63,12 +63,47 @@ export async function getVendorListingFull(vendorProfileId: string) {
   return { ...row, journeyTags, hotel: hotel ?? null, restaurant: restaurant ?? null, experience: experience ?? null };
 }
 
+// Columns for list/review views — excludes fileData (bytea) so rendering a
+// list of documents doesn't pull every file's bytes into the query result.
+export const vendorDocumentListColumns = {
+  id: vendorDocuments.id,
+  vendorProfileId: vendorDocuments.vendorProfileId,
+  docType: vendorDocuments.docType,
+  documentUrl: vendorDocuments.documentUrl,
+  fileName: vendorDocuments.fileName,
+  fileMimeType: vendorDocuments.fileMimeType,
+  fileSize: vendorDocuments.fileSize,
+  status: vendorDocuments.status,
+  notes: vendorDocuments.notes,
+  uploadedAt: vendorDocuments.uploadedAt,
+  reviewedByUserId: vendorDocuments.reviewedByUserId,
+  reviewedAt: vendorDocuments.reviewedAt,
+} as const;
+
 export async function getVendorDocuments(vendorProfileId: string) {
   return db
-    .select()
+    .select(vendorDocumentListColumns)
     .from(vendorDocuments)
     .where(eq(vendorDocuments.vendorProfileId, vendorProfileId))
     .orderBy(vendorDocuments.uploadedAt);
+}
+
+/** Fetches one document's actual bytes (or its external URL) for the
+ * download/view route — the only place fileData should be selected. */
+export async function getVendorDocumentFile(documentId: string) {
+  const [doc] = await db
+    .select({
+      id: vendorDocuments.id,
+      vendorProfileId: vendorDocuments.vendorProfileId,
+      documentUrl: vendorDocuments.documentUrl,
+      fileName: vendorDocuments.fileName,
+      fileMimeType: vendorDocuments.fileMimeType,
+      fileData: vendorDocuments.fileData,
+    })
+    .from(vendorDocuments)
+    .where(eq(vendorDocuments.id, documentId))
+    .limit(1);
+  return doc ?? null;
 }
 
 export async function getVendorReferralStats(vendorProfileId: string) {

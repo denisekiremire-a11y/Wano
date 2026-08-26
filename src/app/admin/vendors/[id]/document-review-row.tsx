@@ -19,12 +19,12 @@ const statusStyles: Record<string, string> = {
 export function DocumentReviewRow({
   documentId,
   docType,
-  documentUrl,
+  fileName,
   status,
 }: {
   documentId: string;
   docType: string;
-  documentUrl: string;
+  fileName: string | null;
   status: "pending" | "approved" | "rejected";
 }) {
   const [pending, startTransition] = useTransition();
@@ -33,8 +33,13 @@ export function DocumentReviewRow({
     <div className="flex items-center justify-between rounded-xl border border-forest-900/10 p-3">
       <div>
         <p className="text-sm font-medium text-forest-900">{docTypeLabels[docType] ?? docType}</p>
-        <a href={documentUrl} target="_blank" rel="noreferrer" className="text-xs text-nile-700 hover:underline">
-          View document
+        <a
+          href={`/api/vendor-documents/${documentId}`}
+          target="_blank"
+          rel="noreferrer"
+          className="text-xs text-nile-700 hover:underline"
+        >
+          {fileName ?? "View document"}
         </a>
       </div>
       <div className="flex items-center gap-2">

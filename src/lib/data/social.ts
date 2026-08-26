@@ -1,8 +1,10 @@
 import { and, count, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import {
+  clubMemberships,
   events,
   follows,
+  interests,
   listings,
   postComments,
   postLikes,
@@ -114,4 +116,56 @@ export async function getSuggestedPeople(excludeTravellerId: string, limit = 5) 
     .innerJoin(users, eq(users.id, travellerProfiles.userId))
     .limit(limit + 1);
   return rows.filter((r) => r.traveller.id !== excludeTravellerId).slice(0, limit);
+}
+
+/** Wano Clubs — one per interest, with member counts and whether the given
+ * traveller has joined. `viewerTravellerId` is optional so this can render
+ * for a signed-out preview too, if ever needed. */
+export async function getClubs(viewerTravellerId?: string) {
+  const [allInterests, memberCounts, viewerMemberships] = await Promise.all([
+    db.select().from(interests).orderBy(interests.sortOrder),
+    db
+      .select({ interestId: clubMemberships.interestId, total: count() })
+      .from(clubMemberships)
+      .groupBy(clubMemberships.interestId),
+    viewerTravellerId
+      ? db
+          .select({ interestId: clubMemberships.interestId })
+          .from(clubMemberships)
+          .where(eq(clubMemberships.travellerId, viewerTravellerId))
+      : Promise.resolve([]),
+  ]);
+
+  const countMap = new Map(memberCounts.map((r) => [r.interestId, r.total]));
+  const joinedSet = new Set(viewerMemberships.map((r) => r.interestId));
+
+  return allInterests.map((interest) => ({
+    interest,
+    memberCount: countMap.get(interest.id) ?? 0,
+    joined: joinedSet.has(interest.id),
+  }));
+}
+
+export async function getClubByKey(key: string) {
+  const [interest] = await db.select().from(interests).where(eq(interests.key, key)).limit(1);
+  return interest ?? null;
+}
+
+export async function getClubMembers(interestId: string) {
+  return db
+    .select({ traveller: travellerProfiles, user: users, joinedAt: clubMemberships.joinedAt })
+    .from(clubMemberships)
+    .innerJoin(travellerProfiles, eq(travellerProfiles.id, clubMemberships.travellerId))
+    .innerJoin(users, eq(users.id, travellerProfiles.userId))
+    .where(eq(clubMemberships.interestId, interestId))
+    .orderBy(clubMemberships.joinedAt);
+}
+
+export async function isClubMember(travellerId: string, interestId: string) {
+  const [row] = await db
+    .select()
+    .from(clubMemberships)
+    .where(and(eq(clubMemberships.travellerId, travellerId), eq(clubMemberships.interestId, interestId)))
+    .limit(1);
+  return row != null;
 }
