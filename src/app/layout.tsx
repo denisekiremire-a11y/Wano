@@ -1,0 +1,51 @@
+import type { Metadata, Viewport } from "next";
+import { Geist } from "next/font/google";
+import { Fraunces } from "next/font/google";
+import { BottomNav } from "@/components/bottom-nav";
+import { SiteHeader } from "@/components/site-header";
+import { getSession } from "@/lib/session";
+import "./globals.css";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+});
+
+export const metadata: Metadata = {
+  title: "Wano — Discover. Connect. Experience.",
+  description:
+    "Wano is the social discovery platform for Kampala and Uganda — places, events, experiences, restaurants, communities, and bookings, all in one app. Wano × AFCON 2027 is our launch campaign.",
+  manifest: "/manifest.webmanifest",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0d2419",
+  width: "device-width",
+  initialScale: 1,
+};
+
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const session = await getSession();
+
+  return (
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${fraunces.variable} h-full antialiased`}
+    >
+      <body
+        className="min-h-full flex flex-col bg-background text-foreground"
+        suppressHydrationWarning
+      >
+        <SiteHeader session={session} />
+        <div className="has-bottom-nav flex-1">{children}</div>
+        <BottomNav session={session} />
+      </body>
+    </html>
+  );
+}

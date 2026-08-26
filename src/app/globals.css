@@ -1,0 +1,132 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f9f7f2;
+  --foreground: #14231c;
+
+  /* Deep forest green — primary */
+  --color-forest-950: #08160f;
+  --color-forest-900: #0d2419;
+  --color-forest-800: #123626;
+  --color-forest-700: #184a33;
+  --color-forest-600: #1f5f41;
+  --color-forest-500: #2c7a54;
+  --color-forest-400: #4a9a70;
+  --color-forest-300: #7ebc9a;
+  --color-forest-200: #b3dcc6;
+  --color-forest-100: #dcf0e5;
+  --color-forest-50: #f0f9f4;
+
+  /* Marigold / gold — accent */
+  --color-marigold-900: #5c3c05;
+  --color-marigold-800: #7a4f07;
+  --color-marigold-700: #9c6709;
+  --color-marigold-600: #c1830f;
+  --color-marigold-500: #e0a11c;
+  --color-marigold-400: #eeb840;
+  --color-marigold-300: #f3cb6e;
+  --color-marigold-200: #f8dfa2;
+  --color-marigold-100: #fbecc9;
+  --color-marigold-50: #fdf7e8;
+
+  /* Nile blue — secondary */
+  --color-nile-950: #06222f;
+  --color-nile-900: #0a3345;
+  --color-nile-800: #0f4a61;
+  --color-nile-700: #146080;
+  --color-nile-600: #1b7aa1;
+  --color-nile-500: #2a94bd;
+  --color-nile-400: #5cafd1;
+  --color-nile-300: #93cbe2;
+  --color-nile-200: #c4e3f0;
+  --color-nile-100: #e2f1f8;
+  --color-nile-50: #f1f9fc;
+
+  --color-sand-50: #f9f7f2;
+  --color-sand-100: #f1ede2;
+  --color-sand-200: #e4dcc9;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-forest-950: var(--color-forest-950);
+  --color-forest-900: var(--color-forest-900);
+  --color-forest-800: var(--color-forest-800);
+  --color-forest-700: var(--color-forest-700);
+  --color-forest-600: var(--color-forest-600);
+  --color-forest-500: var(--color-forest-500);
+  --color-forest-400: var(--color-forest-400);
+  --color-forest-300: var(--color-forest-300);
+  --color-forest-200: var(--color-forest-200);
+  --color-forest-100: var(--color-forest-100);
+  --color-forest-50: var(--color-forest-50);
+
+  --color-marigold-900: var(--color-marigold-900);
+  --color-marigold-800: var(--color-marigold-800);
+  --color-marigold-700: var(--color-marigold-700);
+  --color-marigold-600: var(--color-marigold-600);
+  --color-marigold-500: var(--color-marigold-500);
+  --color-marigold-400: var(--color-marigold-400);
+  --color-marigold-300: var(--color-marigold-300);
+  --color-marigold-200: var(--color-marigold-200);
+  --color-marigold-100: var(--color-marigold-100);
+  --color-marigold-50: var(--color-marigold-50);
+
+  --color-nile-950: var(--color-nile-950);
+  --color-nile-900: var(--color-nile-900);
+  --color-nile-800: var(--color-nile-800);
+  --color-nile-700: var(--color-nile-700);
+  --color-nile-600: var(--color-nile-600);
+  --color-nile-500: var(--color-nile-500);
+  --color-nile-400: var(--color-nile-400);
+  --color-nile-300: var(--color-nile-300);
+  --color-nile-200: var(--color-nile-200);
+  --color-nile-100: var(--color-nile-100);
+  --color-nile-50: var(--color-nile-50);
+
+  --color-sand-50: var(--color-sand-50);
+  --color-sand-100: var(--color-sand-100);
+  --color-sand-200: var(--color-sand-200);
+
+  --font-sans: var(--font-geist-sans);
+  --font-display: var(--font-fraunces);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+.font-display {
+  font-family: var(--font-display), Georgia, serif;
+}
+
+/* Passport stamp texture: a soft ring for unearned, solid marigold fill for earned */
+.stamp-slot {
+  position: relative;
+  isolation: isolate;
+}
+
+.stamp-slot::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  border: 2px dashed var(--color-forest-300);
+  opacity: 0.6;
+}
+
+.stamp-slot[data-earned="true"]::before {
+  border-style: solid;
+  border-color: var(--color-marigold-500);
+  opacity: 1;
+}
+
+@media (max-width: 767px) {
+  .has-bottom-nav {
+    padding-bottom: 4.5rem;
+  }
+}
