@@ -78,7 +78,7 @@ export default async function SocialPage() {
             No posts yet — be the first to share something.
           </p>
         ) : (
-          feed.map(({ post, author, authorUser, listing, event, club }) => (
+          feed.map(({ post, author, authorUser }) => (
             <PostCard
               key={post.id}
               postId={post.id}
@@ -86,9 +86,6 @@ export default async function SocialPage() {
               authorUsername={authorUser.username}
               content={post.content}
               imageUrl={post.imageUrl}
-              placeTitle={listing?.title}
-              eventTitle={event?.title}
-              clubTitle={club?.name}
               createdAt={new Date(post.createdAt)}
               likeCount={likeMap.get(post.id) ?? 0}
               commentCount={commentMap.get(post.id) ?? 0}

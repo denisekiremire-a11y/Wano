@@ -14,9 +14,6 @@ export function PostCard({
   authorUsername,
   content,
   imageUrl,
-  placeTitle,
-  eventTitle,
-  clubTitle,
   createdAt,
   likeCount,
   commentCount,
@@ -29,9 +26,6 @@ export function PostCard({
   authorUsername: string | null;
   content: string;
   imageUrl?: string | null;
-  placeTitle?: string | null;
-  eventTitle?: string | null;
-  clubTitle?: string | null;
   createdAt: Date;
   likeCount: number;
   commentCount: number;
@@ -63,9 +57,6 @@ export function PostCard({
         // eslint-disable-next-line @next/next/no-img-element
         <img src={imageUrl} alt="" className="mt-3 max-h-80 w-full rounded-xl object-cover" />
       )}
-      {placeTitle && <p className="mt-2 text-xs text-forest-800/50">📍 {placeTitle}</p>}
-      {eventTitle && <p className="mt-2 text-xs text-forest-800/50">🎟️ {eventTitle}</p>}
-      {clubTitle && <p className="mt-2 text-xs text-forest-800/50">👥 {clubTitle}</p>}
 
       <div className="mt-3 flex items-center gap-4 border-t border-forest-900/5 pt-3">
         <button

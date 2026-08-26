@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import {
   clubMemberships,
@@ -15,22 +15,16 @@ import {
   vendorProfiles,
 } from "@/db/schema";
 
+/** The general Social feed — deliberately excludes posts tagged to a
+ * listing/event/club: those live only on that place/event/club's own page
+ * (via getMediaPostsFor), not mixed into the general feed. */
 export async function getFeedPosts(limit = 30) {
   const rows = await db
-    .select({
-      post: posts,
-      author: travellerProfiles,
-      authorUser: users,
-      listing: listings,
-      event: events,
-      club: clubs,
-    })
+    .select({ post: posts, author: travellerProfiles, authorUser: users })
     .from(posts)
     .innerJoin(travellerProfiles, eq(travellerProfiles.id, posts.travellerId))
     .innerJoin(users, eq(users.id, travellerProfiles.userId))
-    .leftJoin(listings, eq(listings.id, posts.listingId))
-    .leftJoin(events, eq(events.id, posts.eventId))
-    .leftJoin(clubs, eq(clubs.id, posts.clubId))
+    .where(and(isNull(posts.listingId), isNull(posts.eventId), isNull(posts.clubId)))
     .orderBy(desc(posts.createdAt))
     .limit(limit);
   return rows;
