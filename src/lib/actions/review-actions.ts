@@ -6,12 +6,18 @@ import { z } from "zod";
 import { db } from "@/db";
 import { bookings, reviews } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
+import { logEvent } from "@/lib/analytics";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 import type { ActionState } from "@/lib/validation";
 
+const ratingField = z.coerce.number().int().min(1).max(5);
+
 const reviewSchema = z.object({
   bookingId: z.string().uuid(),
-  rating: z.coerce.number().int().min(1).max(5),
+  safetyRating: ratingField,
+  reliabilityRating: ratingField,
+  valueRating: ratingField,
+  communicationRating: ratingField,
   comment: z.string().max(500).optional().or(z.literal("")),
 });
 
@@ -25,11 +31,14 @@ export async function submitReviewAction(
 
   const parsed = reviewSchema.safeParse({
     bookingId: formData.get("bookingId"),
-    rating: formData.get("rating"),
+    safetyRating: formData.get("safetyRating"),
+    reliabilityRating: formData.get("reliabilityRating"),
+    valueRating: formData.get("valueRating"),
+    communicationRating: formData.get("communicationRating"),
     comment: formData.get("comment") ?? "",
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Please check your review." };
+    return { error: "Please rate all four categories before submitting." };
   }
 
   const [booking] = await db
@@ -52,18 +61,35 @@ export async function submitReviewAction(
     .limit(1);
   if (existing) return { error: "You've already reviewed this booking." };
 
+  const { safetyRating, reliabilityRating, valueRating, communicationRating } = parsed.data;
+  // Overall is the average of the four categories, rounded — one headline
+  // number for cards/badges, without asking the traveller to rate twice.
+  const rating = Math.round((safetyRating + reliabilityRating + valueRating + communicationRating) / 4);
+
   await db.insert(reviews).values({
     listingId: booking.listingId,
     travellerId: travellerProfile.id,
     bookingId: booking.id,
-    rating: parsed.data.rating,
+    rating,
+    safetyRating,
+    reliabilityRating,
+    valueRating,
+    communicationRating,
     comment: parsed.data.comment || null,
+  });
+
+  await logEvent("review_submitted", {
+    userId: session.userId,
+    role: session.role,
+    metadata: { listingId: booking.listingId, rating },
   });
 
   revalidatePath("/bookings");
   revalidatePath("/profile");
   revalidatePath("/explore");
   revalidatePath("/home");
+  revalidatePath(`/explore/${booking.listingId}`);
+  revalidatePath("/rewards");
 
   return {};
 }

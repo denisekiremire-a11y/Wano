@@ -3,6 +3,7 @@ import { ListingTypeIcon } from "@/components/listing-type-icon";
 import { OfferTeaser } from "@/components/offer-teaser";
 import { RatingBadge } from "@/components/rating-badge";
 import { SaveButton } from "@/components/save-button";
+import { VerifiedBadge } from "@/components/verified-badge";
 import type { BirthdayPerk } from "@/lib/data/birthday";
 import type { searchListings } from "@/lib/data/journeys";
 import type { RatingSummary } from "@/lib/data/reviews";
@@ -41,9 +42,12 @@ export function PartnerCard({
       </div>
       <div className="p-4">
         <div className="flex items-start justify-between gap-2">
-          <span className="inline-flex rounded-full bg-forest-50 px-2 py-0.5 text-[11px] font-medium text-forest-700">
-            {listingTypeLabels[type]}
-          </span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="inline-flex rounded-full bg-forest-50 px-2 py-0.5 text-[11px] font-medium text-forest-700">
+              {listingTypeLabels[type]}
+            </span>
+            <VerifiedBadge status={vendor.accreditationStatus} />
+          </div>
           {session?.role === "traveller" && (
             <SaveButton listingId={listing.id} initialSaved={saved ?? false} />
           )}

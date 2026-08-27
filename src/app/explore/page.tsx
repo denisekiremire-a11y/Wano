@@ -16,6 +16,7 @@ import {
   getTravellerProfileByUserId,
 } from "@/lib/data/traveller";
 import { journeyTheme } from "@/lib/journey-theme";
+import { logEvent } from "@/lib/analytics";
 import type { ListingType } from "@/lib/listing-type";
 import { getSession } from "@/lib/session";
 
@@ -28,6 +29,14 @@ export default async function ExplorePage({
 }) {
   const { type, location, q } = await searchParams;
   const session = await getSession();
+
+  if (q) {
+    await logEvent("search_performed", {
+      userId: session?.userId,
+      role: session?.role,
+      metadata: { q, type, location },
+    });
+  }
 
   let unlockedJourneyIds = new Set<string>();
   let savedIds = new Set<string>();

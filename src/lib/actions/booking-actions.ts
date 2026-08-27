@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { bookings, journeys, listingJourneys, listings } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
+import { logEvent } from "@/lib/analytics";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 
 function generateBookingRef() {
@@ -32,6 +33,8 @@ export async function bookListingFormAction(formData: FormData) {
   const session = await requireRole("traveller");
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
   if (!travellerProfile) throw new Error("Traveller profile not found.");
+
+  await logEvent("booking_started", { userId: session.userId, role: session.role, metadata: { listingId } });
 
   const [listing] = await db.select().from(listings).where(eq(listings.id, listingId)).limit(1);
   if (!listing || !listing.active) throw new Error("This listing is not available.");
@@ -71,6 +74,12 @@ export async function bookListingFormAction(formData: FormData) {
       estimatedCommission: "15.00",
     })
     .returning();
+
+  await logEvent("booking_completed", {
+    userId: session.userId,
+    role: session.role,
+    metadata: { listingId, bookingRef: booking.bookingRef },
+  });
 
   revalidatePath("/home");
   revalidatePath("/bookings");

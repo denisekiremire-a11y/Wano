@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySession } from "@/lib/session";
 
-const MEMBER_PREFIXES = ["/dashboard", "/home", "/bookings", "/profile", "/social", "/onboarding"];
+const MEMBER_PREFIXES = ["/dashboard", "/home", "/bookings", "/profile", "/social", "/onboarding", "/rewards"];
 
 const roleForPrefix = (pathname: string): "traveller" | "vendor" | "admin" | null => {
   if (MEMBER_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return "traveller";
@@ -44,6 +44,7 @@ export const config = {
     "/profile",
     "/social/:path*",
     "/onboarding/:path*",
+    "/rewards",
     "/vendor/dashboard/:path*",
     "/admin/:path*",
     "/login",

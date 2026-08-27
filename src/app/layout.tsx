@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import { Fraunces } from "next/font/google";
 import { BottomNav } from "@/components/bottom-nav";
+import { LiteModeInit } from "@/components/lite-mode-init";
+import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getSession } from "@/lib/session";
 import "./globals.css";
@@ -42,8 +44,12 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         className="min-h-full flex flex-col bg-background text-foreground"
         suppressHydrationWarning
       >
+        <LiteModeInit />
         <SiteHeader session={session} />
-        <div className="has-bottom-nav flex-1">{children}</div>
+        <div className="has-bottom-nav flex-1">
+          {children}
+          <SiteFooter />
+        </div>
         <BottomNav session={session} />
       </body>
     </html>

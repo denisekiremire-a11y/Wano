@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { db } from "@/db";
+import { documentAccessLogs } from "@/db/schema";
 import { getSession } from "@/lib/session";
 import { getVendorDocumentFile, getVendorProfileByUserId } from "@/lib/data/vendor";
 
@@ -16,6 +18,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
   }
+
+  // Audit trail — every successful fetch of the actual bytes is logged,
+  // regardless of role, so accreditation reviews stay accountable.
+  await db.insert(documentAccessLogs).values({ documentId: id, accessedByUserId: session.userId });
 
   if (doc.fileData) {
     return new NextResponse(new Uint8Array(doc.fileData), {

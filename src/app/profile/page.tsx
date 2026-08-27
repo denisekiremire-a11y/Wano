@@ -3,10 +3,12 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { BirthdayEditor } from "@/components/birthday-editor";
+import { LiteModeToggle } from "@/components/lite-mode-toggle";
 import { OfferTeaser } from "@/components/offer-teaser";
 import { PassportGrid } from "@/components/passport-grid";
 import { RatingBadge } from "@/components/rating-badge";
 import { TrophyIcon, UserIcon } from "@/components/icons";
+import { logoutAction } from "@/lib/actions/auth-actions";
 import { ChallengeCard } from "@/app/dashboard/challenges/challenge-card";
 import { claimDealFormAction } from "@/lib/actions/deal-actions";
 import { requireRole } from "@/lib/auth";
@@ -29,6 +31,7 @@ const TABS = [
   { key: "challenges", label: "Challenges" },
   { key: "reviews", label: "Reviews" },
   { key: "saved", label: "Saved" },
+  { key: "settings", label: "Settings" },
 ] as const;
 
 export default async function ProfilePage({
@@ -109,8 +112,34 @@ export default async function ProfilePage({
         {activeTab === "challenges" && <ChallengesTab travellerId={travellerProfile.id} />}
         {activeTab === "reviews" && <ReviewsTab travellerId={travellerProfile.id} />}
         {activeTab === "saved" && <SavedTab travellerId={travellerProfile.id} />}
+        {activeTab === "settings" && <SettingsTab />}
       </div>
     </main>
+  );
+}
+
+function SettingsTab() {
+  return (
+    <div className="space-y-3">
+      <LiteModeToggle />
+      <div className="rounded-xl border border-forest-900/10 bg-white p-4 text-sm text-forest-800/70">
+        <Link href="/privacy" className="text-forest-900 underline">
+          Privacy Policy
+        </Link>
+        {" · "}
+        <Link href="/terms" className="text-forest-900 underline">
+          Terms of Service
+        </Link>
+      </div>
+      <form action={logoutAction}>
+        <button
+          type="submit"
+          className="w-full rounded-full border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-50"
+        >
+          Log out
+        </button>
+      </form>
+    </div>
   );
 }
 

@@ -12,6 +12,7 @@ import {
   vendorProfiles,
 } from "@/db/schema";
 import { hashPassword, verifyPassword } from "@/lib/auth";
+import { logEvent } from "@/lib/analytics";
 import { generateReferralCode } from "@/lib/referral";
 import { clearSessionCookie, createSessionCookie } from "@/lib/session";
 import { uniqueUsername } from "@/lib/username";
@@ -183,6 +184,7 @@ export async function signupAction(_prev: ActionState, formData: FormData): Prom
           });
         }
       }
+      await logEvent("referral_converted", { userId: user.id, role: "traveller" });
     }
   } else {
     await db.insert(vendorProfiles).values({

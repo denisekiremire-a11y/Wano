@@ -59,6 +59,7 @@ export const eventAttendanceStatusEnum = pgEnum("event_attendance_status", [
   "interested",
   "maybe",
 ]);
+export const travellerPersonaEnum = pgEnum("traveller_persona", ["newcomer", "tourist", "local"]);
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -82,6 +83,9 @@ export const travellerProfiles = pgTable("traveller_profiles", {
   displayName: text("display_name").notNull(),
   // Month/day is what matters for birthday perks; year is optional context.
   dateOfBirth: date("date_of_birth"),
+  // Set during onboarding (see /onboarding) — drives Home feed personalization.
+  persona: travellerPersonaEnum("persona"),
+  city: text("city"),
   grandPrizeEntered: boolean("grand_prize_entered").notNull().default(false),
   referralCode: text("referral_code").notNull().unique(),
   referredByTravellerId: uuid("referred_by_traveller_id").references(
@@ -363,7 +367,14 @@ export const reviews = pgTable("reviews", {
     .notNull()
     .unique()
     .references(() => bookings.id, { onDelete: "cascade" }),
+  // Overall rating — kept independent of the category breakdown below so a
+  // review always has a single headline score, even from before the
+  // breakdown existed (those rows have null category ratings).
   rating: integer("rating").notNull(),
+  safetyRating: integer("safety_rating"),
+  reliabilityRating: integer("reliability_rating"),
+  valueRating: integer("value_rating"),
+  communicationRating: integer("communication_rating"),
   comment: text("comment"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -709,6 +720,19 @@ export const dealClaimsRelations = relations(dealClaims, ({ one }) => ({
   promoCode: one(promoCodes, { fields: [dealClaims.promoCodeId], references: [promoCodes.id] }),
 }));
 
+// Lightweight product-analytics log — deliberately just a table, not a
+// third-party SDK, consistent with this app's no-external-services default.
+// userId/role are nullable since some events (search, listing_viewed) can
+// fire for signed-out visitors.
+export const analyticsEvents = pgTable("analytics_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  eventName: text("event_name").notNull(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+  role: text("role"),
+  metadata: text("metadata"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const birthdayPerksRelations = relations(birthdayPerks, ({ one }) => ({
   listing: one(listings, { fields: [birthdayPerks.listingId], references: [listings.id] }),
   event: one(events, { fields: [birthdayPerks.eventId], references: [events.id] }),
@@ -790,6 +814,21 @@ export const experienceDetailsRelations = relations(experienceDetails, ({ one })
 export const offersRelations = relations(offers, ({ one }) => ({
   listing: one(listings, { fields: [offers.listingId], references: [listings.id] }),
 }));
+
+// Audit trail for every fetch of a vendor's sensitive KYC document bytes —
+// who (or "anonymous" if the request had no session, which the route
+// rejects before it gets here, so this is really always a real user) viewed
+// which document and when. Written by the /api/vendor-documents/[id] route.
+export const documentAccessLogs = pgTable("document_access_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  documentId: uuid("document_id")
+    .notNull()
+    .references(() => vendorDocuments.id, { onDelete: "cascade" }),
+  accessedByUserId: uuid("accessed_by_user_id")
+    .notNull()
+    .references(() => users.id),
+  accessedAt: timestamp("accessed_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 export const vendorDocumentsRelations = relations(vendorDocuments, ({ one }) => ({
   vendorProfile: one(vendorProfiles, {

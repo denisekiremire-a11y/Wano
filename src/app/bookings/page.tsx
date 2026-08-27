@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/auth";
+import { ReviewForm } from "@/components/review-form";
+import { getReviewableBookings } from "@/lib/data/reviews";
 import { getTravellerBookings, getTravellerProfileByUserId } from "@/lib/data/traveller";
 
 export default async function BookingsPage() {
@@ -7,7 +9,11 @@ export default async function BookingsPage() {
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
   if (!travellerProfile) return null;
 
-  const bookingRows = await getTravellerBookings(travellerProfile.id);
+  const [bookingRows, reviewableRows] = await Promise.all([
+    getTravellerBookings(travellerProfile.id),
+    getReviewableBookings(travellerProfile.id),
+  ]);
+  const reviewableBookingIds = new Set(reviewableRows.map((r) => r.booking.id));
   const upcoming = bookingRows.filter((b) => b.booking.status === "pending" || b.booking.status === "confirmed");
   const completed = bookingRows.filter((b) => b.booking.status === "completed");
   const cancelled = bookingRows.filter((b) => b.booking.status === "cancelled");
@@ -33,9 +39,9 @@ export default async function BookingsPage() {
         </div>
       ) : (
         <div className="mt-6 space-y-8">
-          <BookingGroup title="Upcoming" rows={upcoming} />
-          <BookingGroup title="Completed" rows={completed} />
-          <BookingGroup title="Cancelled" rows={cancelled} />
+          <BookingGroup title="Upcoming" rows={upcoming} reviewableBookingIds={reviewableBookingIds} />
+          <BookingGroup title="Completed" rows={completed} reviewableBookingIds={reviewableBookingIds} />
+          <BookingGroup title="Cancelled" rows={cancelled} reviewableBookingIds={reviewableBookingIds} />
         </div>
       )}
     </main>
@@ -45,28 +51,32 @@ export default async function BookingsPage() {
 function BookingGroup({
   title,
   rows,
+  reviewableBookingIds,
 }: {
   title: string;
   rows: Awaited<ReturnType<typeof getTravellerBookings>>;
+  reviewableBookingIds: Set<string>;
 }) {
   if (rows.length === 0) return null;
   return (
     <section className="space-y-3">
       <h2 className="font-display text-lg font-semibold text-forest-900">{title}</h2>
       {[...rows].reverse().map(({ booking, listing, journey }) => (
-        <div
-          key={booking.id}
-          className="flex items-center justify-between rounded-2xl border border-forest-900/10 bg-white p-4"
-        >
-          <div>
-            <p className="font-medium text-forest-900">{listing.title}</p>
-            <p className="text-sm text-forest-800/60">
-              {journey ? `${journey.name} · ` : ""}ref {booking.bookingRef}
-            </p>
+        <div key={booking.id} className="rounded-2xl border border-forest-900/10 bg-white p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-forest-900">{listing.title}</p>
+              <p className="text-sm text-forest-800/60">
+                {journey ? `${journey.name} · ` : ""}ref {booking.bookingRef}
+              </p>
+            </div>
+            <span className="rounded-full bg-forest-100 px-3 py-1 text-xs font-medium capitalize text-forest-800">
+              {booking.status}
+            </span>
           </div>
-          <span className="rounded-full bg-forest-100 px-3 py-1 text-xs font-medium capitalize text-forest-800">
-            {booking.status}
-          </span>
+          {reviewableBookingIds.has(booking.id) && (
+            <ReviewForm bookingId={booking.id} listingTitle={listing.title} />
+          )}
         </div>
       ))}
     </section>

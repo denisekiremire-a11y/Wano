@@ -4,6 +4,7 @@ import { ListingTypeIcon } from "@/components/listing-type-icon";
 import { PostComposer } from "@/components/post-composer";
 import { RatingBadge } from "@/components/rating-badge";
 import { SaveButton } from "@/components/save-button";
+import { VerifiedBadge } from "@/components/verified-badge";
 import { getBirthdayPerksForListing } from "@/lib/data/birthday";
 import {
   getInterestedTravellers,
@@ -20,6 +21,7 @@ import {
 } from "@/lib/data/traveller";
 import { listingTypeGradient, listingTypeLabels, type ListingType } from "@/lib/listing-type";
 import { getSession } from "@/lib/session";
+import { logEvent } from "@/lib/analytics";
 import { bookListingFormAction } from "@/lib/actions/booking-actions";
 
 const socialLinks = [
@@ -37,6 +39,11 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
   const type = listing.type as ListingType;
 
   const session = await getSession();
+  await logEvent("listing_viewed", {
+    userId: session?.userId,
+    role: session?.role,
+    metadata: { listingId: listing.id, type },
+  });
   let saved = false;
   let hasBirthdaySet = false;
   let myBookings: Awaited<ReturnType<typeof getTravellerBookings>> = [];
@@ -79,9 +86,12 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
             <span className="text-sm font-medium">{listingTypeLabels[type]}</span>
           </div>
           <h1 className="mt-2 font-display text-3xl font-semibold md:text-4xl">{listing.title}</h1>
-          <p className="mt-1 text-white/90">
-            {vendor.businessName} · {vendor.location}
-          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <p className="text-white/90">
+              {vendor.businessName} · {vendor.location}
+            </p>
+            <VerifiedBadge status={vendor.accreditationStatus} className="bg-white/15 text-white" />
+          </div>
           {rating.count > 0 && (
             <div className="mt-2">
               <RatingBadge average={rating.average} count={rating.count} />
@@ -286,7 +296,15 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
                     <p className="text-sm font-medium text-forest-900">@{travellerUser.username}</p>
                     <span className="text-sm font-medium text-marigold-700">{"★".repeat(review.rating)}</span>
                   </div>
-                  {review.comment && <p className="mt-1 text-sm text-forest-800/80">{review.comment}</p>}
+                  {review.safetyRating != null && (
+                    <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-forest-800/60 sm:grid-cols-4">
+                      <span>Safety {review.safetyRating}★</span>
+                      <span>Reliability {review.reliabilityRating}★</span>
+                      <span>Value {review.valueRating}★</span>
+                      <span>Communication {review.communicationRating}★</span>
+                    </div>
+                  )}
+                  {review.comment && <p className="mt-2 text-sm text-forest-800/80">{review.comment}</p>}
                 </div>
               ))
             )}

@@ -29,6 +29,7 @@ export function navItemsFor(role: SessionPayload["role"] | "guest"): NavItem[] {
       { href: "/events", label: "Events", icon: "calendar" },
       { href: "/social", label: "Social", icon: "chat" },
       { href: "/bookings", label: "Bookings", icon: "ticket" },
+      { href: "/rewards", label: "Rewards", icon: "stamp" },
       { href: "/profile", label: "Profile", icon: "user" },
     ];
   }
@@ -50,6 +51,7 @@ export function navItemsFor(role: SessionPayload["role"] | "guest"): NavItem[] {
       { href: "/admin/travellers", label: "Members", icon: "grid" },
       { href: "/admin/promotions", label: "Deals", icon: "tag" },
       { href: "/admin/clubs", label: "Clubs", icon: "chat" },
+      { href: "/admin/analytics", label: "Analytics", icon: "chart" },
     ];
   }
   return [

@@ -130,3 +130,16 @@ body {
     padding-bottom: 4.5rem;
   }
 }
+
+/* Lite mode — toggled in Profile, persisted in localStorage (see
+   lite-mode.ts). Caps image height so large photos cost less bandwidth on
+   slow connections, and turns off decorative transitions/animations. */
+[data-lite-mode="true"] img {
+  max-height: 160px !important;
+  object-fit: cover;
+}
+
+[data-lite-mode="true"] * {
+  transition-duration: 0s !important;
+  animation-duration: 0s !important;
+}
