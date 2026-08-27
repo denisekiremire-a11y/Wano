@@ -3,7 +3,6 @@ import { ListingTypeIcon } from "@/components/listing-type-icon";
 import { OfferTeaser } from "@/components/offer-teaser";
 import { RatingBadge } from "@/components/rating-badge";
 import { SaveButton } from "@/components/save-button";
-import { bookListingFormAction } from "@/lib/actions/booking-actions";
 import type { BirthdayPerk } from "@/lib/data/birthday";
 import type { searchListings } from "@/lib/data/journeys";
 import type { RatingSummary } from "@/lib/data/reviews";
@@ -21,7 +20,6 @@ export function PartnerCard({
   rating,
   saved,
   birthdayPerk,
-  hasBirthdaySet,
 }: {
   item: PartnerResult;
   tags: Journey[];
@@ -30,7 +28,6 @@ export function PartnerCard({
   rating?: RatingSummary;
   saved?: boolean;
   birthdayPerk?: BirthdayPerk;
-  hasBirthdaySet?: boolean;
 }) {
   const { listing, offer, vendor, promo } = item;
   const type = listing.type as ListingType;
@@ -119,64 +116,12 @@ export function PartnerCard({
         )}
 
         <div className="mt-3">
-          {session?.role === "traveller" && tags.length === 0 && (
-            <form action={bookListingFormAction} className="space-y-2">
-              <input type="hidden" name="listingId" value={listing.id} />
-              {birthdayPerk && (
-                <div className="space-y-1.5 rounded-lg bg-forest-50 p-2">
-                  <p className="text-[11px] font-medium text-forest-800/70">
-                    Celebrating your birthday here? Add these to redeem:
-                  </p>
-                  <div className="flex gap-2">
-                    <input
-                      type="date"
-                      name="visitDate"
-                      aria-label="Visit date"
-                      className="flex-1 rounded-md border border-forest-900/15 px-2 py-1 text-xs outline-none focus:border-forest-600"
-                    />
-                    <input
-                      type="number"
-                      name="partySize"
-                      min={1}
-                      aria-label="Party size"
-                      placeholder="Party size"
-                      className="w-24 rounded-md border border-forest-900/15 px-2 py-1 text-xs outline-none focus:border-forest-600"
-                    />
-                  </div>
-                  {hasBirthdaySet === false && (
-                    <p className="text-[11px] text-forest-800/50">
-                      <Link href="/profile" className="underline">
-                        Add your birthday to your profile
-                      </Link>{" "}
-                      so the venue can confirm it&apos;s really your day.
-                    </p>
-                  )}
-                </div>
-              )}
-              <button
-                type="submit"
-                className="w-full rounded-full bg-forest-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-forest-700"
-              >
-                Book directly
-              </button>
-            </form>
-          )}
-          {session?.role === "traveller" && tags.length > 0 && (
-            <Link
-              href={`/journeys/${tags[0].slug}`}
-              className="block w-full rounded-full border border-forest-800/20 px-4 py-2 text-center text-sm font-semibold text-forest-800 transition hover:bg-forest-800/5"
-            >
-              View & book via {tags[0].name} →
-            </Link>
-          )}
-          {!session && (
-            <Link
-              href="/login"
-              className="block w-full rounded-full border border-forest-800/20 px-4 py-2 text-center text-sm font-semibold text-forest-800 transition hover:bg-forest-800/5"
-            >
-              Log in to book
-            </Link>
-          )}
+          <Link
+            href={`/explore/${listing.id}`}
+            className="block w-full rounded-full bg-forest-800 px-4 py-2 text-center text-sm font-semibold text-white transition hover:bg-forest-700"
+          >
+            View & book →
+          </Link>
         </div>
       </div>
     </div>

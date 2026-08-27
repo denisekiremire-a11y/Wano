@@ -12,10 +12,17 @@ type Journey = { id: string; name: string };
 export function ListingForm({
   vendorProfileId,
   journeys,
+  vendorSocials,
   existing,
 }: {
   vendorProfileId: string;
   journeys: Journey[];
+  vendorSocials?: {
+    instagramUrl: string | null;
+    facebookUrl: string | null;
+    tiktokUrl: string | null;
+    websiteUrl: string | null;
+  };
   existing?: {
     listingId: string;
     type: ListingType;
@@ -215,6 +222,42 @@ export function ListingForm({
           />
         </div>
       )}
+
+      <div className="space-y-3 rounded-xl bg-forest-50 p-4">
+        <p className="text-xs font-medium text-forest-800/70">
+          Business socials (shown on their partner profile)
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <input
+            name="instagramUrl"
+            type="url"
+            placeholder="Instagram URL"
+            defaultValue={vendorSocials?.instagramUrl ?? ""}
+            className="rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          />
+          <input
+            name="facebookUrl"
+            type="url"
+            placeholder="Facebook URL"
+            defaultValue={vendorSocials?.facebookUrl ?? ""}
+            className="rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          />
+          <input
+            name="tiktokUrl"
+            type="url"
+            placeholder="TikTok URL"
+            defaultValue={vendorSocials?.tiktokUrl ?? ""}
+            className="rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          />
+          <input
+            name="websiteUrl"
+            type="url"
+            placeholder="Website URL"
+            defaultValue={vendorSocials?.websiteUrl ?? ""}
+            className="rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          />
+        </div>
+      </div>
 
       <div className="space-y-3 rounded-xl bg-marigold-50 p-4">
         <p className="text-xs font-medium text-marigold-900">Member offer</p>

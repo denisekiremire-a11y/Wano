@@ -1,11 +1,14 @@
 import { and, eq, ilike, or } from "drizzle-orm";
 import { db } from "@/db";
 import {
+  experienceDetails,
+  hotelDetails,
   journeys,
   listingJourneys,
   listings,
   offers,
   promoCodes,
+  restaurantDetails,
   savedListings,
   travellerProfiles,
   users,
@@ -129,6 +132,20 @@ export async function getInterestedTravellers(listingId: string) {
     .innerJoin(users, eq(users.id, travellerProfiles.userId))
     .where(eq(savedListings.listingId, listingId))
     .orderBy(savedListings.createdAt);
+}
+
+/** Type-specific "what's on offer" for the listing detail page — room types
+ * & amenities for a hotel, cuisine & hours for a restaurant, duration &
+ * what's included for an experience. Transport/spa_salon have no dedicated
+ * detail table yet, so this returns all-null for those (the page falls back
+ * to the listing's own description/priceHint). */
+export async function getListingTypeDetails(listingId: string) {
+  const [[hotel], [restaurant], [experience]] = await Promise.all([
+    db.select().from(hotelDetails).where(eq(hotelDetails.listingId, listingId)).limit(1),
+    db.select().from(restaurantDetails).where(eq(restaurantDetails.listingId, listingId)).limit(1),
+    db.select().from(experienceDetails).where(eq(experienceDetails.listingId, listingId)).limit(1),
+  ]);
+  return { hotel: hotel ?? null, restaurant: restaurant ?? null, experience: experience ?? null };
 }
 
 export async function getDistinctListingLocations() {

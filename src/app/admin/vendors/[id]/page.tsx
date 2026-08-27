@@ -56,6 +56,12 @@ export default async function AdminVendorDetailPage({
       <ListingForm
         vendorProfileId={vendorProfile.id}
         journeys={allJourneys.map((j) => ({ id: j.id, name: j.name }))}
+        vendorSocials={{
+          instagramUrl: vendorProfile.instagramUrl,
+          facebookUrl: vendorProfile.facebookUrl,
+          tiktokUrl: vendorProfile.tiktokUrl,
+          websiteUrl: vendorProfile.websiteUrl,
+        }}
         existing={
           listingRow
             ? {

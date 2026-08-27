@@ -118,6 +118,10 @@ export const vendorProfiles = pgTable("vendor_profiles", {
   location: text("location").notNull(),
   contactPhone: text("contact_phone"),
   description: text("description").notNull(),
+  instagramUrl: text("instagram_url"),
+  facebookUrl: text("facebook_url"),
+  tiktokUrl: text("tiktok_url"),
+  websiteUrl: text("website_url"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

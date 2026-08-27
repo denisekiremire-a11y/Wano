@@ -21,13 +21,11 @@ export default async function PartnersPage({
   const session = await getSession();
 
   let unlockedJourneyIds = new Set<string>();
-  let hasBirthdaySet = false;
   if (session?.role === "traveller") {
     const travellerProfile = await getTravellerProfileByUserId(session.userId);
     if (travellerProfile) {
       const { progress } = await getPassportProgress(travellerProfile.id);
       unlockedJourneyIds = new Set(progress.filter((p) => p.earned).map((p) => p.journey.id));
-      hasBirthdaySet = travellerProfile.dateOfBirth != null;
     }
   }
 
@@ -75,7 +73,6 @@ export default async function PartnersPage({
                 unlocked={unlocked}
                 session={session}
                 birthdayPerk={birthdayPerks.get(item.listing.id)?.[0]}
-                hasBirthdaySet={hasBirthdaySet}
               />
             );
           })}

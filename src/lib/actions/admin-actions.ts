@@ -81,6 +81,10 @@ const listingSchema = z.object({
   experienceDuration: z.string().max(60).optional().or(z.literal("")),
   experienceGroupSize: z.string().max(60).optional().or(z.literal("")),
   experienceIncluded: z.string().max(300).optional().or(z.literal("")),
+  instagramUrl: z.string().url().max(300).optional().or(z.literal("")),
+  facebookUrl: z.string().url().max(300).optional().or(z.literal("")),
+  tiktokUrl: z.string().url().max(300).optional().or(z.literal("")),
+  websiteUrl: z.string().url().max(300).optional().or(z.literal("")),
 });
 
 export async function upsertVendorListingAction(
@@ -111,12 +115,26 @@ export async function upsertVendorListingAction(
     experienceDuration: formData.get("experienceDuration") ?? "",
     experienceGroupSize: formData.get("experienceGroupSize") ?? "",
     experienceIncluded: formData.get("experienceIncluded") ?? "",
+    instagramUrl: formData.get("instagramUrl") ?? "",
+    facebookUrl: formData.get("facebookUrl") ?? "",
+    tiktokUrl: formData.get("tiktokUrl") ?? "",
+    websiteUrl: formData.get("websiteUrl") ?? "",
   });
 
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Please check the listing fields." };
   }
   const d = parsed.data;
+
+  await db
+    .update(vendorProfiles)
+    .set({
+      instagramUrl: d.instagramUrl || null,
+      facebookUrl: d.facebookUrl || null,
+      tiktokUrl: d.tiktokUrl || null,
+      websiteUrl: d.websiteUrl || null,
+    })
+    .where(eq(vendorProfiles.id, d.vendorProfileId));
 
   const listingValues = {
     vendorProfileId: d.vendorProfileId,

@@ -31,7 +31,6 @@ export default async function ExplorePage({
 
   let unlockedJourneyIds = new Set<string>();
   let savedIds = new Set<string>();
-  let hasBirthdaySet = false;
   if (session?.role === "traveller") {
     const travellerProfile = await getTravellerProfileByUserId(session.userId);
     if (travellerProfile) {
@@ -39,7 +38,6 @@ export default async function ExplorePage({
       unlockedJourneyIds = new Set(progress.filter((p) => p.earned).map((p) => p.journey.id));
       const saved = await getSavedListingsForTraveller(travellerProfile.id);
       savedIds = new Set(saved.map((s) => s.listing.id));
-      hasBirthdaySet = travellerProfile.dateOfBirth != null;
     }
   }
 
@@ -120,7 +118,6 @@ export default async function ExplorePage({
                   rating={ratings.get(item.listing.id)}
                   saved={savedIds.has(item.listing.id)}
                   birthdayPerk={birthdayPerks.get(item.listing.id)?.[0]}
-                  hasBirthdaySet={hasBirthdaySet}
                 />
               );
             })}

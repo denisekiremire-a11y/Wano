@@ -5,13 +5,29 @@ import { PostComposer } from "@/components/post-composer";
 import { RatingBadge } from "@/components/rating-badge";
 import { SaveButton } from "@/components/save-button";
 import { getBirthdayPerksForListing } from "@/lib/data/birthday";
-import { getJourneyTagsForListing, getInterestedTravellers, getListingById } from "@/lib/data/journeys";
+import {
+  getInterestedTravellers,
+  getJourneyTagsForListing,
+  getListingById,
+  getListingTypeDetails,
+} from "@/lib/data/journeys";
 import { getRatingSummary, getReviewsForListing } from "@/lib/data/reviews";
 import { getMediaPostsFor } from "@/lib/data/social";
-import { getSavedListingsForTraveller, getTravellerProfileByUserId } from "@/lib/data/traveller";
+import {
+  getSavedListingsForTraveller,
+  getTravellerBookings,
+  getTravellerProfileByUserId,
+} from "@/lib/data/traveller";
 import { listingTypeGradient, listingTypeLabels, type ListingType } from "@/lib/listing-type";
 import { getSession } from "@/lib/session";
 import { bookListingFormAction } from "@/lib/actions/booking-actions";
+
+const socialLinks = [
+  { key: "instagramUrl", label: "Instagram" },
+  { key: "facebookUrl", label: "Facebook" },
+  { key: "tiktokUrl", label: "TikTok" },
+  { key: "websiteUrl", label: "Website" },
+] as const;
 
 export default async function ListingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -22,22 +38,34 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
 
   const session = await getSession();
   let saved = false;
+  let hasBirthdaySet = false;
+  let myBookings: Awaited<ReturnType<typeof getTravellerBookings>> = [];
   if (session?.role === "traveller") {
     const travellerProfile = await getTravellerProfileByUserId(session.userId);
     if (travellerProfile) {
-      const savedRows = await getSavedListingsForTraveller(travellerProfile.id);
+      const [savedRows, allBookings] = await Promise.all([
+        getSavedListingsForTraveller(travellerProfile.id),
+        getTravellerBookings(travellerProfile.id),
+      ]);
       saved = savedRows.some((s) => s.listing.id === listing.id);
+      hasBirthdaySet = travellerProfile.dateOfBirth != null;
+      myBookings = allBookings.filter((b) => b.listing.id === listing.id);
     }
   }
 
-  const [tags, birthdayPerks, rating, reviews, interested, media] = await Promise.all([
+  const [tags, birthdayPerks, rating, reviews, interested, media, typeDetails] = await Promise.all([
     getJourneyTagsForListing(listing.id),
     getBirthdayPerksForListing(listing.id),
     getRatingSummary(listing.id),
     getReviewsForListing(listing.id),
     getInterestedTravellers(listing.id),
     getMediaPostsFor({ listingId: listing.id }),
+    getListingTypeDetails(listing.id),
   ]);
+
+  const activeSocials = socialLinks.filter((s) => vendor[s.key]);
+  const myUpcoming = myBookings.filter((b) => b.booking.status === "pending" || b.booking.status === "confirmed");
+  const myPast = myBookings.filter((b) => b.booking.status === "completed" || b.booking.status === "cancelled");
 
   return (
     <main>
@@ -97,16 +125,78 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
             </p>
           </div>
         )}
-        {birthdayPerks.length > 0 && (
-          <div className="mt-2 rounded-xl bg-marigold-50 px-4 py-3">
-            <p className="font-medium text-marigold-900">🎂 {birthdayPerks[0].title}</p>
+
+        {/* Type-specific services/menu — applies to every partner type, just
+            renders whichever detail table (if any) matches this listing. */}
+        {(typeDetails.hotel || typeDetails.restaurant || typeDetails.experience) && (
+          <div className="mt-4 rounded-xl border border-forest-900/10 bg-white p-4">
+            <h2 className="font-display text-sm font-semibold text-forest-900">
+              {type === "hotel" ? "Rooms & amenities" : type === "restaurant" ? "Menu & hours" : "What's included"}
+            </h2>
+            {typeDetails.hotel && (
+              <dl className="mt-2 space-y-1 text-sm text-forest-800/80">
+                {typeDetails.hotel.roomTypes && <p>🛏️ {typeDetails.hotel.roomTypes}</p>}
+                {typeDetails.hotel.amenities && <p>✨ {typeDetails.hotel.amenities}</p>}
+                {(typeDetails.hotel.checkInTime || typeDetails.hotel.checkOutTime) && (
+                  <p>
+                    🕒 Check-in {typeDetails.hotel.checkInTime ?? "—"} · Check-out{" "}
+                    {typeDetails.hotel.checkOutTime ?? "—"}
+                  </p>
+                )}
+              </dl>
+            )}
+            {typeDetails.restaurant && (
+              <dl className="mt-2 space-y-1 text-sm text-forest-800/80">
+                {typeDetails.restaurant.cuisine && <p>🍽️ {typeDetails.restaurant.cuisine}</p>}
+                {typeDetails.restaurant.priceRange && <p>💵 {typeDetails.restaurant.priceRange}</p>}
+                {typeDetails.restaurant.hours && <p>🕒 {typeDetails.restaurant.hours}</p>}
+              </dl>
+            )}
+            {typeDetails.experience && (
+              <dl className="mt-2 space-y-1 text-sm text-forest-800/80">
+                {typeDetails.experience.durationText && <p>⏱️ {typeDetails.experience.durationText}</p>}
+                {typeDetails.experience.groupSizeText && <p>👥 {typeDetails.experience.groupSizeText}</p>}
+                {typeDetails.experience.whatsIncluded && <p>✅ {typeDetails.experience.whatsIncluded}</p>}
+              </dl>
+            )}
           </div>
         )}
 
         <div className="mt-6">
           {session?.role === "traveller" ? (
-            <form action={bookListingFormAction}>
+            <form action={bookListingFormAction} className="space-y-2">
               <input type="hidden" name="listingId" value={listing.id} />
+              {birthdayPerks.length > 0 && (
+                <div className="space-y-1.5 rounded-lg bg-marigold-50 p-3">
+                  <p className="text-xs font-medium text-marigold-900">
+                    🎂 {birthdayPerks[0].title} — add these to redeem on your birthday:
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      type="date"
+                      name="visitDate"
+                      aria-label="Visit date"
+                      className="flex-1 rounded-md border border-forest-900/15 px-2 py-1 text-xs outline-none focus:border-forest-600"
+                    />
+                    <input
+                      type="number"
+                      name="partySize"
+                      min={1}
+                      aria-label="Party size"
+                      placeholder="Party size"
+                      className="w-24 rounded-md border border-forest-900/15 px-2 py-1 text-xs outline-none focus:border-forest-600"
+                    />
+                  </div>
+                  {!hasBirthdaySet && (
+                    <p className="text-[11px] text-marigold-800/80">
+                      <Link href="/profile" className="underline">
+                        Add your birthday to your profile
+                      </Link>{" "}
+                      so the venue can confirm it&apos;s really your day.
+                    </p>
+                  )}
+                </div>
+              )}
               <button
                 type="submit"
                 className="rounded-full bg-forest-800 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-forest-700"
@@ -123,6 +213,45 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
             </Link>
           )}
         </div>
+
+        {myBookings.length > 0 && (
+          <section className="mt-8 rounded-2xl border border-forest-900/10 bg-white p-5">
+            <h2 className="font-display text-lg font-semibold text-forest-900">Your bookings here</h2>
+            <div className="mt-3 space-y-2">
+              {[...myUpcoming, ...myPast].map(({ booking }) => (
+                <div
+                  key={booking.id}
+                  className="flex items-center justify-between rounded-xl border border-forest-900/10 p-3"
+                >
+                  <p className="text-sm text-forest-800/80">ref {booking.bookingRef}</p>
+                  <span className="rounded-full bg-forest-100 px-2.5 py-1 text-xs font-medium capitalize text-forest-800">
+                    {booking.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section className="mt-8 rounded-2xl border border-forest-900/10 bg-white p-5">
+          <h2 className="font-display text-lg font-semibold text-forest-900">About {vendor.businessName}</h2>
+          <p className="mt-2 text-sm text-forest-800/80">{vendor.description}</p>
+          {activeSocials.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-3">
+              {activeSocials.map((s) => (
+                <a
+                  key={s.key}
+                  href={vendor[s.key]!}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm font-medium text-nile-700 hover:underline"
+                >
+                  {s.label} ↗
+                </a>
+              ))}
+            </div>
+          )}
+        </section>
 
         <div className="mt-8 rounded-2xl border border-forest-900/10 bg-white p-5">
           <h2 className="font-display text-lg font-semibold text-forest-900">People interested</h2>

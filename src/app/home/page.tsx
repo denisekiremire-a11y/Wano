@@ -43,7 +43,6 @@ export default async function HomeFeedPage() {
     getBirthdayPerksForListings(featuredListings.map((r) => r.listing.id)),
   ]);
   const savedIds = new Set(saved.map((s) => s.listing.id));
-  const hasBirthdaySet = travellerProfile.dateOfBirth != null;
   const unlockedJourneyIds = new Set(progress.filter((p) => p.earned).map((p) => p.journey.id));
 
   const recentBookings = bookingRows.slice(-3).reverse();
@@ -124,7 +123,6 @@ export default async function HomeFeedPage() {
                 rating={ratings.get(item.listing.id)}
                 saved={savedIds.has(item.listing.id)}
                 birthdayPerk={birthdayPerks.get(item.listing.id)?.[0]}
-                hasBirthdaySet={hasBirthdaySet}
               />
             );
           })}
