@@ -2,7 +2,10 @@ import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
+import { BirthdayEditor } from "@/components/birthday-editor";
 import { CameraIcon, TrophyIcon, UserIcon } from "@/components/icons";
+import { LiteModeToggle } from "@/components/lite-mode-toggle";
+import { LogoutButton } from "@/components/logout-button";
 import { PassportGrid } from "@/components/passport-grid";
 import { PassportTabs } from "@/components/passport-tabs";
 import { PostCard } from "@/components/post-card";
@@ -132,12 +135,7 @@ export default async function PassportPage({
             commentsMap={commentsMap}
           />
         )}
-        {activeTab !== "stamps" &&
-          activeTab !== "bookings" &&
-          activeTab !== "rewards" &&
-          activeTab !== "posts" && (
-            <PlaceholderPanel title={PASSPORT_TABS.find((t) => t.key === activeTab)!.label} />
-          )}
+        {activeTab === "account" && <AccountTab dateOfBirth={travellerProfile.dateOfBirth} />}
       </div>
     </main>
   );
@@ -428,10 +426,68 @@ function PostsTab({
   );
 }
 
-function PlaceholderPanel({ title }: { title: string }) {
+function AccountTab({ dateOfBirth }: { dateOfBirth: string | null }) {
   return (
-    <div className="rounded-2xl border border-dashed border-forest-900/15 bg-white p-8 text-center text-sm text-forest-800/60">
-      {title} content is moving in here next.
+    <div className="space-y-6">
+      <div>
+        <h2 className="font-display text-xl font-semibold text-forest-900">Account</h2>
+        <p className="mt-1 text-sm text-forest-800/60">Your profile, preferences, and security.</p>
+      </div>
+
+      <section className="space-y-4 rounded-2xl border border-forest-900/10 bg-white p-5">
+        <h3 className="font-display text-lg font-semibold text-forest-900">Profile</h3>
+        <StubRow label="Photo" description="Change your profile photo" />
+        <StubRow label="Bio" description="Tell people a little about yourself" />
+        <div className="border-t border-forest-900/5 pt-4">
+          <BirthdayEditor dateOfBirth={dateOfBirth} />
+        </div>
+      </section>
+
+      <section className="space-y-4 rounded-2xl border border-forest-900/10 bg-white p-5">
+        <h3 className="font-display text-lg font-semibold text-forest-900">Preferences</h3>
+        <LiteModeToggle />
+        <StubRow label="Notifications" description="Choose what Wano emails and alerts you" />
+        <StubRow label="Language" description="Set your preferred app language" />
+        <StubRow label="Currency" description="Set your preferred display currency" />
+      </section>
+
+      <section className="space-y-4 rounded-2xl border border-forest-900/10 bg-white p-5">
+        <h3 className="font-display text-lg font-semibold text-forest-900">Security</h3>
+        <StubRow label="Change password" description="Update your account password" />
+        <StubRow label="Devices" description="See where you're signed in" />
+      </section>
+
+      <section className="space-y-4 rounded-2xl border border-forest-900/10 bg-white p-5">
+        <h3 className="font-display text-lg font-semibold text-forest-900">Points</h3>
+        <StubRow label="Tiers & expiry" description="How your points level up and expire" />
+        <StubRow label="Redeem with a partner" description="Spend points directly at a Wano business" />
+      </section>
+
+      <div className="rounded-xl border border-forest-900/10 bg-white p-4 text-sm text-forest-800/70">
+        <Link href="/privacy" className="text-forest-900 underline">
+          Privacy Policy
+        </Link>
+        {" · "}
+        <Link href="/terms" className="text-forest-900 underline">
+          Terms of Service
+        </Link>
+      </div>
+
+      <LogoutButton />
+    </div>
+  );
+}
+
+function StubRow({ label, description }: { label: string; description: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 border-t border-forest-900/5 pt-4 first:border-t-0 first:pt-0">
+      <div>
+        <p className="text-sm font-medium text-forest-900">{label}</p>
+        <p className="text-xs text-forest-800/60">{description}</p>
+      </div>
+      <span className="flex-none rounded-full bg-forest-50 px-3 py-1 text-xs font-medium text-forest-800/50">
+        Coming soon
+      </span>
     </div>
   );
 }

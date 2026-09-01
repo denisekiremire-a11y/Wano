@@ -29,6 +29,6 @@ export async function updateBirthdayAction(
     .set({ dateOfBirth: parsed.data.dateOfBirth })
     .where(eq(travellerProfiles.id, travellerProfile.id));
 
-  revalidatePath("/profile");
+  revalidatePath("/passport");
   return {};
 }
