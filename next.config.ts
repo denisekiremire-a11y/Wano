@@ -12,6 +12,17 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "10mb",
     },
   },
+  // Profile/Bookings/Rewards/Settings/Home were folded into /passport (and
+  // Explore) — keep the old URLs alive rather than letting them 404.
+  async redirects() {
+    return [
+      { source: "/home", destination: "/explore", permanent: false },
+      { source: "/profile", destination: "/passport", permanent: false },
+      { source: "/bookings", destination: "/passport?tab=bookings", permanent: false },
+      { source: "/rewards", destination: "/passport?tab=rewards", permanent: false },
+      { source: "/settings", destination: "/passport?tab=account", permanent: false },
+    ];
+  },
 };
 
 export default nextConfig;

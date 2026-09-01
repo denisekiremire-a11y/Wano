@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySession } from "@/lib/session";
 
-const MEMBER_PREFIXES = ["/dashboard", "/home", "/bookings", "/profile", "/social", "/onboarding", "/rewards"];
+const MEMBER_PREFIXES = ["/dashboard", "/passport", "/social", "/onboarding"];
 
 const roleForPrefix = (pathname: string): "traveller" | "vendor" | "admin" | null => {
   if (MEMBER_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return "traveller";
@@ -29,7 +29,7 @@ export async function proxy(request: NextRequest) {
 
   if ((pathname === "/login" || pathname === "/signup") && session) {
     const dest =
-      session.role === "vendor" ? "/vendor/dashboard" : session.role === "admin" ? "/admin" : "/home";
+      session.role === "vendor" ? "/vendor/dashboard" : session.role === "admin" ? "/admin" : "/explore";
     return NextResponse.redirect(new URL(dest, request.url));
   }
 
@@ -39,12 +39,9 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     "/dashboard/:path*",
-    "/home/:path*",
-    "/bookings/:path*",
-    "/profile",
+    "/passport",
     "/social/:path*",
     "/onboarding/:path*",
-    "/rewards",
     "/vendor/dashboard/:path*",
     "/admin/:path*",
     "/login",

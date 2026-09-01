@@ -88,7 +88,7 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
 
   if (user.role === "vendor") redirect("/vendor/dashboard");
   if (user.role === "admin") redirect("/admin");
-  redirect("/home");
+  redirect("/explore");
 }
 
 export async function signupAction(_prev: ActionState, formData: FormData): Promise<ActionState> {

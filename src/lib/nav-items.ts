@@ -24,13 +24,10 @@ export type NavItem = {
 export function navItemsFor(role: SessionPayload["role"] | "guest"): NavItem[] {
   if (role === "traveller") {
     return [
-      { href: "/home", label: "Home", icon: "home" },
       { href: "/explore", label: "Explore", icon: "compass" },
       { href: "/events", label: "Events", icon: "calendar" },
       { href: "/social", label: "Social", icon: "chat" },
-      { href: "/bookings", label: "Bookings", icon: "ticket" },
-      { href: "/rewards", label: "Rewards", icon: "stamp" },
-      { href: "/profile", label: "Profile", icon: "user" },
+      { href: "/passport", label: "Passport", icon: "stamp" },
     ];
   }
   if (role === "vendor") {
@@ -62,12 +59,6 @@ export function navItemsFor(role: SessionPayload["role"] | "guest"): NavItem[] {
   ];
 }
 
-// The mobile bottom bar has less room than the desktop header, so for
-// members it drops to 5 items (Bookings lives inside Profile on mobile).
 export function mobileNavItemsFor(role: SessionPayload["role"] | "guest"): NavItem[] {
-  const items = navItemsFor(role);
-  if (role === "traveller") {
-    return items.filter((item) => item.href !== "/bookings");
-  }
-  return items;
+  return navItemsFor(role);
 }
