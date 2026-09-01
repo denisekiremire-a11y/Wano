@@ -2,7 +2,8 @@ import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { CameraIcon, UserIcon } from "@/components/icons";
+import { CameraIcon, TrophyIcon, UserIcon } from "@/components/icons";
+import { PassportGrid } from "@/components/passport-grid";
 import { PassportTabs } from "@/components/passport-tabs";
 import { PASSPORT_TABS, type PassportTabKey } from "@/lib/passport-tabs";
 import { requireRole } from "@/lib/auth";
@@ -20,12 +21,13 @@ export default async function PassportPage({
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
   if (!travellerProfile) return null;
 
-  const [user, { stampCount }, bookingRows, rewardsSummary] = await Promise.all([
+  const [user, passportProgress, bookingRows, rewardsSummary] = await Promise.all([
     db.select().from(users).where(eq(users.id, session.userId)).limit(1).then((r) => r[0]),
     getPassportProgress(travellerProfile.id),
     getTravellerBookings(travellerProfile.id),
     getRewardsSummary(travellerProfile.id, travellerProfile.persona, travellerProfile.city),
   ]);
+  const { progress, stampCount, totalJourneys, grandPrizeQualified } = passportProgress;
 
   const defaultTab: PassportTabKey = stampCount > 0 ? "stamps" : bookingRows.length > 0 ? "bookings" : "stamps";
   const activeTab: PassportTabKey = PASSPORT_TABS.some((t) => t.key === tab)
@@ -78,9 +80,71 @@ export default async function PassportPage({
         tabIndex={0}
         className="mt-6"
       >
-        <PlaceholderPanel title={PASSPORT_TABS.find((t) => t.key === activeTab)!.label} />
+        {activeTab === "stamps" ? (
+          <StampsTab
+            progress={progress}
+            stampCount={stampCount}
+            totalJourneys={totalJourneys}
+            grandPrizeQualified={grandPrizeQualified}
+          />
+        ) : (
+          <PlaceholderPanel title={PASSPORT_TABS.find((t) => t.key === activeTab)!.label} />
+        )}
       </div>
     </main>
+  );
+}
+
+function StampsTab({
+  progress,
+  stampCount,
+  totalJourneys,
+  grandPrizeQualified,
+}: {
+  progress: Awaited<ReturnType<typeof getPassportProgress>>["progress"];
+  stampCount: number;
+  totalJourneys: number;
+  grandPrizeQualified: boolean;
+}) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="font-display text-xl font-semibold text-forest-900">Wano Passport</h2>
+        <p className="mt-1 text-sm text-forest-800/60">
+          Every Wano Journey you book stamps your Passport. Collect all {totalJourneys} for the grand
+          prize draw.
+        </p>
+      </div>
+      <section className="rounded-2xl border border-forest-900/10 bg-white p-6">
+        <PassportGrid progress={progress} />
+        <div className="mt-6 h-2.5 w-full overflow-hidden rounded-full bg-forest-50">
+          <div
+            className="h-full rounded-full bg-forest-700 transition-all"
+            style={{ width: `${(stampCount / totalJourneys) * 100}%` }}
+          />
+        </div>
+        <p className="mt-2 text-sm text-forest-800/60">
+          {stampCount} / {totalJourneys} stamps
+        </p>
+      </section>
+      <section
+        className={`flex items-center gap-4 rounded-2xl border p-5 ${
+          grandPrizeQualified ? "border-marigold-400 bg-marigold-50" : "border-forest-900/10 bg-white"
+        }`}
+      >
+        <TrophyIcon className={`h-9 w-9 ${grandPrizeQualified ? "text-marigold-700" : "text-forest-300"}`} />
+        <div>
+          <h3 className="font-display font-semibold text-forest-900">
+            {grandPrizeQualified ? "You're entered in the grand prize draw!" : "Grand prize draw"}
+          </h3>
+          <p className="text-sm text-forest-800/70">
+            {grandPrizeQualified
+              ? "A free return trip, a final-match ticket, and a feature on official channels — good luck."
+              : `Collect all ${totalJourneys} stamps to unlock your entry.`}
+          </p>
+        </div>
+      </section>
+    </div>
   );
 }
 
