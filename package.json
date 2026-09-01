@@ -13,7 +13,8 @@
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx src/db/seed.ts",
     "db:seed:wano": "tsx src/db/seed-wano.ts",
-    "db:seed:birthday": "tsx src/db/seed-birthday.ts"
+    "db:seed:birthday": "tsx src/db/seed-birthday.ts",
+    "db:seed:journal": "tsx src/db/seed-journal.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

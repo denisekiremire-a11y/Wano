@@ -61,6 +61,24 @@ export const eventAttendanceStatusEnum = pgEnum("event_attendance_status", [
   "maybe",
 ]);
 export const travellerPersonaEnum = pgEnum("traveller_persona", ["newcomer", "tourist", "local"]);
+export const journalStatusEnum = pgEnum("journal_status", ["draft", "scheduled", "published"]);
+export const postStatusEnum = pgEnum("post_status", ["visible", "pending_review", "hidden", "removed"]);
+export const reportTargetTypeEnum = pgEnum("report_target_type", ["post", "comment", "user", "review"]);
+export const reportReasonEnum = pgEnum("report_reason", [
+  "spam",
+  "harassment",
+  "inappropriate",
+  "fake",
+  "other",
+]);
+export const reportStatusEnum = pgEnum("report_status", ["open", "dismissed", "actioned"]);
+export const moderationActionEnum = pgEnum("moderation_action", [
+  "dismiss",
+  "hide",
+  "remove",
+  "warn",
+  "suspend",
+]);
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -72,6 +90,9 @@ export const users = pgTable("users", {
   bio: text("bio"),
   avatarUrl: text("avatar_url"),
   location: text("location"),
+  // Set by a moderation "suspend" action — blocks login while set. Null =
+  // not suspended.
+  suspendedAt: timestamp("suspended_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -289,6 +310,10 @@ export const events = pgTable("events", {
   priceHint: text("price_hint"),
   capacity: integer("capacity"),
   active: boolean("active").notNull().default(true),
+  // Set when this event *is* a club's recurring meetup rather than a
+  // standalone event — clubs are not a parallel system, a meetup is just an
+  // event with this set.
+  clubId: uuid("club_id").references((): AnyPgColumn => clubs.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -500,10 +525,27 @@ export const posts = pgTable("posts", {
     .notNull()
     .references(() => travellerProfiles.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
+  // Legacy — posts created before the real-upload composer stored an
+  // externally-hosted URL here. New posts use postImages (bytea) instead.
   imageUrl: text("image_url"),
   listingId: uuid("listing_id").references(() => listings.id, { onDelete: "set null" }),
   eventId: uuid("event_id").references(() => events.id, { onDelete: "set null" }),
   clubId: uuid("club_id").references(() => clubs.id, { onDelete: "set null" }),
+  // visible by default; a first post from an account under 24h old is
+  // pending_review instead (see createPostAction). hidden = auto-hidden by
+  // report threshold; removed = an admin took it down.
+  status: postStatusEnum("status").notNull().default("visible"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const postImages = pgTable("post_images", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  postId: uuid("post_id")
+    .notNull()
+    .references(() => posts.id, { onDelete: "cascade" }),
+  data: bytea("data").notNull(),
+  mimeType: text("mime_type").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -639,6 +681,7 @@ export const clubStatusEnum = pgEnum("club_status", ["pending", "approved", "rej
 // optional "run by" partner — a club doesn't need to belong to any vendor.
 export const clubs = pgTable("clubs", {
   id: uuid("id").primaryKey().defaultRandom(),
+  slug: text("slug").notNull().unique(),
   interestId: uuid("interest_id")
     .notNull()
     .references(() => interests.id, { onDelete: "restrict" }),
@@ -647,6 +690,18 @@ export const clubs = pgTable("clubs", {
   }),
   name: text("name").notNull(),
   description: text("description").notNull(),
+  // The named human running the club — required before a club can be
+  // published (status "approved"). Nullable because an application
+  // submitted through the "Start a club" form may not name an existing
+  // Wano user yet.
+  hostUserId: uuid("host_user_id").references(() => users.id, { onDelete: "set null" }),
+  coverImage: text("cover_image"),
+  city: text("city"),
+  cadence: text("cadence"),
+  whatsappInviteUrl: text("whatsapp_invite_url"),
+  // Free-text contact info collected on the "Start a club" application
+  // form, for when the applicant isn't (yet) a Wano host account.
+  applicantContact: text("applicant_contact"),
   status: clubStatusEnum("status").notNull().default("pending"),
   createdByUserId: uuid("created_by_user_id")
     .notNull()
@@ -936,6 +991,10 @@ export const feedItems = pgTable("feed_items", {
   // deleted post's feed item is cleaned up automatically instead of
   // lingering as a dead row filtered out on every read forever.
   postId: uuid("post_id").references(() => posts.id, { onDelete: "cascade" }),
+  // journal_published items only — same reasoning as postId above.
+  journalPostId: uuid("journal_post_id").references((): AnyPgColumn => journalPosts.id, {
+    onDelete: "cascade",
+  }),
   // Denormalized from the vendor/event location at generation time, for the
   // "same city" affinity boost without a join.
   city: text("city"),
@@ -952,3 +1011,91 @@ export const feedItemsRelations = relations(feedItems, ({ one }) => ({
   club: one(clubs, { fields: [feedItems.clubId], references: [clubs.id] }),
   post: one(posts, { fields: [feedItems.postId], references: [posts.id] }),
 }));
+
+// The Journal — Wano's blog. Public and indexed; the primary organic
+// acquisition channel. Authored entirely through the admin console
+// (markdown body, no MDX files in the repo) so publishing never needs a
+// deploy.
+export const journalPosts = pgTable("journal_posts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: text("title").notNull(),
+  slug: text("slug").notNull().unique(),
+  excerpt: text("excerpt").notNull(),
+  body: text("body").notNull(),
+  coverImage: text("cover_image"),
+  authorUserId: uuid("author_user_id")
+    .notNull()
+    .references(() => users.id),
+  category: text("category").notNull(),
+  tags: text("tags").array().notNull().default([]),
+  status: journalStatusEnum("status").notNull().default("draft"),
+  publishedAt: timestamp("published_at", { withTimezone: true }),
+  seoTitle: text("seo_title"),
+  seoDescription: text("seo_description"),
+  ogImage: text("og_image"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Newsletter capture — double opt-in. A signup is unconfirmed until the
+// confirm link (sent via sendEmail, currently a console-logging stub — see
+// src/lib/email.ts) is clicked.
+export const subscribers = pgTable("subscribers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull().unique(),
+  name: text("name"),
+  source: text("source").notNull(),
+  confirmed: boolean("confirmed").notNull().default(false),
+  confirmToken: text("confirm_token").notNull().unique(),
+  unsubscribeToken: text("unsubscribe_token").notNull().unique(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+  unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true }),
+});
+
+// target_id is polymorphic (a post/comment/user/review id depending on
+// target_type) so it's deliberately not a foreign key — the same pattern
+// moderation_actions below uses.
+export const reports = pgTable("reports", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  reporterId: uuid("reporter_id")
+    .notNull()
+    .references(() => travellerProfiles.id, { onDelete: "cascade" }),
+  targetType: reportTargetTypeEnum("target_type").notNull(),
+  targetId: uuid("target_id").notNull(),
+  reason: reportReasonEnum("reason").notNull(),
+  note: text("note"),
+  status: reportStatusEnum("status").notNull().default("open"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  resolvedByUserId: uuid("resolved_by_user_id").references(() => users.id),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+});
+
+export const blocks = pgTable(
+  "blocks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    blockerId: uuid("blocker_id")
+      .notNull()
+      .references(() => travellerProfiles.id, { onDelete: "cascade" }),
+    blockedId: uuid("blocked_id")
+      .notNull()
+      .references(() => travellerProfiles.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique().on(table.blockerId, table.blockedId)],
+);
+
+// Append-only audit log of every moderation decision.
+export const moderationActions = pgTable("moderation_actions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  reportId: uuid("report_id").references(() => reports.id, { onDelete: "set null" }),
+  targetType: reportTargetTypeEnum("target_type").notNull(),
+  targetId: uuid("target_id").notNull(),
+  action: moderationActionEnum("action").notNull(),
+  reason: text("reason"),
+  performedByUserId: uuid("performed_by_user_id")
+    .notNull()
+    .references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

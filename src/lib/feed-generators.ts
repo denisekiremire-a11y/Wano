@@ -4,6 +4,7 @@ import {
   eventAttendance,
   events,
   feedItems,
+  journalPosts,
   listings,
   posts,
   promoCodes,
@@ -140,6 +141,23 @@ export async function generateUserPostItem(
   });
 }
 
+export async function generateJournalPublishedItem(journalPostId: string) {
+  const [post] = await db.select().from(journalPosts).where(eq(journalPosts.id, journalPostId)).limit(1);
+  if (!post || post.status !== "published") return;
+
+  await insertFeedItem({
+    type: "journal_published",
+    dedupeKey: `journal_published:${journalPostId}`,
+    journalPostId,
+    payload: {
+      kind: "journal_published",
+      title: post.title,
+      excerpt: post.excerpt,
+      href: `/journal/${post.slug}`,
+    },
+  });
+}
+
 /** Time-crossing generators — nothing here is triggered by a user action, so
  * it has to run on a schedule. See /api/cron/feed. Every insert is
  * idempotent via dedupeKey, so running this often and re-running it after a
@@ -273,6 +291,12 @@ export async function backfillFeedItems() {
     await generateUserPostItem(post.id, traveller.id, traveller.displayName);
   }
 
+  const publishedJournalPosts = await db
+    .select({ id: journalPosts.id })
+    .from(journalPosts)
+    .where(eq(journalPosts.status, "published"));
+  for (const { id } of publishedJournalPosts) await generateJournalPublishedItem(id);
+
   const timeBased = await runFeedTimeBasedGenerators();
 
   return {
@@ -280,6 +304,7 @@ export async function backfillFeedItems() {
     reviewPosted: allReviews.length,
     perkAdded: activePromos.length,
     userPost: allPosts.length,
+    journalPublished: publishedJournalPosts.length,
     ...timeBased,
   };
 }

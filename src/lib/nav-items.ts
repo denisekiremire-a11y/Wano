@@ -48,6 +48,8 @@ export function navItemsFor(role: SessionPayload["role"] | "guest"): NavItem[] {
       { href: "/admin/travellers", label: "Members", icon: "grid" },
       { href: "/admin/promotions", label: "Deals", icon: "tag" },
       { href: "/admin/clubs", label: "Clubs", icon: "chat" },
+      { href: "/admin/journal", label: "Journal", icon: "file" },
+      { href: "/admin/moderation", label: "Moderation", icon: "flag" },
       { href: "/admin/analytics", label: "Analytics", icon: "chart" },
     ];
   }

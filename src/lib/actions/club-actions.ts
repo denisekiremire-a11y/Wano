@@ -7,7 +7,13 @@ import { db } from "@/db";
 import { clubs } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { getVendorProfileByUserId } from "@/lib/data/vendor";
+import { uniqueSlug } from "@/lib/slug";
 import type { ActionState } from "@/lib/validation";
+
+async function clubSlugExists(candidate: string) {
+  const [existing] = await db.select({ id: clubs.id }).from(clubs).where(eq(clubs.slug, candidate)).limit(1);
+  return Boolean(existing);
+}
 
 const clubSchema = z.object({
   name: z.string().min(2).max(100),
@@ -32,8 +38,10 @@ export async function submitClubAction(_prev: ActionState, formData: FormData): 
     return { error: parsed.error.issues[0]?.message ?? "Please check the club details." };
   }
 
+  const slug = await uniqueSlug(parsed.data.name, clubSlugExists);
   await db.insert(clubs).values({
     ...parsed.data,
+    slug,
     vendorProfileId: vendorProfile.id,
     createdByUserId: session.userId,
     status: "pending",
@@ -62,8 +70,10 @@ export async function createClubAction(_prev: ActionState, formData: FormData): 
     return { error: parsed.error.issues[0]?.message ?? "Please check the club details." };
   }
 
+  const slug = await uniqueSlug(parsed.data.name, clubSlugExists);
   await db.insert(clubs).values({
     name: parsed.data.name,
+    slug,
     description: parsed.data.description,
     interestId: parsed.data.interestId,
     vendorProfileId: parsed.data.vendorProfileId || null,

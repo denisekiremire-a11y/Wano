@@ -143,3 +143,71 @@ body {
   transition-duration: 0s !important;
   animation-duration: 0s !important;
 }
+
+/* Journal post body — rendered from admin-authored markdown (see
+   src/lib/markdown.ts). No Tailwind Typography plugin installed, so this is
+   a small hand-rolled equivalent scoped to .journal-body. */
+.journal-body {
+  color: var(--color-forest-800);
+  font-size: 1rem;
+  line-height: 1.75;
+}
+.journal-body > * + * {
+  margin-top: 1.1em;
+}
+.journal-body h2 {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.4em;
+  font-weight: 600;
+  color: var(--color-forest-900);
+  margin-top: 1.6em;
+}
+.journal-body h3 {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.15em;
+  font-weight: 600;
+  color: var(--color-forest-900);
+  margin-top: 1.4em;
+}
+.journal-body h4 {
+  font-weight: 600;
+  color: var(--color-forest-900);
+}
+.journal-body a {
+  color: var(--color-nile-700);
+  text-decoration: underline;
+}
+.journal-body ul,
+.journal-body ol {
+  padding-left: 1.4em;
+}
+.journal-body ul {
+  list-style: disc;
+}
+.journal-body ol {
+  list-style: decimal;
+}
+.journal-body blockquote {
+  border-left: 3px solid var(--color-marigold-400);
+  padding-left: 1em;
+  color: var(--color-forest-800);
+  opacity: 0.85;
+  font-style: italic;
+}
+.journal-body code {
+  background: var(--color-forest-50);
+  padding: 0.15em 0.4em;
+  border-radius: 0.3em;
+  font-size: 0.9em;
+}
+.journal-body pre {
+  background: var(--color-forest-950);
+  color: white;
+  padding: 1em;
+  border-radius: 0.6em;
+  overflow-x: auto;
+}
+.journal-body pre code {
+  background: transparent;
+  padding: 0;
+}
