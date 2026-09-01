@@ -5,6 +5,7 @@ import { users } from "@/db/schema";
 import { CameraIcon, TrophyIcon, UserIcon } from "@/components/icons";
 import { PassportGrid } from "@/components/passport-grid";
 import { PassportTabs } from "@/components/passport-tabs";
+import { PostCard } from "@/components/post-card";
 import { ReviewForm } from "@/components/review-form";
 import { PASSPORT_TABS, type PassportTabKey } from "@/lib/passport-tabs";
 import { requireRole } from "@/lib/auth";
@@ -12,6 +13,12 @@ import { claimDealFormAction } from "@/lib/actions/deal-actions";
 import { getAllActiveDeals, getClaimedDealIds } from "@/lib/data/deals";
 import { getReviewableBookings } from "@/lib/data/reviews";
 import { getRewardsSummary } from "@/lib/data/rewards";
+import {
+  getCommentsForPost,
+  getEngagementCounts,
+  getLikedPostIds,
+  getPostsByTraveller,
+} from "@/lib/data/social";
 import { getPassportProgress, getTravellerBookings, getTravellerProfileByUserId } from "@/lib/data/traveller";
 
 export default async function PassportPage({
@@ -25,7 +32,7 @@ export default async function PassportPage({
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
   if (!travellerProfile) return null;
 
-  const [user, passportProgress, bookingRows, reviewableRows, rewardsSummary, deals, claimedIds] =
+  const [user, passportProgress, bookingRows, reviewableRows, rewardsSummary, deals, claimedIds, postRows] =
     await Promise.all([
       db.select().from(users).where(eq(users.id, session.userId)).limit(1).then((r) => r[0]),
       getPassportProgress(travellerProfile.id),
@@ -34,9 +41,20 @@ export default async function PassportPage({
       getRewardsSummary(travellerProfile.id, travellerProfile.persona, travellerProfile.city),
       getAllActiveDeals(),
       getClaimedDealIds(travellerProfile.id),
+      getPostsByTraveller(travellerProfile.id),
     ]);
   const reviewableBookingIds = new Set(reviewableRows.map((r) => r.booking.id));
   const { progress, stampCount, totalJourneys, grandPrizeQualified } = passportProgress;
+
+  const postIds = postRows.map((r) => r.post.id);
+  const [{ likeMap, commentMap }, likedPostIds] = await Promise.all([
+    getEngagementCounts(postIds),
+    getLikedPostIds(travellerProfile.id, postIds),
+  ]);
+  const commentsByPost = await Promise.all(
+    postRows.map((r) => getCommentsForPost(r.post.id).then((comments) => [r.post.id, comments] as const)),
+  );
+  const commentsMap = new Map(commentsByPost);
 
   const defaultTab: PassportTabKey = stampCount > 0 ? "stamps" : bookingRows.length > 0 ? "bookings" : "stamps";
   const activeTab: PassportTabKey = PASSPORT_TABS.some((t) => t.key === tab)
@@ -103,9 +121,23 @@ export default async function PassportPage({
         {activeTab === "rewards" && (
           <RewardsTab summary={rewardsSummary} deals={deals} claimedIds={claimedIds} />
         )}
-        {activeTab !== "stamps" && activeTab !== "bookings" && activeTab !== "rewards" && (
-          <PlaceholderPanel title={PASSPORT_TABS.find((t) => t.key === activeTab)!.label} />
+        {activeTab === "posts" && (
+          <PostsTab
+            postRows={postRows}
+            authorName={travellerProfile.displayName}
+            authorUsername={user?.username ?? null}
+            likeMap={likeMap}
+            commentMap={commentMap}
+            likedPostIds={likedPostIds}
+            commentsMap={commentsMap}
+          />
         )}
+        {activeTab !== "stamps" &&
+          activeTab !== "bookings" &&
+          activeTab !== "rewards" &&
+          activeTab !== "posts" && (
+            <PlaceholderPanel title={PASSPORT_TABS.find((t) => t.key === activeTab)!.label} />
+          )}
       </div>
     </main>
   );
@@ -332,6 +364,66 @@ function RewardsTab({
           })
         )}
       </section>
+    </div>
+  );
+}
+
+function PostsTab({
+  postRows,
+  authorName,
+  authorUsername,
+  likeMap,
+  commentMap,
+  likedPostIds,
+  commentsMap,
+}: {
+  postRows: Awaited<ReturnType<typeof getPostsByTraveller>>;
+  authorName: string;
+  authorUsername: string | null;
+  likeMap: Map<string, number>;
+  commentMap: Map<string, number>;
+  likedPostIds: Set<string>;
+  commentsMap: Map<string, Awaited<ReturnType<typeof getCommentsForPost>>>;
+}) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="font-display text-xl font-semibold text-forest-900">Your posts</h2>
+        <p className="mt-1 text-sm text-forest-800/60">Everything you&apos;ve shared across Wano.</p>
+      </div>
+
+      {postRows.length === 0 ? (
+        <div className="rounded-2xl border border-forest-900/10 bg-white p-6 text-center">
+          <p className="text-sm text-forest-800/60">
+            You haven&apos;t posted anything yet — share something on Social.
+          </p>
+          <Link
+            href="/social"
+            className="mt-3 inline-flex rounded-full bg-forest-800 px-4 py-2 text-sm font-semibold text-white"
+          >
+            Go to Social
+          </Link>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {postRows.map(({ post }) => (
+            <PostCard
+              key={post.id}
+              postId={post.id}
+              authorName={authorName}
+              authorUsername={authorUsername}
+              content={post.content}
+              imageUrl={post.imageUrl}
+              createdAt={new Date(post.createdAt)}
+              likeCount={likeMap.get(post.id) ?? 0}
+              commentCount={commentMap.get(post.id) ?? 0}
+              liked={likedPostIds.has(post.id)}
+              canInteract
+              comments={commentsMap.get(post.id) ?? []}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
