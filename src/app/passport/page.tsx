@@ -8,6 +8,8 @@ import { PassportTabs } from "@/components/passport-tabs";
 import { ReviewForm } from "@/components/review-form";
 import { PASSPORT_TABS, type PassportTabKey } from "@/lib/passport-tabs";
 import { requireRole } from "@/lib/auth";
+import { claimDealFormAction } from "@/lib/actions/deal-actions";
+import { getAllActiveDeals, getClaimedDealIds } from "@/lib/data/deals";
 import { getReviewableBookings } from "@/lib/data/reviews";
 import { getRewardsSummary } from "@/lib/data/rewards";
 import { getPassportProgress, getTravellerBookings, getTravellerProfileByUserId } from "@/lib/data/traveller";
@@ -23,13 +25,16 @@ export default async function PassportPage({
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
   if (!travellerProfile) return null;
 
-  const [user, passportProgress, bookingRows, reviewableRows, rewardsSummary] = await Promise.all([
-    db.select().from(users).where(eq(users.id, session.userId)).limit(1).then((r) => r[0]),
-    getPassportProgress(travellerProfile.id),
-    getTravellerBookings(travellerProfile.id),
-    getReviewableBookings(travellerProfile.id),
-    getRewardsSummary(travellerProfile.id, travellerProfile.persona, travellerProfile.city),
-  ]);
+  const [user, passportProgress, bookingRows, reviewableRows, rewardsSummary, deals, claimedIds] =
+    await Promise.all([
+      db.select().from(users).where(eq(users.id, session.userId)).limit(1).then((r) => r[0]),
+      getPassportProgress(travellerProfile.id),
+      getTravellerBookings(travellerProfile.id),
+      getReviewableBookings(travellerProfile.id),
+      getRewardsSummary(travellerProfile.id, travellerProfile.persona, travellerProfile.city),
+      getAllActiveDeals(),
+      getClaimedDealIds(travellerProfile.id),
+    ]);
   const reviewableBookingIds = new Set(reviewableRows.map((r) => r.booking.id));
   const { progress, stampCount, totalJourneys, grandPrizeQualified } = passportProgress;
 
@@ -95,7 +100,10 @@ export default async function PassportPage({
         {activeTab === "bookings" && (
           <BookingsTab bookingRows={bookingRows} reviewableBookingIds={reviewableBookingIds} />
         )}
-        {activeTab !== "stamps" && activeTab !== "bookings" && (
+        {activeTab === "rewards" && (
+          <RewardsTab summary={rewardsSummary} deals={deals} claimedIds={claimedIds} />
+        )}
+        {activeTab !== "stamps" && activeTab !== "bookings" && activeTab !== "rewards" && (
           <PlaceholderPanel title={PASSPORT_TABS.find((t) => t.key === activeTab)!.label} />
         )}
       </div>
@@ -231,6 +239,100 @@ function BookingGroup({
         </div>
       ))}
     </section>
+  );
+}
+
+function RewardsTab({
+  summary,
+  deals,
+  claimedIds,
+}: {
+  summary: Awaited<ReturnType<typeof getRewardsSummary>>;
+  deals: Awaited<ReturnType<typeof getAllActiveDeals>>;
+  claimedIds: Awaited<ReturnType<typeof getClaimedDealIds>>;
+}) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="font-display text-xl font-semibold text-forest-900">Rewards</h2>
+        <p className="mt-1 text-sm text-forest-800/60">
+          Earned from booking, reviewing, and referring friends to Wano.
+        </p>
+      </div>
+
+      <div className="rounded-2xl bg-gradient-to-br from-forest-800 to-forest-600 p-6 text-white">
+        <p className="text-xs font-medium uppercase tracking-wide text-white/70">Your balance</p>
+        <p className="mt-1 font-display text-4xl font-bold">{summary.totalPoints.toLocaleString()} pts</p>
+      </div>
+
+      <section className="space-y-2">
+        <h3 className="font-display text-lg font-semibold text-forest-900">How you got here</h3>
+        {summary.breakdown.map((row) => (
+          <div
+            key={row.label}
+            className="flex items-center justify-between rounded-xl border border-forest-900/10 bg-white p-3"
+          >
+            <div>
+              <p className="text-sm font-medium text-forest-900">{row.label}</p>
+              <p className="text-xs text-forest-800/50">{row.count}</p>
+            </div>
+            <span className="text-sm font-semibold text-forest-800">+{row.points} pts</span>
+          </div>
+        ))}
+      </section>
+
+      {summary.referralCode && (
+        <section className="rounded-2xl border border-forest-900/10 bg-white p-5">
+          <h3 className="font-display text-lg font-semibold text-forest-900">Refer a friend</h3>
+          <p className="mt-1 text-sm text-forest-800/60">
+            Earn 150 pts every time someone joins Wano with your code.
+          </p>
+          <p className="mt-2 inline-block rounded-lg bg-forest-50 px-3 py-1.5 font-mono text-sm font-semibold text-forest-900">
+            {summary.referralCode}
+          </p>
+        </section>
+      )}
+
+      <section className="space-y-3">
+        <h3 className="font-display text-lg font-semibold text-forest-900">Redeem</h3>
+        {deals.length === 0 ? (
+          <p className="text-sm text-forest-800/60">No deals available right now.</p>
+        ) : (
+          deals.map(({ promo, listing }) => {
+            const claimed = claimedIds.has(promo.id);
+            return (
+              <div
+                key={promo.id}
+                className="flex items-center justify-between rounded-xl border border-forest-900/10 bg-white p-4"
+              >
+                <div>
+                  <p className="text-sm font-medium text-forest-900">{promo.title}</p>
+                  <p className="text-xs text-forest-800/60">
+                    {promo.discountText}
+                    {listing ? ` · ${listing.title}` : ""}
+                  </p>
+                </div>
+                {claimed ? (
+                  <span className="rounded-full bg-forest-100 px-3 py-1 text-xs font-medium text-forest-800">
+                    Claimed
+                  </span>
+                ) : (
+                  <form action={claimDealFormAction}>
+                    <input type="hidden" name="promoCodeId" value={promo.id} />
+                    <button
+                      type="submit"
+                      className="rounded-full bg-marigold-500 px-3 py-1.5 text-xs font-semibold text-forest-950 transition hover:bg-marigold-400"
+                    >
+                      Claim
+                    </button>
+                  </form>
+                )}
+              </div>
+            );
+          })
+        )}
+      </section>
+    </div>
   );
 }
 
