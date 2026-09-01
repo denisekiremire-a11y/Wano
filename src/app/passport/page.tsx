@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { BirthdayEditor } from "@/components/birthday-editor";
+import { FeedActivityToggle } from "@/components/feed-activity-toggle";
 import { CameraIcon, TrophyIcon, UserIcon } from "@/components/icons";
 import { LiteModeToggle } from "@/components/lite-mode-toggle";
 import { LogoutButton } from "@/components/logout-button";
@@ -135,7 +136,12 @@ export default async function PassportPage({
             commentsMap={commentsMap}
           />
         )}
-        {activeTab === "account" && <AccountTab dateOfBirth={travellerProfile.dateOfBirth} />}
+        {activeTab === "account" && (
+          <AccountTab
+            dateOfBirth={travellerProfile.dateOfBirth}
+            showActivityInFeed={travellerProfile.showActivityInFeed}
+          />
+        )}
       </div>
     </main>
   );
@@ -426,7 +432,13 @@ function PostsTab({
   );
 }
 
-function AccountTab({ dateOfBirth }: { dateOfBirth: string | null }) {
+function AccountTab({
+  dateOfBirth,
+  showActivityInFeed,
+}: {
+  dateOfBirth: string | null;
+  showActivityInFeed: boolean;
+}) {
   return (
     <div className="space-y-6">
       <div>
@@ -446,6 +458,7 @@ function AccountTab({ dateOfBirth }: { dateOfBirth: string | null }) {
       <section className="space-y-4 rounded-2xl border border-forest-900/10 bg-white p-5">
         <h3 className="font-display text-lg font-semibold text-forest-900">Preferences</h3>
         <LiteModeToggle />
+        <FeedActivityToggle initialValue={showActivityInFeed} />
         <StubRow label="Notifications" description="Choose what Wano emails and alerts you" />
         <StubRow label="Language" description="Set your preferred app language" />
         <StubRow label="Currency" description="Set your preferred display currency" />

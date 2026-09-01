@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { db } from "./index";
 import {
+  eventAttendance,
   events,
   follows,
   interests,
@@ -10,6 +11,7 @@ import {
   travellerProfiles,
   vendorProfiles,
 } from "./schema";
+import { backfillFeedItems } from "../lib/feed-generators";
 
 // One-time incremental seed for the Wano transformation: interest taxonomy,
 // demo events, and a handful of sample social posts. Safe to run once against
@@ -160,10 +162,24 @@ async function main() {
           eventId: yoga.id,
         });
       }
+
+      // A couple of RSVPs so event_upcoming has something real to generate
+      // from — the feed shouldn't start life with zero RSVP'd events.
+      if (musicNight) {
+        await db.insert(eventAttendance).values({ eventId: musicNight.id, travellerId: amina.id, status: "going" });
+      }
+      if (yoga) {
+        await db
+          .insert(eventAttendance)
+          .values({ eventId: yoga.id, travellerId: amina.id, status: "interested" });
+      }
     }
   } else {
     console.log("Events already seeded, skipping.");
   }
+
+  const feedCounts = await backfillFeedItems();
+  console.log("Feed items generated:", feedCounts);
 
   const travellers = await db.select().from(travellerProfiles);
   if (travellers.length >= 2) {

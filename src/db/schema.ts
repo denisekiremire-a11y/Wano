@@ -5,6 +5,7 @@ import {
   customType,
   date,
   integer,
+  jsonb,
   numeric,
   pgEnum,
   pgTable,
@@ -87,6 +88,11 @@ export const travellerProfiles = pgTable("traveller_profiles", {
   persona: travellerPersonaEnum("persona"),
   city: text("city"),
   grandPrizeEntered: boolean("grand_prize_entered").notNull().default(false),
+  // Settings > "Show my activity in the public feed" — suppresses this
+  // traveller's review_posted / RSVP-derived feed items when off. Never
+  // affects bookings, redemptions, saves, or search — those are never
+  // surfaced regardless of this setting.
+  showActivityInFeed: boolean("show_activity_in_feed").notNull().default(true),
   referralCode: text("referral_code").notNull().unique(),
   referredByTravellerId: uuid("referred_by_traveller_id").references(
     (): AnyPgColumn => travellerProfiles.id,
@@ -260,6 +266,9 @@ export const promoCodes = pgTable("promo_codes", {
   journeyId: uuid("journey_id").references(() => journeys.id),
   listingId: uuid("listing_id").references(() => listings.id, { onDelete: "cascade" }),
   active: boolean("active").notNull().default(true),
+  // 5 days before this, the perk gets a perk_expiring feed item. Null means
+  // it doesn't expire, so it never generates one.
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -883,4 +892,63 @@ export const challengeCompletionsRelations = relations(challengeCompletions, ({ 
     fields: [challengeCompletions.challengeId],
     references: [challenges.id],
   }),
+}));
+
+export const feedItemTypeEnum = pgEnum("feed_item_type", [
+  "place_added",
+  "review_posted",
+  "event_upcoming",
+  "event_momentum",
+  "perk_added",
+  "perk_expiring",
+  "journal_published",
+  "club_meetup",
+  "user_post",
+]);
+
+// The Social feed is generated, not authored — most rows here come from a
+// server action at write time (place_added, review_posted, perk_added,
+// user_post) or the /api/cron/feed job for time-crossing conditions
+// (event_upcoming, event_momentum, perk_expiring). dedupeKey makes both
+// paths idempotent: "type:entityId" for one-shot items, "type:entityId:n"
+// for the RSVP-threshold flavor of event_momentum.
+//
+// payload is a denormalized display snapshot (title/subtitle/image/href)
+// taken at generation time — the feed renders from it directly rather than
+// joining back to the source row on every read. It can go stale if the
+// source is edited after the fact; that's an accepted v1 tradeoff.
+export const feedItems = pgTable("feed_items", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  type: feedItemTypeEnum("type").notNull(),
+  dedupeKey: text("dedupe_key").notNull().unique(),
+  payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+  // The traveller whose action generated this item, if any — used to apply
+  // the "show my activity in the public feed" suppression and the
+  // "authored by someone I follow" affinity boost. Null for
+  // platform-generated items (place_added, event_upcoming, perk_added, ...).
+  subjectTravellerId: uuid("subject_traveller_id").references(() => travellerProfiles.id, {
+    onDelete: "cascade",
+  }),
+  listingId: uuid("listing_id").references(() => listings.id, { onDelete: "cascade" }),
+  eventId: uuid("event_id").references(() => events.id, { onDelete: "cascade" }),
+  clubId: uuid("club_id").references(() => clubs.id, { onDelete: "cascade" }),
+  // user_post items only — a real FK (not just payload.postId) so a
+  // deleted post's feed item is cleaned up automatically instead of
+  // lingering as a dead row filtered out on every read forever.
+  postId: uuid("post_id").references(() => posts.id, { onDelete: "cascade" }),
+  // Denormalized from the vendor/event location at generation time, for the
+  // "same city" affinity boost without a join.
+  city: text("city"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const feedItemsRelations = relations(feedItems, ({ one }) => ({
+  subjectTraveller: one(travellerProfiles, {
+    fields: [feedItems.subjectTravellerId],
+    references: [travellerProfiles.id],
+  }),
+  listing: one(listings, { fields: [feedItems.listingId], references: [listings.id] }),
+  event: one(events, { fields: [feedItems.eventId], references: [events.id] }),
+  club: one(clubs, { fields: [feedItems.clubId], references: [clubs.id] }),
+  post: one(posts, { fields: [feedItems.postId], references: [posts.id] }),
 }));

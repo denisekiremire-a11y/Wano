@@ -1,7 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySession } from "@/lib/session";
 
-const MEMBER_PREFIXES = ["/dashboard", "/passport", "/social", "/onboarding"];
+// "/social" itself is deliberately absent — the feed is public and
+// indexable per the milestone brief, while its club sub-pages stay
+// member-gated (also enforced independently at the page level, and never
+// reached by this middleware at all per the matcher below).
+const MEMBER_PREFIXES = ["/dashboard", "/passport", "/social/clubs", "/onboarding"];
 
 const roleForPrefix = (pathname: string): "traveller" | "vendor" | "admin" | null => {
   if (MEMBER_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return "traveller";
@@ -40,7 +44,7 @@ export const config = {
   matcher: [
     "/dashboard/:path*",
     "/passport",
-    "/social/:path*",
+    "/social/clubs/:path*",
     "/onboarding/:path*",
     "/vendor/dashboard/:path*",
     "/admin/:path*",

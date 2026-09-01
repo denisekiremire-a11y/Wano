@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { bookings, reviews } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { logEvent } from "@/lib/analytics";
+import { generateReviewPostedItem } from "@/lib/feed-generators";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 import type { ActionState } from "@/lib/validation";
 
@@ -66,17 +67,22 @@ export async function submitReviewAction(
   // number for cards/badges, without asking the traveller to rate twice.
   const rating = Math.round((safetyRating + reliabilityRating + valueRating + communicationRating) / 4);
 
-  await db.insert(reviews).values({
-    listingId: booking.listingId,
-    travellerId: travellerProfile.id,
-    bookingId: booking.id,
-    rating,
-    safetyRating,
-    reliabilityRating,
-    valueRating,
-    communicationRating,
-    comment: parsed.data.comment || null,
-  });
+  const [review] = await db
+    .insert(reviews)
+    .values({
+      listingId: booking.listingId,
+      travellerId: travellerProfile.id,
+      bookingId: booking.id,
+      rating,
+      safetyRating,
+      reliabilityRating,
+      valueRating,
+      communicationRating,
+      comment: parsed.data.comment || null,
+    })
+    .returning();
+
+  await generateReviewPostedItem(review.id);
 
   await logEvent("review_submitted", {
     userId: session.userId,

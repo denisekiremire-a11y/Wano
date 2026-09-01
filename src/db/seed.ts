@@ -22,6 +22,7 @@ import {
 } from "./schema";
 import { generateReferralCode } from "../lib/referral";
 import { uniqueUsername } from "../lib/username";
+import { backfillFeedItems } from "../lib/feed-generators";
 
 const DEMO_PASSWORD = "Passport2027!";
 
@@ -486,13 +487,34 @@ async function main() {
     });
   }
 
-  await db.insert(promoCodes).values({
-    code: "AFCON27",
-    title: "Tournament kickoff special",
-    discountText: "Extra 5% off any journey booking",
-    freebieText: "Commemorative Wano travel tag",
-    journeyId: null,
-  });
+  await db.insert(promoCodes).values([
+    {
+      code: "AFCON27",
+      title: "Tournament kickoff special",
+      discountText: "Extra 5% off any journey booking",
+      freebieText: "Commemorative Wano travel tag",
+      journeyId: null,
+    },
+    {
+      code: "KAMPALA10",
+      title: "Kampala explorer special",
+      discountText: "Extra 10% off any hotel stay",
+      journeyId: null,
+    },
+    {
+      code: "NILEWEEK",
+      title: "Nile adventure week",
+      discountText: "15% off rafting and river tours",
+      freebieText: "Free waterproof bag",
+      journeyId: null,
+      // Deliberately inside the 5-day perk_expiring window at seed time, so
+      // a fresh seed demonstrates that generator too, not just perk_added.
+      expiresAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+    },
+  ]);
+
+  const feedCounts = await backfillFeedItems();
+  console.log("Feed items generated:", feedCounts);
 
   console.log("Seed complete.");
   console.log(`Demo password for all accounts: ${DEMO_PASSWORD}`);

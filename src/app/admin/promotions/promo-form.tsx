@@ -89,6 +89,18 @@ export function PromoForm({
         </p>
       </div>
 
+      <div>
+        <label className="text-sm font-medium text-forest-900">Expires (optional)</label>
+        <input
+          type="date"
+          name="expiresAt"
+          className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+        />
+        <p className="mt-1 text-xs text-forest-800/50">
+          5 days before this date, the perk gets a reminder in the Social feed. Leave blank if it never expires.
+        </p>
+      </div>
+
       {state.error && <p className="text-sm text-red-700">{state.error}</p>}
 
       <button

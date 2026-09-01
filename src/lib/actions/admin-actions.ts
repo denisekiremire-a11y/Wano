@@ -18,6 +18,7 @@ import {
   vendorProfiles,
 } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
+import { generatePlaceAddedItem, generatePlaceAddedItemsForVendor } from "@/lib/feed-generators";
 import type { ActionState } from "@/lib/validation";
 
 export async function setAccreditationStatusAction(
@@ -38,6 +39,11 @@ export async function setAccreditationStatusAction(
     decision: status,
     notes: notes || null,
   });
+
+  // Listings created before this vendor was trusted never got a
+  // place_added feed item (the generator no-ops until accreditation
+  // clears) — backfill them now that it has.
+  if (status === "trusted") await generatePlaceAddedItemsForVendor(vendorProfileId);
 
   revalidatePath("/admin");
   revalidatePath("/admin/vendors");
@@ -152,6 +158,9 @@ export async function upsertVendorListingAction(
   } else {
     const [created] = await db.insert(listings).values(listingValues).returning();
     listingId = created.id;
+    // No-ops if the vendor isn't trusted yet — setAccreditationStatusAction
+    // backfills this listing once they are.
+    await generatePlaceAddedItem(listingId);
   }
 
   await db.delete(listingJourneys).where(eq(listingJourneys.listingId, listingId));

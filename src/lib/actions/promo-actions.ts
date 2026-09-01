@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { promoCodes } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
+import { generatePerkAddedItem } from "@/lib/feed-generators";
 import type { ActionState } from "@/lib/validation";
 
 const promoSchema = z.object({
@@ -18,6 +19,7 @@ const promoSchema = z.object({
   discountText: z.string().min(2).max(200),
   freebieText: z.string().max(200).optional().or(z.literal("")),
   scope: z.string(),
+  expiresAt: z.string().optional().or(z.literal("")),
 });
 
 function revalidatePromoPaths() {
@@ -40,6 +42,7 @@ export async function createPromoCodeAction(
     discountText: formData.get("discountText"),
     freebieText: formData.get("freebieText") ?? "",
     scope: formData.get("scope") ?? "",
+    expiresAt: formData.get("expiresAt") ?? "",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Please check the promo code fields." };
@@ -59,14 +62,20 @@ export async function createPromoCodeAction(
     .limit(1);
   if (existing) return { error: "That code already exists." };
 
-  await db.insert(promoCodes).values({
-    code: parsed.data.code,
-    title: parsed.data.title,
-    discountText: parsed.data.discountText,
-    freebieText: parsed.data.freebieText || null,
-    journeyId,
-    listingId,
-  });
+  const [created] = await db
+    .insert(promoCodes)
+    .values({
+      code: parsed.data.code,
+      title: parsed.data.title,
+      discountText: parsed.data.discountText,
+      freebieText: parsed.data.freebieText || null,
+      journeyId,
+      listingId,
+      expiresAt: parsed.data.expiresAt ? new Date(parsed.data.expiresAt) : null,
+    })
+    .returning();
+
+  await generatePerkAddedItem(created.id);
 
   revalidatePromoPaths();
 

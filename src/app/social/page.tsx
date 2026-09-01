@@ -1,44 +1,37 @@
 import Link from "next/link";
+import { FeedItemCard } from "@/components/feed-item-card";
+import { FollowButton } from "@/components/follow-button";
 import { PostCard } from "@/components/post-card";
 import { PostComposer } from "@/components/post-composer";
-import { requireRole } from "@/lib/auth";
-import {
-  getClubCategories,
-  getCommentsForPost,
-  getEngagementCounts,
-  getFeedPosts,
-  getLikedPostIds,
-  getSuggestedPeople,
-  isFollowing,
-} from "@/lib/data/social";
+import { getSession } from "@/lib/session";
+import { getRankedFeed } from "@/lib/data/feed";
+import { getClubCategories, getSuggestedPeople, isFollowing } from "@/lib/data/social";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
-import { FollowButton } from "@/components/follow-button";
 
+// Public and indexable — a signed-out visitor gets the same ranked feed,
+// with affinity neutral (see getRankedFeed). Only the composer and the
+// social sidebars are member-only.
 export default async function SocialPage() {
-  const session = await requireRole("traveller");
-  const travellerProfile = await getTravellerProfileByUserId(session.userId);
-  if (!travellerProfile) return null;
+  const session = await getSession();
+  const travellerProfile =
+    session?.role === "traveller" ? await getTravellerProfileByUserId(session.userId) : null;
 
-  const feed = await getFeedPosts();
-  const postIds = feed.map((f) => f.post.id);
-  const [{ likeMap, commentMap }, likedIds, suggested, categories] = await Promise.all([
-    getEngagementCounts(postIds),
-    getLikedPostIds(travellerProfile.id, postIds),
-    getSuggestedPeople(travellerProfile.id),
+  const [feed, categories, suggestedWithFollow] = await Promise.all([
+    getRankedFeed(travellerProfile?.id ?? null, 30),
     getClubCategories(),
+    travellerProfile
+      ? getSuggestedPeople(travellerProfile.id).then((suggested) =>
+          Promise.all(
+            suggested.map(async (s) => ({
+              ...s,
+              following: await isFollowing(travellerProfile.id, s.traveller.id),
+            })),
+          ),
+        )
+      : Promise.resolve([]),
   ]);
 
-  const commentsByPost = await Promise.all(
-    feed.map((f) => getCommentsForPost(f.post.id).then((comments) => [f.post.id, comments] as const)),
-  );
-  const commentsMap = new Map(commentsByPost);
-
-  const suggestedWithFollow = await Promise.all(
-    suggested.map(async (s) => ({
-      ...s,
-      following: await isFollowing(travellerProfile.id, s.traveller.id),
-    })),
-  );
+  const now = new Date();
 
   return (
     <main className="mx-auto grid max-w-4xl gap-6 px-4 py-8 md:grid-cols-[1fr_260px] md:px-6">
@@ -46,73 +39,93 @@ export default async function SocialPage() {
         <div>
           <h1 className="font-display text-2xl font-semibold text-forest-900">Social</h1>
           <p className="mt-1 text-sm text-forest-800/60">
-            See what people are up to across Wano — book, review, and share your own moments.
+            What&apos;s happening across Wano — new places, events picking up, perks, and what members
+            are sharing.
           </p>
         </div>
 
-        <PostComposer />
-
-        <div className="rounded-2xl border border-forest-900/10 bg-white p-4">
-          <h2 className="font-display text-sm font-semibold text-forest-900">Wano Clubs</h2>
-          <p className="mt-0.5 text-xs text-forest-800/60">
-            Find your people — browse a category to see its clubs, or join one directly.
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {categories.map(({ interest, clubCount }) => (
-              <Link
-                key={interest.id}
-                href={`/social/clubs/category/${interest.key}`}
-                className="rounded-full border border-forest-900/10 bg-forest-50/50 px-3 py-1.5 text-xs font-medium text-forest-900 hover:bg-forest-50"
-              >
-                {interest.label}{" "}
-                <span className="font-normal text-forest-800/50">
-                  · {clubCount} {clubCount === 1 ? "club" : "clubs"}
-                </span>
-              </Link>
-            ))}
+        {travellerProfile ? (
+          <PostComposer />
+        ) : (
+          <div className="rounded-2xl border border-forest-900/10 bg-white p-4 text-sm text-forest-800/70">
+            <Link href="/signup" className="font-semibold text-nile-700 hover:underline">
+              Join Wano
+            </Link>{" "}
+            to post, follow people, and join clubs.
           </div>
-        </div>
+        )}
+
+        {travellerProfile && categories.length > 0 && (
+          <div className="rounded-2xl border border-forest-900/10 bg-white p-4">
+            <h2 className="font-display text-sm font-semibold text-forest-900">Wano Clubs</h2>
+            <p className="mt-0.5 text-xs text-forest-800/60">
+              Find your people — browse a category to see its clubs, or join one directly.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {categories.map(({ interest, clubCount }) => (
+                <Link
+                  key={interest.id}
+                  href={`/social/clubs/category/${interest.key}`}
+                  className="rounded-full border border-forest-900/10 bg-forest-50/50 px-3 py-1.5 text-xs font-medium text-forest-900 hover:bg-forest-50"
+                >
+                  {interest.label}{" "}
+                  <span className="font-normal text-forest-800/50">
+                    · {clubCount} {clubCount === 1 ? "club" : "clubs"}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         {feed.length === 0 ? (
           <p className="rounded-xl border border-forest-900/10 bg-white p-6 text-center text-sm text-forest-800/60">
-            No posts yet — be the first to share something.
+            Nothing here yet — check back soon.
           </p>
         ) : (
-          feed.map(({ post, author, authorUser }) => (
-            <PostCard
-              key={post.id}
-              postId={post.id}
-              authorName={author.displayName}
-              authorUsername={authorUser.username}
-              content={post.content}
-              imageUrl={post.imageUrl}
-              createdAt={new Date(post.createdAt)}
-              likeCount={likeMap.get(post.id) ?? 0}
-              commentCount={commentMap.get(post.id) ?? 0}
-              liked={likedIds.has(post.id)}
-              canInteract
-              comments={commentsMap.get(post.id) ?? []}
-            />
-          ))
+          feed.map((entry) =>
+            entry.kind === "user_post" ? (
+              <PostCard
+                key={entry.id}
+                postId={entry.post.id}
+                authorName={entry.authorName}
+                authorUsername={entry.authorUsername}
+                content={entry.post.content}
+                imageUrl={entry.post.imageUrl}
+                createdAt={new Date(entry.post.createdAt)}
+                likeCount={entry.likeCount}
+                commentCount={entry.commentCount}
+                liked={entry.liked}
+                canInteract={entry.canInteract}
+                comments={entry.comments}
+              />
+            ) : (
+              <FeedItemCard key={entry.id} entry={entry} now={now} />
+            ),
+          )
         )}
       </div>
 
       <aside className="space-y-3">
-        <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-forest-800/60">
-          People you may know
-        </h2>
-        {suggestedWithFollow.map(({ traveller, user, following }) => (
-          <div
-            key={traveller.id}
-            className="flex items-center justify-between rounded-xl border border-forest-900/10 bg-white p-3"
-          >
-            <div>
-              <p className="text-sm font-medium text-forest-900">{traveller.displayName}</p>
-              <p className="text-xs text-forest-800/50">@{user.username}</p>
-            </div>
-            <FollowButton targetTravellerId={traveller.id} initialFollowing={following} />
-          </div>
-        ))}
+        {travellerProfile && suggestedWithFollow.length > 0 && (
+          <>
+            <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-forest-800/60">
+              People you may know
+            </h2>
+            {suggestedWithFollow.map(({ traveller, user, following }) => (
+              <div
+                key={traveller.id}
+                className="flex items-center justify-between rounded-xl border border-forest-900/10 bg-white p-3"
+              >
+                <div>
+                  <p className="text-sm font-medium text-forest-900">{traveller.displayName}</p>
+                  <p className="text-xs text-forest-800/50">@{user.username}</p>
+                </div>
+                <FollowButton targetTravellerId={traveller.id} initialFollowing={following} />
+              </div>
+            ))}
+          </>
+        )}
       </aside>
     </main>
   );

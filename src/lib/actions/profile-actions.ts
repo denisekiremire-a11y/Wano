@@ -32,3 +32,17 @@ export async function updateBirthdayAction(
   revalidatePath("/passport");
   return {};
 }
+
+export async function setFeedActivityVisibilityAction(showActivityInFeed: boolean) {
+  const session = await requireRole("traveller");
+  const travellerProfile = await getTravellerProfileByUserId(session.userId);
+  if (!travellerProfile) return;
+
+  await db
+    .update(travellerProfiles)
+    .set({ showActivityInFeed })
+    .where(eq(travellerProfiles.id, travellerProfile.id));
+
+  revalidatePath("/social");
+  revalidatePath("/passport");
+}

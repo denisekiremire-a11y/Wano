@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { clubMemberships, follows, postComments, postLikes, posts } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
+import { generateUserPostItem } from "@/lib/feed-generators";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 import type { ActionState } from "@/lib/validation";
 
@@ -31,14 +32,19 @@ export async function createPostAction(_prev: ActionState, formData: FormData): 
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
   if (!travellerProfile) return { error: "Profile not found." };
 
-  await db.insert(posts).values({
-    travellerId: travellerProfile.id,
-    content: parsed.data.content,
-    imageUrl: parsed.data.imageUrl || null,
-    listingId: parsed.data.listingId || null,
-    eventId: parsed.data.eventId || null,
-    clubId: parsed.data.clubId || null,
-  });
+  const [post] = await db
+    .insert(posts)
+    .values({
+      travellerId: travellerProfile.id,
+      content: parsed.data.content,
+      imageUrl: parsed.data.imageUrl || null,
+      listingId: parsed.data.listingId || null,
+      eventId: parsed.data.eventId || null,
+      clubId: parsed.data.clubId || null,
+    })
+    .returning();
+
+  await generateUserPostItem(post.id, travellerProfile.id, travellerProfile.displayName);
 
   revalidatePath("/social");
   revalidatePath("/passport");
