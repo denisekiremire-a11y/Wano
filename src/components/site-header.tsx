@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { logoutAction } from "@/lib/actions/auth-actions";
+import { HeaderLogoutButton } from "@/components/header-logout-button";
 import { navItemsFor } from "@/lib/nav-items";
 import type { SessionPayload } from "@/lib/session";
-import { LogOutIcon } from "@/components/icons";
 
 export function SiteHeader({ session }: { session: SessionPayload | null }) {
   const items = navItemsFor(session?.role ?? "guest");
@@ -33,15 +32,7 @@ export function SiteHeader({ session }: { session: SessionPayload | null }) {
 
         <div className="flex items-center gap-3">
           {session ? (
-            <form action={logoutAction}>
-              <button
-                type="submit"
-                className="flex items-center gap-1.5 rounded-full border border-forest-800/15 px-3 py-1.5 text-sm font-medium text-forest-800 transition hover:bg-forest-800/5"
-              >
-                <LogOutIcon className="h-4 w-4" />
-                <span className="hidden sm:inline">Log out</span>
-              </button>
-            </form>
+            <HeaderLogoutButton />
           ) : (
             <>
               <Link
