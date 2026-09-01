@@ -1,6 +1,7 @@
-import { and, eq, gte, lte, sql } from "drizzle-orm";
+import { and, eq, gte, isNotNull, isNull, lte, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
+  clubs,
   eventAttendance,
   events,
   feedItems,
@@ -158,6 +159,36 @@ export async function generateJournalPublishedItem(journalPostId: string) {
   });
 }
 
+/** Fires the moment a club meetup is scheduled (createEventAction calls
+ * this when clubId is set) — the time-based crossing case (3 days out) is
+ * handled inside runFeedTimeBasedGenerators, but shares this same function
+ * and dedupeKey, so a meetup scheduled well in advance simply generates its
+ * feed item now instead of waiting. Returns whether a new row was inserted. */
+export async function generateClubMeetupItem(eventId: string) {
+  const [row] = await db
+    .select({ event: events, club: clubs })
+    .from(events)
+    .innerJoin(clubs, eq(clubs.id, events.clubId))
+    .where(eq(events.id, eventId))
+    .limit(1);
+  if (!row) return false;
+
+  return insertFeedItem({
+    type: "club_meetup",
+    dedupeKey: `club_meetup:${eventId}`,
+    eventId,
+    clubId: row.club.id,
+    city: row.event.location,
+    payload: {
+      kind: "club_meetup",
+      clubName: row.club.name,
+      startAt: row.event.startAt.toISOString(),
+      location: row.event.location,
+      href: `/events/${eventId}`,
+    },
+  });
+}
+
 /** Time-crossing generators — nothing here is triggered by a user action, so
  * it has to run on a schedule. See /api/cron/feed. Every insert is
  * idempotent via dedupeKey, so running this often and re-running it after a
@@ -171,7 +202,9 @@ export async function runFeedTimeBasedGenerators() {
   let eventMomentumCreated = 0;
   let perkExpiringCreated = 0;
 
-  // event_upcoming: within the window, ≥1 RSVP of any status, event is active.
+  // event_upcoming: within the window, ≥1 RSVP of any status, event is
+  // active, and NOT a club meetup (those get the more specific club_meetup
+  // type instead — see below — so the same event doesn't show twice).
   const candidateEvents = await db
     .select({
       event: events,
@@ -179,7 +212,14 @@ export async function runFeedTimeBasedGenerators() {
     })
     .from(events)
     .innerJoin(eventAttendance, eq(eventAttendance.eventId, events.id))
-    .where(and(eq(events.active, true), gte(events.startAt, now), lte(events.startAt, upcomingCutoff)))
+    .where(
+      and(
+        eq(events.active, true),
+        isNull(events.clubId),
+        gte(events.startAt, now),
+        lte(events.startAt, upcomingCutoff),
+      ),
+    )
     .groupBy(events.id);
 
   for (const { event, rsvpCount } of candidateEvents) {
@@ -223,6 +263,26 @@ export async function runFeedTimeBasedGenerators() {
     }
   }
 
+  // club_meetup: any club-linked event crossing the same 3-day window (no
+  // RSVP requirement — a scheduled meetup is newsworthy on its own). This
+  // also backstops generateClubMeetupItem for a meetup that was scheduled
+  // more than 3 days out and has since crossed into the window.
+  let clubMeetupCreated = 0;
+  const upcomingMeetups = await db
+    .select({ event: events })
+    .from(events)
+    .where(
+      and(
+        eq(events.active, true),
+        gte(events.startAt, now),
+        lte(events.startAt, upcomingCutoff),
+        isNotNull(events.clubId),
+      ),
+    );
+  for (const { event } of upcomingMeetups) {
+    if (await generateClubMeetupItem(event.id)) clubMeetupCreated++;
+  }
+
   // perk_expiring: active, has an expiry, within the window.
   const expiring = await db
     .select({ promo: promoCodes })
@@ -261,7 +321,7 @@ export async function runFeedTimeBasedGenerators() {
     }
   }
 
-  return { eventUpcomingCreated, eventMomentumCreated, perkExpiringCreated };
+  return { eventUpcomingCreated, eventMomentumCreated, perkExpiringCreated, clubMeetupCreated };
 }
 
 /** Generates feed_items for everything that already exists — run once after
@@ -297,6 +357,13 @@ export async function backfillFeedItems() {
     .where(eq(journalPosts.status, "published"));
   for (const { id } of publishedJournalPosts) await generateJournalPublishedItem(id);
 
+  // "Scheduled" is itself a trigger, not just "3 days out" — generate for
+  // every club meetup regardless of how far away it is (the time-based
+  // pass below re-covers the 3-day-out case too, but that's a same-
+  // dedupeKey no-op for anything already generated here).
+  const clubMeetupEvents = await db.select({ id: events.id }).from(events).where(isNotNull(events.clubId));
+  for (const { id } of clubMeetupEvents) await generateClubMeetupItem(id);
+
   const timeBased = await runFeedTimeBasedGenerators();
 
   return {
@@ -305,6 +372,7 @@ export async function backfillFeedItems() {
     perkAdded: activePromos.length,
     userPost: allPosts.length,
     journalPublished: publishedJournalPosts.length,
+    clubMeetup: clubMeetupEvents.length,
     ...timeBased,
   };
 }

@@ -86,7 +86,7 @@ export function AdminClubForm({
         disabled={pending}
         className="rounded-full bg-forest-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-forest-700 disabled:opacity-60"
       >
-        {pending ? "Creating…" : "Create club (live immediately)"}
+        {pending ? "Creating…" : "Create club (add host & meetup next)"}
       </button>
     </form>
   );

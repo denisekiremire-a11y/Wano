@@ -55,7 +55,7 @@ export default async function SocialPage() {
           </div>
         )}
 
-        {travellerProfile && categories.length > 0 && (
+        {travellerProfile && (
           <div className="rounded-2xl border border-forest-900/10 bg-white p-4">
             <h2 className="font-display text-sm font-semibold text-forest-900">Wano Clubs</h2>
             <p className="mt-0.5 text-xs text-forest-800/60">
@@ -74,6 +74,12 @@ export default async function SocialPage() {
                   </span>
                 </Link>
               ))}
+              <Link
+                href="/social/clubs/apply"
+                className="rounded-full border border-dashed border-forest-900/20 px-3 py-1.5 text-xs font-medium text-forest-800/70 hover:border-forest-900/40"
+              >
+                + Start a club
+              </Link>
             </div>
           </div>
         )}

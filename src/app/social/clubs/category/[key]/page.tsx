@@ -28,7 +28,11 @@ export default async function ClubCategoryPage({ params }: { params: Promise<{ k
       <section className="mt-6 space-y-3">
         {clubs.length === 0 ? (
           <p className="rounded-xl border border-forest-900/10 bg-white p-6 text-center text-sm text-forest-800/60">
-            No clubs here yet. Wano partners can register one from their vendor dashboard.
+            No clubs here yet.{" "}
+            <Link href="/social/clubs/apply" className="font-medium text-nile-700 hover:underline">
+              Start one
+            </Link>
+            .
           </p>
         ) : (
           clubs.map(({ club, vendorProfile, memberCount, joined }) => (
@@ -55,6 +59,13 @@ export default async function ClubCategoryPage({ params }: { params: Promise<{ k
           ))
         )}
       </section>
+
+      <Link
+        href="/social/clubs/apply"
+        className="mt-4 block rounded-xl border border-dashed border-forest-900/20 p-4 text-center text-sm font-medium text-forest-800/70 hover:border-forest-900/40"
+      >
+        + Start another club in {interest.label}
+      </Link>
     </main>
   );
 }

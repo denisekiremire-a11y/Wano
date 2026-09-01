@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, isNull, lt } from "drizzle-orm";
 import { db } from "@/db";
 import {
   clubMemberships,
@@ -14,6 +14,7 @@ import {
   users,
   vendorProfiles,
 } from "@/db/schema";
+import { AFCON_CLUB_ENABLED, LAUNCH_CLUB_CATEGORY_KEYS } from "@/lib/feature-flags";
 
 /** The general Social feed — deliberately excludes posts tagged to a
  * listing/event/club: those live only on that place/event/club's own page
@@ -144,8 +145,13 @@ export async function getAllInterests() {
 
 /** Categories to browse clubs by (the interest taxonomy), each with a count
  * of *approved* clubs inside it — so "Food & Dining" can hold many distinct
- * clubs instead of being a club itself. */
+ * clubs instead of being a club itself. Limited to the 4 launch categories
+ * (+ AFCON behind its flag) — see LAUNCH_CLUB_CATEGORY_KEYS. Everything
+ * else that used to show as an always-empty tile is gone; "Start a club" is
+ * the entry point for those instead. */
 export async function getClubCategories() {
+  const allowedKeys = [...LAUNCH_CLUB_CATEGORY_KEYS, ...(AFCON_CLUB_ENABLED ? (["afcon"] as const) : [])];
+
   const [allInterests, clubCounts] = await Promise.all([
     db.select().from(interests).orderBy(interests.sortOrder),
     db
@@ -155,10 +161,12 @@ export async function getClubCategories() {
       .groupBy(clubs.interestId),
   ]);
   const countMap = new Map(clubCounts.map((r) => [r.interestId, r.total]));
-  return allInterests.map((interest) => ({
-    interest,
-    clubCount: countMap.get(interest.id) ?? 0,
-  }));
+  return allInterests
+    .filter((interest) => (allowedKeys as readonly string[]).includes(interest.key))
+    .map((interest) => ({
+      interest,
+      clubCount: countMap.get(interest.id) ?? 0,
+    }));
 }
 
 export async function getApprovedClubsByCategory(interestKey: string, viewerTravellerId?: string) {
@@ -205,13 +213,54 @@ export async function getApprovedClubsByCategory(interestKey: string, viewerTrav
 
 export async function getClubById(clubId: string) {
   const [row] = await db
-    .select({ club: clubs, interest: interests, vendorProfile: vendorProfiles })
+    .select({ club: clubs, interest: interests, vendorProfile: vendorProfiles, host: users })
     .from(clubs)
     .innerJoin(interests, eq(interests.id, clubs.interestId))
     .leftJoin(vendorProfiles, eq(vendorProfiles.id, clubs.vendorProfileId))
+    .leftJoin(users, eq(users.id, clubs.hostUserId))
     .where(eq(clubs.id, clubId))
     .limit(1);
   return row ?? null;
+}
+
+export async function getClubBySlug(slug: string) {
+  const [row] = await db
+    .select({ club: clubs, interest: interests, vendorProfile: vendorProfiles, host: users })
+    .from(clubs)
+    .innerJoin(interests, eq(interests.id, clubs.interestId))
+    .leftJoin(vendorProfiles, eq(vendorProfiles.id, clubs.vendorProfileId))
+    .leftJoin(users, eq(users.id, clubs.hostUserId))
+    .where(eq(clubs.slug, slug))
+    .limit(1);
+  return row ?? null;
+}
+
+/** Meetups are just events with clubId set — not a parallel system. */
+export async function getClubMeetups(clubId: string) {
+  const now = new Date();
+  const [upcoming, past] = await Promise.all([
+    db
+      .select()
+      .from(events)
+      .where(and(eq(events.clubId, clubId), gte(events.startAt, now)))
+      .orderBy(events.startAt),
+    db
+      .select()
+      .from(events)
+      .where(and(eq(events.clubId, clubId), lt(events.startAt, now)))
+      .orderBy(desc(events.startAt))
+      .limit(10),
+  ]);
+  return { upcoming, past };
+}
+
+export async function hasUpcomingMeetup(clubId: string) {
+  const [row] = await db
+    .select({ id: events.id })
+    .from(events)
+    .where(and(eq(events.clubId, clubId), gte(events.startAt, new Date())))
+    .limit(1);
+  return Boolean(row);
 }
 
 export async function getClubMembers(clubId: string) {

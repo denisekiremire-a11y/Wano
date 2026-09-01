@@ -202,3 +202,8 @@ export async function getCampaignMetrics() {
     partnersPerJourney,
   };
 }
+
+/** Candidates for "club host" — any named, real Wano account. */
+export async function getHostCandidates() {
+  return db.select({ id: users.id, name: users.name, role: users.role }).from(users).orderBy(users.name);
+}
