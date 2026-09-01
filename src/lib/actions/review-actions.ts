@@ -84,12 +84,9 @@ export async function submitReviewAction(
     metadata: { listingId: booking.listingId, rating },
   });
 
-  revalidatePath("/bookings");
-  revalidatePath("/profile");
+  revalidatePath("/passport");
   revalidatePath("/explore");
-  revalidatePath("/home");
   revalidatePath(`/explore/${booking.listingId}`);
-  revalidatePath("/rewards");
 
   return {};
 }

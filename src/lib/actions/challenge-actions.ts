@@ -24,7 +24,7 @@ export async function completeChallengeAction(challengeId: string) {
     .limit(1);
 
   if (existing) {
-    revalidatePath("/profile");
+    revalidatePath("/passport");
     return;
   }
 
@@ -35,5 +35,5 @@ export async function completeChallengeAction(challengeId: string) {
     completedAt: new Date(),
   });
 
-  revalidatePath("/profile");
+  revalidatePath("/passport");
 }

@@ -41,7 +41,7 @@ export async function createPostAction(_prev: ActionState, formData: FormData): 
   });
 
   revalidatePath("/social");
-  revalidatePath("/profile");
+  revalidatePath("/passport");
   if (parsed.data.clubId) revalidatePath(`/social/clubs/${parsed.data.clubId}`);
   if (parsed.data.listingId) revalidatePath(`/explore/${parsed.data.listingId}`);
   if (parsed.data.eventId) revalidatePath(`/events/${parsed.data.eventId}`);
@@ -113,7 +113,7 @@ export async function toggleFollowAction(targetTravellerId: string) {
   }
 
   revalidatePath("/social");
-  revalidatePath("/profile");
+  revalidatePath("/passport");
 }
 
 export async function toggleClubMembershipAction(clubId: string) {

@@ -42,8 +42,8 @@ export default async function OnboardingDonePage() {
         >
           {action.cta}
         </Link>
-        <Link href="/home" className="text-sm font-medium text-forest-800/60 hover:text-forest-900">
-          Just take me to Home →
+        <Link href="/explore" className="text-sm font-medium text-forest-800/60 hover:text-forest-900">
+          Just take me to Explore →
         </Link>
       </div>
     </main>

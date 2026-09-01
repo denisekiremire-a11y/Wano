@@ -81,8 +81,7 @@ export async function bookListingFormAction(formData: FormData) {
     metadata: { listingId, bookingRef: booking.bookingRef },
   });
 
-  revalidatePath("/home");
-  revalidatePath("/bookings");
+  revalidatePath("/passport");
   revalidatePath("/vendor/dashboard/bookings");
   revalidatePath("/vendor/dashboard/referrals");
 

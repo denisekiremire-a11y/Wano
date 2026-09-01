@@ -199,7 +199,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
                   </div>
                   {!hasBirthdaySet && (
                     <p className="text-[11px] text-marigold-800/80">
-                      <Link href="/profile" className="underline">
+                      <Link href="/passport?tab=account" className="underline">
                         Add your birthday to your profile
                       </Link>{" "}
                       so the venue can confirm it&apos;s really your day.

@@ -26,7 +26,6 @@ export async function toggleSavedListingAction(listingId: string) {
     await db.insert(savedListings).values({ travellerId: travellerProfile.id, listingId });
   }
 
-  revalidatePath("/profile");
+  revalidatePath("/passport");
   revalidatePath("/explore");
-  revalidatePath("/home");
 }
