@@ -1,8 +1,6 @@
 import Link from "next/link";
 
-// [ASSUMPTION] Placeholder support contact + response time until a real
-// support inbox/WhatsApp number exists.
-const SUPPORT_EMAIL = "support@wano.example.com";
+const SUPPORT_EMAIL = "denisekiremire@gmail.com";
 
 export function SiteFooter() {
   return (
@@ -11,10 +9,13 @@ export function SiteFooter() {
         Need help? Email{" "}
         <a href={`mailto:${SUPPORT_EMAIL}`} className="underline">
           {SUPPORT_EMAIL}
-        </a>{" "}
-        — we reply within 24 hours.
+        </a>
+        .
       </p>
       <p className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+        <Link href="/community-guidelines" className="hover:underline">
+          Community Guidelines
+        </Link>
         <Link href="/privacy" className="hover:underline">
           Privacy Policy
         </Link>
