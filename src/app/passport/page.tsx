@@ -21,9 +21,12 @@ import {
   getCommentsForPost,
   getEngagementCounts,
   getLikedPostIds,
+  getPostImageIds,
   getPostsByTraveller,
 } from "@/lib/data/social";
 import { getPassportProgress, getTravellerBookings, getTravellerProfileByUserId } from "@/lib/data/traveller";
+import { getMyBlockedList } from "@/lib/data/moderation";
+import { BlockedAccountsList } from "@/components/blocked-accounts-list";
 
 export default async function PassportPage({
   searchParams,
@@ -36,7 +39,7 @@ export default async function PassportPage({
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
   if (!travellerProfile) return null;
 
-  const [user, passportProgress, bookingRows, reviewableRows, rewardsSummary, deals, claimedIds, postRows] =
+  const [user, passportProgress, bookingRows, reviewableRows, rewardsSummary, deals, claimedIds, postRows, blockedList] =
     await Promise.all([
       db.select().from(users).where(eq(users.id, session.userId)).limit(1).then((r) => r[0]),
       getPassportProgress(travellerProfile.id),
@@ -46,6 +49,7 @@ export default async function PassportPage({
       getAllActiveDeals(),
       getClaimedDealIds(travellerProfile.id),
       getPostsByTraveller(travellerProfile.id),
+      getMyBlockedList(travellerProfile.id),
     ]);
   const reviewableBookingIds = new Set(reviewableRows.map((r) => r.booking.id));
   const { progress, stampCount, totalJourneys, grandPrizeQualified } = passportProgress;
@@ -59,6 +63,7 @@ export default async function PassportPage({
     postRows.map((r) => getCommentsForPost(r.post.id).then((comments) => [r.post.id, comments] as const)),
   );
   const commentsMap = new Map(commentsByPost);
+  const imageIdsMap = await getPostImageIds(postIds);
 
   const defaultTab: PassportTabKey = stampCount > 0 ? "stamps" : bookingRows.length > 0 ? "bookings" : "stamps";
   const activeTab: PassportTabKey = PASSPORT_TABS.some((t) => t.key === tab)
@@ -128,18 +133,21 @@ export default async function PassportPage({
         {activeTab === "posts" && (
           <PostsTab
             postRows={postRows}
+            authorTravellerId={travellerProfile.id}
             authorName={travellerProfile.displayName}
             authorUsername={user?.username ?? null}
             likeMap={likeMap}
             commentMap={commentMap}
             likedPostIds={likedPostIds}
             commentsMap={commentsMap}
+            imageIdsMap={imageIdsMap}
           />
         )}
         {activeTab === "account" && (
           <AccountTab
             dateOfBirth={travellerProfile.dateOfBirth}
             showActivityInFeed={travellerProfile.showActivityInFeed}
+            blockedList={blockedList}
           />
         )}
       </div>
@@ -374,20 +382,24 @@ function RewardsTab({
 
 function PostsTab({
   postRows,
+  authorTravellerId,
   authorName,
   authorUsername,
   likeMap,
   commentMap,
   likedPostIds,
   commentsMap,
+  imageIdsMap,
 }: {
   postRows: Awaited<ReturnType<typeof getPostsByTraveller>>;
+  authorTravellerId: string;
   authorName: string;
   authorUsername: string | null;
   likeMap: Map<string, number>;
   commentMap: Map<string, number>;
   likedPostIds: Set<string>;
   commentsMap: Map<string, Awaited<ReturnType<typeof getCommentsForPost>>>;
+  imageIdsMap: Map<string, string[]>;
 }) {
   return (
     <div className="space-y-6">
@@ -414,10 +426,12 @@ function PostsTab({
             <PostCard
               key={post.id}
               postId={post.id}
+              authorTravellerId={authorTravellerId}
               authorName={authorName}
               authorUsername={authorUsername}
               content={post.content}
               imageUrl={post.imageUrl}
+              imageIds={imageIdsMap.get(post.id) ?? []}
               createdAt={new Date(post.createdAt)}
               likeCount={likeMap.get(post.id) ?? 0}
               commentCount={commentMap.get(post.id) ?? 0}
@@ -435,9 +449,11 @@ function PostsTab({
 function AccountTab({
   dateOfBirth,
   showActivityInFeed,
+  blockedList,
 }: {
   dateOfBirth: string | null;
   showActivityInFeed: boolean;
+  blockedList: Awaited<ReturnType<typeof getMyBlockedList>>;
 }) {
   return (
     <div className="space-y-6">
@@ -471,12 +487,21 @@ function AccountTab({
       </section>
 
       <section className="space-y-4 rounded-2xl border border-forest-900/10 bg-white p-5">
+        <h3 className="font-display text-lg font-semibold text-forest-900">Blocked accounts</h3>
+        <BlockedAccountsList blockedList={blockedList} />
+      </section>
+
+      <section className="space-y-4 rounded-2xl border border-forest-900/10 bg-white p-5">
         <h3 className="font-display text-lg font-semibold text-forest-900">Points</h3>
         <StubRow label="Tiers & expiry" description="How your points level up and expire" />
         <StubRow label="Redeem with a partner" description="Spend points directly at a Wano business" />
       </section>
 
       <div className="rounded-xl border border-forest-900/10 bg-white p-4 text-sm text-forest-800/70">
+        <Link href="/community-guidelines" className="text-forest-900 underline">
+          Community Guidelines
+        </Link>
+        {" · "}
         <Link href="/privacy" className="text-forest-900 underline">
           Privacy Policy
         </Link>

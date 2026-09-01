@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { UserIcon } from "@/components/icons";
 import { PassportGrid } from "@/components/passport-grid";
 import { FollowButton } from "@/components/follow-button";
+import { ReportBlockMenu } from "@/components/report-block-menu";
 import { getSession } from "@/lib/session";
 import { getPassportProgress, getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { getFollowCounts, getPostsByTraveller, getTravellerByUsername, isFollowing } from "@/lib/data/social";
@@ -48,7 +49,15 @@ export default async function PublicProfilePage({
           </p>
         </div>
         {!isOwnProfile && session?.role === "traveller" && (
-          <FollowButton targetTravellerId={traveller.id} initialFollowing={viewerFollows} />
+          <div className="relative flex flex-none items-center gap-2">
+            <FollowButton targetTravellerId={traveller.id} initialFollowing={viewerFollows} />
+            <ReportBlockMenu
+              targetType="user"
+              targetId={traveller.id}
+              targetTravellerId={traveller.id}
+              targetLabel={traveller.displayName}
+            />
+          </div>
         )}
       </div>
 
@@ -61,17 +70,17 @@ export default async function PublicProfilePage({
 
       <section className="mt-8 space-y-3">
         <h2 className="font-display text-lg font-semibold text-forest-900">Posts</h2>
-        {postRows.length === 0 ? (
-          <p className="text-sm text-forest-800/60">No posts yet.</p>
-        ) : (
-          postRows.map(({ post, listing, event }) => (
+        {(() => {
+          const visiblePosts = isOwnProfile ? postRows : postRows.filter((r) => r.post.status === "visible");
+          if (visiblePosts.length === 0) return <p className="text-sm text-forest-800/60">No posts yet.</p>;
+          return visiblePosts.map(({ post, listing, event }) => (
             <div key={post.id} className="rounded-xl border border-forest-900/10 bg-white p-4">
               <p className="text-sm text-forest-900">{post.content}</p>
               {listing && <p className="mt-1 text-xs text-forest-800/50">📍 {listing.title}</p>}
               {event && <p className="mt-1 text-xs text-forest-800/50">🎟️ {event.title}</p>}
             </div>
-          ))
-        )}
+          ));
+        })()}
       </section>
     </main>
   );

@@ -1,4 +1,4 @@
-import { desc, eq, gte, inArray } from "drizzle-orm";
+import { and, desc, eq, gte, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import {
   clubs,
@@ -6,6 +6,7 @@ import {
   follows,
   interests,
   clubMemberships,
+  postImages,
   posts,
   travellerInterests,
   travellerProfiles,
@@ -18,6 +19,7 @@ import {
   type ScorableFeedItem,
 } from "@/lib/feed-ranking";
 import { getCommentsForPost, getEngagementCounts, getLikedPostIds } from "@/lib/data/social";
+import { getBlockedTravellerIds } from "@/lib/data/moderation";
 
 const FEED_WINDOW_DAYS = 30;
 
@@ -48,6 +50,8 @@ export type FeedEntry =
       id: string;
       createdAt: Date;
       post: { id: string; content: string; imageUrl: string | null; createdAt: Date };
+      imageIds: string[];
+      authorTravellerId: string;
       authorName: string;
       authorUsername: string | null;
       likeCount: number;
@@ -62,6 +66,7 @@ export type FeedEntry =
  * same feed with affinity neutral (the feed is public and indexable). */
 export async function getRankedFeed(viewerTravellerId: string | null, limit = 30): Promise<FeedEntry[]> {
   const affinity = viewerTravellerId ? await getFeedAffinityContext(viewerTravellerId) : NEUTRAL_AFFINITY;
+  const blockedIds = viewerTravellerId ? await getBlockedTravellerIds(viewerTravellerId) : new Set<string>();
 
   const since = new Date(Date.now() - FEED_WINDOW_DAYS * 24 * 60 * 60 * 1000);
   const rows = await db
@@ -80,8 +85,13 @@ export async function getRankedFeed(viewerTravellerId: string | null, limit = 30
 
   // The privacy toggle only suppresses review_posted — the one type in this
   // table that's unambiguously "this specific traveller's activity" rather
-  // than a platform- or event-level aggregate.
-  const visible = rows.filter((r) => !(r.item.type === "review_posted" && r.subjectShowsActivity === false));
+  // than a platform- or event-level aggregate. Blocks (in either direction)
+  // suppress any item authored by the blocked party, regardless of type.
+  const visible = rows.filter((r) => {
+    if (r.item.type === "review_posted" && r.subjectShowsActivity === false) return false;
+    if (r.item.subjectTravellerId && blockedIds.has(r.item.subjectTravellerId)) return false;
+    return true;
+  });
 
   const scored = visible
     .map((r) => {
@@ -105,12 +115,18 @@ export async function getRankedFeed(viewerTravellerId: string | null, limit = 30
 
   let livePosts = new Map<
     string,
-    { post: typeof posts.$inferSelect; authorName: string; authorUsername: string | null }
+    {
+      post: typeof posts.$inferSelect;
+      authorTravellerId: string;
+      authorName: string;
+      authorUsername: string | null;
+    }
   >();
   let likeMap = new Map<string, number>();
   let commentMap = new Map<string, number>();
   let likedIds = new Set<string>();
   let commentsMap = new Map<string, Awaited<ReturnType<typeof getCommentsForPost>>>();
+  let imageIdsMap = new Map<string, string[]>();
 
   if (postIds.length > 0) {
     const rows = await db
@@ -118,9 +134,20 @@ export async function getRankedFeed(viewerTravellerId: string | null, limit = 30
       .from(posts)
       .innerJoin(travellerProfiles, eq(travellerProfiles.id, posts.travellerId))
       .innerJoin(users, eq(users.id, travellerProfiles.userId))
-      .where(inArray(posts.id, postIds));
+      // Only ever hydrate visible posts — hidden/removed/pending_review
+      // posts simply drop out of the feed here (their feed_items row can
+      // still exist, it just resolves to nothing to render).
+      .where(and(inArray(posts.id, postIds), eq(posts.status, "visible")));
     livePosts = new Map(
-      rows.map((r) => [r.post.id, { post: r.post, authorName: r.author.displayName, authorUsername: r.authorUser.username }]),
+      rows.map((r) => [
+        r.post.id,
+        {
+          post: r.post,
+          authorTravellerId: r.author.id,
+          authorName: r.author.displayName,
+          authorUsername: r.authorUser.username,
+        },
+      ]),
     );
 
     const engagement = await getEngagementCounts(postIds);
@@ -131,6 +158,18 @@ export async function getRankedFeed(viewerTravellerId: string | null, limit = 30
       postIds.map((id) => getCommentsForPost(id).then((c) => [id, c] as const)),
     );
     commentsMap = new Map(commentsByPost);
+
+    const imageRows = await db
+      .select({ id: postImages.id, postId: postImages.postId })
+      .from(postImages)
+      .where(inArray(postImages.postId, postIds))
+      .orderBy(postImages.sortOrder);
+    imageIdsMap = new Map();
+    for (const row of imageRows) {
+      const list = imageIdsMap.get(row.postId) ?? [];
+      list.push(row.id);
+      imageIdsMap.set(row.postId, list);
+    }
   }
 
   const entries: FeedEntry[] = [];
@@ -143,6 +182,8 @@ export async function getRankedFeed(viewerTravellerId: string | null, limit = 30
         id: row.id,
         createdAt: row.createdAt,
         post: live.post,
+        imageIds: imageIdsMap.get(live.post.id) ?? [],
+        authorTravellerId: live.authorTravellerId,
         authorName: live.authorName,
         authorUsername: live.authorUsername,
         likeCount: likeMap.get(live.post.id) ?? 0,

@@ -5,6 +5,7 @@ import { PostCard } from "@/components/post-card";
 import { PostComposer } from "@/components/post-composer";
 import { getSession } from "@/lib/session";
 import { getRankedFeed } from "@/lib/data/feed";
+import { getBlockedTravellerIds } from "@/lib/data/moderation";
 import { getClubCategories, getSuggestedPeople, isFollowing } from "@/lib/data/social";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 
@@ -16,20 +17,23 @@ export default async function SocialPage() {
   const travellerProfile =
     session?.role === "traveller" ? await getTravellerProfileByUserId(session.userId) : null;
 
-  const [feed, categories, suggestedWithFollow] = await Promise.all([
+  const [feed, categories, suggestedRaw, blockedIds] = await Promise.all([
     getRankedFeed(travellerProfile?.id ?? null, 30),
     getClubCategories(),
-    travellerProfile
-      ? getSuggestedPeople(travellerProfile.id).then((suggested) =>
-          Promise.all(
-            suggested.map(async (s) => ({
-              ...s,
-              following: await isFollowing(travellerProfile.id, s.traveller.id),
-            })),
-          ),
-        )
-      : Promise.resolve([]),
+    travellerProfile ? getSuggestedPeople(travellerProfile.id) : Promise.resolve([]),
+    travellerProfile ? getBlockedTravellerIds(travellerProfile.id) : Promise.resolve(new Set<string>()),
   ]);
+
+  const suggestedWithFollow = travellerProfile
+    ? await Promise.all(
+        suggestedRaw
+          .filter((s) => !blockedIds.has(s.traveller.id))
+          .map(async (s) => ({
+            ...s,
+            following: await isFollowing(travellerProfile.id, s.traveller.id),
+          })),
+      )
+    : [];
 
   const now = new Date();
 
@@ -94,10 +98,12 @@ export default async function SocialPage() {
               <PostCard
                 key={entry.id}
                 postId={entry.post.id}
+                authorTravellerId={entry.authorTravellerId}
                 authorName={entry.authorName}
                 authorUsername={entry.authorUsername}
                 content={entry.post.content}
                 imageUrl={entry.post.imageUrl}
+                imageIds={entry.imageIds}
                 createdAt={new Date(entry.post.createdAt)}
                 likeCount={entry.likeCount}
                 commentCount={entry.commentCount}

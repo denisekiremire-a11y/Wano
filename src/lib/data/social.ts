@@ -8,6 +8,7 @@ import {
   interests,
   listings,
   postComments,
+  postImages,
   postLikes,
   posts,
   travellerProfiles,
@@ -101,6 +102,22 @@ export async function getCommentsForPost(postId: string) {
     .innerJoin(travellerProfiles, eq(travellerProfiles.id, postComments.travellerId))
     .where(eq(postComments.postId, postId))
     .orderBy(postComments.createdAt);
+}
+
+export async function getPostImageIds(postIds: string[]): Promise<Map<string, string[]>> {
+  const map = new Map<string, string[]>();
+  if (postIds.length === 0) return map;
+  const rows = await db
+    .select({ id: postImages.id, postId: postImages.postId })
+    .from(postImages)
+    .where(inArray(postImages.postId, postIds))
+    .orderBy(postImages.sortOrder);
+  for (const row of rows) {
+    const list = map.get(row.postId) ?? [];
+    list.push(row.id);
+    map.set(row.postId, list);
+  }
+  return map;
 }
 
 export async function getFollowCounts(travellerId: string) {

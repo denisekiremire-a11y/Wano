@@ -4,15 +4,18 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
-import { clubMemberships, follows, postComments, postLikes, posts } from "@/db/schema";
+import { clubMemberships, follows, postComments, postImages, postLikes, posts, users } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { generateUserPostItem } from "@/lib/feed-generators";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
+import { countInLastHour, RATE_LIMITS } from "@/lib/rate-limit";
 import type { ActionState } from "@/lib/validation";
+
+const MAX_IMAGES = 4;
+const NEW_ACCOUNT_REVIEW_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 const postSchema = z.object({
   content: z.string().min(1).max(500),
-  imageUrl: z.string().url().max(500).optional().or(z.literal("")),
   listingId: z.string().uuid().optional().or(z.literal("")),
   eventId: z.string().uuid().optional().or(z.literal("")),
   clubId: z.string().uuid().optional().or(z.literal("")),
@@ -22,7 +25,6 @@ export async function createPostAction(_prev: ActionState, formData: FormData): 
   const session = await requireRole("traveller");
   const parsed = postSchema.safeParse({
     content: formData.get("content"),
-    imageUrl: formData.get("imageUrl") ?? "",
     listingId: formData.get("listingId") ?? "",
     eventId: formData.get("eventId") ?? "",
     clubId: formData.get("clubId") ?? "",
@@ -32,19 +34,46 @@ export async function createPostAction(_prev: ActionState, formData: FormData): 
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
   if (!travellerProfile) return { error: "Profile not found." };
 
+  const recentPosts = await countInLastHour(posts, posts.travellerId, posts.createdAt, travellerProfile.id);
+  if (recentPosts >= RATE_LIMITS.postsPerHour) {
+    return { error: "You're posting a lot right now — try again in a bit." };
+  }
+
+  const images = formData
+    .getAll("images")
+    .filter((f): f is File => f instanceof File && f.size > 0)
+    .slice(0, MAX_IMAGES);
+
+  const [user] = await db.select({ createdAt: users.createdAt }).from(users).where(eq(users.id, session.userId)).limit(1);
+  const isNewAccount = user ? Date.now() - user.createdAt.getTime() < NEW_ACCOUNT_REVIEW_WINDOW_MS : false;
+
   const [post] = await db
     .insert(posts)
     .values({
       travellerId: travellerProfile.id,
       content: parsed.data.content,
-      imageUrl: parsed.data.imageUrl || null,
       listingId: parsed.data.listingId || null,
       eventId: parsed.data.eventId || null,
       clubId: parsed.data.clubId || null,
+      // First posts from a brand-new account go to the moderation queue
+      // before they're visible to anyone else — see /admin/moderation.
+      status: isNewAccount ? "pending_review" : "visible",
     })
     .returning();
 
-  await generateUserPostItem(post.id, travellerProfile.id, travellerProfile.displayName);
+  for (let i = 0; i < images.length; i++) {
+    const buffer = Buffer.from(await images[i].arrayBuffer());
+    await db.insert(postImages).values({
+      postId: post.id,
+      data: buffer,
+      mimeType: images[i].type || "image/webp",
+      sortOrder: i,
+    });
+  }
+
+  if (post.status === "visible") {
+    await generateUserPostItem(post.id, travellerProfile.id, travellerProfile.displayName);
+  }
 
   revalidatePath("/social");
   revalidatePath("/passport");
@@ -89,6 +118,16 @@ export async function addCommentAction(_prev: ActionState, formData: FormData): 
 
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
   if (!travellerProfile) return { error: "Profile not found." };
+
+  const recentComments = await countInLastHour(
+    postComments,
+    postComments.travellerId,
+    postComments.createdAt,
+    travellerProfile.id,
+  );
+  if (recentComments >= RATE_LIMITS.commentsPerHour) {
+    return { error: "You're commenting a lot right now — try again in a bit." };
+  }
 
   await db.insert(postComments).values({
     postId: parsed.data.postId,
