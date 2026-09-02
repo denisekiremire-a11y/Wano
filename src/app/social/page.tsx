@@ -6,22 +6,41 @@ import { PostComposer } from "@/components/post-composer";
 import { getSession } from "@/lib/session";
 import { getRankedFeed } from "@/lib/data/feed";
 import { getBlockedTravellerIds } from "@/lib/data/moderation";
+import { getSuggestedAttachments, resolvePostContext, type PostContextType } from "@/lib/data/post-context";
 import { getClubCategories, getSuggestedPeople, isFollowing } from "@/lib/data/social";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
+
+const SHARE_CONTEXT_TYPES = new Set<PostContextType>([
+  "listing",
+  "event",
+  "club",
+  "journey",
+  "perk",
+  "journal_post",
+]);
 
 // Public and indexable — a signed-out visitor gets the same ranked feed,
 // with affinity neutral (see getRankedFeed). Only the composer and the
 // social sidebars are member-only.
-export default async function SocialPage() {
+export default async function SocialPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ context_type?: string; context_id?: string }>;
+}) {
   const session = await getSession();
   const travellerProfile =
     session?.role === "traveller" ? await getTravellerProfileByUserId(session.userId) : null;
+  const { context_type, context_id } = await searchParams;
 
-  const [feed, categories, suggestedRaw, blockedIds] = await Promise.all([
+  const [feed, categories, suggestedRaw, blockedIds, suggestions, shareContext] = await Promise.all([
     getRankedFeed(travellerProfile?.id ?? null, 30),
     getClubCategories(),
     travellerProfile ? getSuggestedPeople(travellerProfile.id) : Promise.resolve([]),
     travellerProfile ? getBlockedTravellerIds(travellerProfile.id) : Promise.resolve(new Set<string>()),
+    travellerProfile ? getSuggestedAttachments(travellerProfile.id) : Promise.resolve([]),
+    context_type && context_id && SHARE_CONTEXT_TYPES.has(context_type as PostContextType)
+      ? resolvePostContext(context_type as PostContextType, context_id)
+      : Promise.resolve(null),
   ]);
 
   const suggestedWithFollow = travellerProfile
@@ -49,7 +68,15 @@ export default async function SocialPage() {
         </div>
 
         {travellerProfile ? (
-          <PostComposer />
+          <PostComposer
+            suggestions={suggestions}
+            presetContext={
+              shareContext
+                ? { type: shareContext.type, id: shareContext.id, label: shareContext.title }
+                : undefined
+            }
+            placeholder={shareContext ? `Share something about ${shareContext.title}…` : undefined}
+          />
         ) : (
           <div className="rounded-2xl border border-forest-900/10 bg-white p-4 text-sm text-forest-800/70">
             <Link href="/signup" className="font-semibold text-nile-700 hover:underline">
@@ -110,6 +137,7 @@ export default async function SocialPage() {
                 liked={entry.liked}
                 canInteract={entry.canInteract}
                 comments={entry.comments}
+                context={entry.context}
               />
             ) : (
               <FeedItemCard key={entry.id} entry={entry} now={now} />

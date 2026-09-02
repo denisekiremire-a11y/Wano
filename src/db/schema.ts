@@ -4,6 +4,7 @@ import {
   type AnyPgColumn,
   customType,
   date,
+  index,
   integer,
   jsonb,
   numeric,
@@ -63,6 +64,14 @@ export const eventAttendanceStatusEnum = pgEnum("event_attendance_status", [
 export const travellerPersonaEnum = pgEnum("traveller_persona", ["newcomer", "tourist", "local"]);
 export const journalStatusEnum = pgEnum("journal_status", ["draft", "scheduled", "published"]);
 export const postStatusEnum = pgEnum("post_status", ["visible", "pending_review", "hidden", "removed"]);
+export const postContextTypeEnum = pgEnum("post_context_type", [
+  "listing",
+  "event",
+  "club",
+  "journey",
+  "perk",
+  "journal_post",
+]);
 export const reportTargetTypeEnum = pgEnum("report_target_type", ["post", "comment", "user", "review"]);
 export const reportReasonEnum = pgEnum("report_reason", [
   "spam",
@@ -516,27 +525,36 @@ export const follows = pgTable(
   (table) => [unique().on(table.followerId, table.followingId)],
 );
 
-// A social post — optionally tagged to a place, an event, or a club, which
-// is how user-generated content (including photos, via imageUrl) links back
-// into Wano's discovery surfaces and doubles as each one's media feed.
-export const posts = pgTable("posts", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  travellerId: uuid("traveller_id")
-    .notNull()
-    .references(() => travellerProfiles.id, { onDelete: "cascade" }),
-  content: text("content").notNull(),
-  // Legacy — posts created before the real-upload composer stored an
-  // externally-hosted URL here. New posts use postImages (bytea) instead.
-  imageUrl: text("image_url"),
-  listingId: uuid("listing_id").references(() => listings.id, { onDelete: "set null" }),
-  eventId: uuid("event_id").references(() => events.id, { onDelete: "set null" }),
-  clubId: uuid("club_id").references(() => clubs.id, { onDelete: "set null" }),
-  // visible by default; a first post from an account under 24h old is
-  // pending_review instead (see createPostAction). hidden = auto-hidden by
-  // report threshold; removed = an admin took it down.
-  status: postStatusEnum("status").notNull().default("visible"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+// A social post — optionally about something (contextType/contextId, a
+// polymorphic pointer resolved by type: listing/event/club/journey/perk/
+// journal_post) and optionally addressed to a club instead of the public
+// feed (audienceClubId). Context is "what it's about"; audience is "where
+// it went" — a post can be about a club without being restricted to it, or
+// restricted to a club without a topic tag at all.
+export const posts = pgTable(
+  "posts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    travellerId: uuid("traveller_id")
+      .notNull()
+      .references(() => travellerProfiles.id, { onDelete: "cascade" }),
+    content: text("content").notNull(),
+    // Legacy — posts created before the real-upload composer stored an
+    // externally-hosted URL here. New posts use postImages (bytea) instead.
+    imageUrl: text("image_url"),
+    contextType: postContextTypeEnum("context_type"),
+    contextId: uuid("context_id"),
+    // Null = public (the global feed). Set = visible only on that club's
+    // page and in its members' feeds, never the global feed.
+    audienceClubId: uuid("audience_club_id").references(() => clubs.id, { onDelete: "set null" }),
+    // visible by default; a first post from an account under 24h old is
+    // pending_review instead (see createPostAction). hidden = auto-hidden by
+    // report threshold; removed = an admin took it down.
+    status: postStatusEnum("status").notNull().default("visible"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("posts_context_idx").on(table.contextType, table.contextId)],
+);
 
 export const postImages = pgTable("post_images", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -759,9 +777,7 @@ export const followsRelations = relations(follows, ({ one }) => ({
 
 export const postsRelations = relations(posts, ({ one, many }) => ({
   traveller: one(travellerProfiles, { fields: [posts.travellerId], references: [travellerProfiles.id] }),
-  listing: one(listings, { fields: [posts.listingId], references: [listings.id] }),
-  event: one(events, { fields: [posts.eventId], references: [events.id] }),
-  club: one(clubs, { fields: [posts.clubId], references: [clubs.id] }),
+  audienceClub: one(clubs, { fields: [posts.audienceClubId], references: [clubs.id] }),
   likes: many(postLikes),
   comments: many(postComments),
 }));

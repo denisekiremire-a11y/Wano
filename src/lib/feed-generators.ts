@@ -343,10 +343,13 @@ export async function backfillFeedItems() {
   const activePromos = await db.select({ id: promoCodes.id }).from(promoCodes).where(eq(promoCodes.active, true));
   for (const { id } of activePromos) await generatePerkAddedItem(id);
 
+  // Only public, visible posts ever enter the global feed — a club-
+  // addressed post stays on its club's page (see createPostAction).
   const allPosts = await db
     .select({ post: posts, traveller: travellerProfiles })
     .from(posts)
-    .innerJoin(travellerProfiles, eq(travellerProfiles.id, posts.travellerId));
+    .innerJoin(travellerProfiles, eq(travellerProfiles.id, posts.travellerId))
+    .where(and(eq(posts.status, "visible"), isNull(posts.audienceClubId)));
   for (const { post, traveller } of allPosts) {
     await generateUserPostItem(post.id, traveller.id, traveller.displayName);
   }

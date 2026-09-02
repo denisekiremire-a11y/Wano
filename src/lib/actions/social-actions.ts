@@ -8,26 +8,29 @@ import { clubMemberships, follows, postComments, postImages, postLikes, posts, u
 import { requireRole } from "@/lib/auth";
 import { generateUserPostItem } from "@/lib/feed-generators";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
+import { searchMentionables, type SuggestedAttachment } from "@/lib/data/post-context";
 import { countInLastHour, RATE_LIMITS } from "@/lib/rate-limit";
 import type { ActionState } from "@/lib/validation";
 
 const MAX_IMAGES = 4;
 const NEW_ACCOUNT_REVIEW_WINDOW_MS = 24 * 60 * 60 * 1000;
+const EDIT_WINDOW_MS = 15 * 60 * 1000;
+const CONTEXT_TYPES = ["listing", "event", "club", "journey", "perk", "journal_post"] as const;
 
 const postSchema = z.object({
   content: z.string().min(1).max(500),
-  listingId: z.string().uuid().optional().or(z.literal("")),
-  eventId: z.string().uuid().optional().or(z.literal("")),
-  clubId: z.string().uuid().optional().or(z.literal("")),
+  contextType: z.enum(CONTEXT_TYPES).optional().or(z.literal("")),
+  contextId: z.string().uuid().optional().or(z.literal("")),
+  audienceClubId: z.string().uuid().optional().or(z.literal("")),
 });
 
 export async function createPostAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const session = await requireRole("traveller");
   const parsed = postSchema.safeParse({
     content: formData.get("content"),
-    listingId: formData.get("listingId") ?? "",
-    eventId: formData.get("eventId") ?? "",
-    clubId: formData.get("clubId") ?? "",
+    contextType: formData.get("contextType") ?? "",
+    contextId: formData.get("contextId") ?? "",
+    audienceClubId: formData.get("audienceClubId") ?? "",
   });
   if (!parsed.success) return { error: "Write something before you post." };
 
@@ -47,14 +50,18 @@ export async function createPostAction(_prev: ActionState, formData: FormData): 
   const [user] = await db.select({ createdAt: users.createdAt }).from(users).where(eq(users.id, session.userId)).limit(1);
   const isNewAccount = user ? Date.now() - user.createdAt.getTime() < NEW_ACCOUNT_REVIEW_WINDOW_MS : false;
 
+  const contextType = parsed.data.contextType || null;
+  const contextId = parsed.data.contextId || null;
+  const audienceClubId = parsed.data.audienceClubId || null;
+
   const [post] = await db
     .insert(posts)
     .values({
       travellerId: travellerProfile.id,
       content: parsed.data.content,
-      listingId: parsed.data.listingId || null,
-      eventId: parsed.data.eventId || null,
-      clubId: parsed.data.clubId || null,
+      contextType: contextType && contextId ? contextType : null,
+      contextId: contextType && contextId ? contextId : null,
+      audienceClubId,
       // First posts from a brand-new account go to the moderation queue
       // before they're visible to anyone else — see /admin/moderation.
       status: isNewAccount ? "pending_review" : "visible",
@@ -71,16 +78,82 @@ export async function createPostAction(_prev: ActionState, formData: FormData): 
     });
   }
 
-  if (post.status === "visible") {
+  // Club-addressed posts never enter the global feed — see getRankedFeed's
+  // audienceClubId filter, which drops these even if a row existed here.
+  if (post.status === "visible" && !audienceClubId) {
     await generateUserPostItem(post.id, travellerProfile.id, travellerProfile.displayName);
   }
 
   revalidatePath("/social");
   revalidatePath("/passport");
-  if (parsed.data.clubId) revalidatePath(`/social/clubs/${parsed.data.clubId}`);
-  if (parsed.data.listingId) revalidatePath(`/explore/${parsed.data.listingId}`);
-  if (parsed.data.eventId) revalidatePath(`/events/${parsed.data.eventId}`);
+  if (audienceClubId) revalidatePath(`/social/clubs/${audienceClubId}`);
+  if (contextType === "club" && contextId) revalidatePath(`/social/clubs/${contextId}`);
+  if (contextType === "listing" && contextId) revalidatePath(`/explore/${contextId}`);
+  if (contextType === "event" && contextId) revalidatePath(`/events/${contextId}`);
   return {};
+}
+
+export async function editPostAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const session = await requireRole("traveller");
+  const postId = String(formData.get("postId") ?? "");
+  const content = String(formData.get("content") ?? "").trim();
+  if (!postId || !content) return { error: "Write something before saving." };
+  if (content.length > 500) return { error: "Keep it under 500 characters." };
+
+  const travellerProfile = await getTravellerProfileByUserId(session.userId);
+  if (!travellerProfile) return { error: "Profile not found." };
+
+  const [post] = await db.select().from(posts).where(eq(posts.id, postId)).limit(1);
+  if (!post || post.travellerId !== travellerProfile.id) return { error: "Post not found." };
+  if (Date.now() - post.createdAt.getTime() > EDIT_WINDOW_MS) {
+    return { error: "The 15-minute edit window has passed." };
+  }
+
+  await db.update(posts).set({ content }).where(eq(posts.id, postId));
+  revalidatePath("/social");
+  revalidatePath("/passport");
+  return {};
+}
+
+export async function deletePostAction(postId: string) {
+  const session = await requireRole("traveller");
+  const travellerProfile = await getTravellerProfileByUserId(session.userId);
+  if (!travellerProfile) throw new Error("Traveller profile not found.");
+
+  const [post] = await db.select().from(posts).where(eq(posts.id, postId)).limit(1);
+  if (!post || post.travellerId !== travellerProfile.id) throw new Error("Post not found.");
+
+  await db.delete(posts).where(eq(posts.id, postId));
+  revalidatePath("/social");
+  revalidatePath("/passport");
+}
+
+export async function changePostAudienceAction(postId: string, audienceClubId: string | null) {
+  const session = await requireRole("traveller");
+  const travellerProfile = await getTravellerProfileByUserId(session.userId);
+  if (!travellerProfile) throw new Error("Traveller profile not found.");
+
+  const [post] = await db.select().from(posts).where(eq(posts.id, postId)).limit(1);
+  if (!post || post.travellerId !== travellerProfile.id) throw new Error("Post not found.");
+
+  await db.update(posts).set({ audienceClubId }).where(eq(posts.id, postId));
+
+  // Switching to public for the first time needs a feed item backfilled —
+  // switching to a club needs nothing further, getRankedFeed's audience
+  // filter already keeps it out even if an earlier public-era row exists.
+  if (!audienceClubId && post.status === "visible") {
+    await generateUserPostItem(post.id, travellerProfile.id, travellerProfile.displayName);
+  }
+
+  revalidatePath("/social");
+  revalidatePath("/passport");
+  if (post.audienceClubId) revalidatePath(`/social/clubs/${post.audienceClubId}`);
+  if (audienceClubId) revalidatePath(`/social/clubs/${audienceClubId}`);
+}
+
+export async function searchMentionablesAction(query: string): Promise<SuggestedAttachment[]> {
+  await requireRole("traveller");
+  return searchMentionables(query);
 }
 
 export async function togglePostLikeAction(postId: string) {

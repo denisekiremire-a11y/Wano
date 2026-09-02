@@ -113,6 +113,12 @@ export default async function JournalPostPage({ params }: { params: Promise<{ sl
         >
           Facebook
         </a>
+        <Link
+          href={`/social?context_type=journal_post&context_id=${post.id}`}
+          className="rounded-full bg-forest-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-forest-700"
+        >
+          Share this on Wano
+        </Link>
       </div>
 
       <div className="mt-8">

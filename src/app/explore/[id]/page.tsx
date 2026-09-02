@@ -312,11 +312,14 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
         </section>
 
         <section className="mt-8">
-          <h2 className="font-display text-lg font-semibold text-forest-900">Media</h2>
-          <p className="mt-1 text-sm text-forest-800/60">Photos and moments shared by travellers.</p>
+          <h2 className="font-display text-lg font-semibold text-forest-900">What people are saying</h2>
+          <p className="mt-1 text-sm text-forest-800/60">Posts and moments shared by travellers about this place.</p>
           {session?.role === "traveller" && (
             <div className="mt-3">
-              <PostComposer listingId={listing.id} placeholder={`Share something about ${listing.title}…`} />
+              <PostComposer
+                presetContext={{ type: "listing", id: listing.id, label: listing.title }}
+                placeholder={`Share something about ${listing.title}…`}
+              />
             </div>
           )}
           <div className="mt-4 grid gap-3 sm:grid-cols-2">

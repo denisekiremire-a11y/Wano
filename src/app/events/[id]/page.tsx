@@ -115,11 +115,14 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         </div>
 
         <section className="mt-8">
-          <h2 className="font-display text-lg font-semibold text-forest-900">Media</h2>
-          <p className="mt-1 text-sm text-forest-800/60">Photos and moments shared by attendees.</p>
+          <h2 className="font-display text-lg font-semibold text-forest-900">What people are saying</h2>
+          <p className="mt-1 text-sm text-forest-800/60">Posts and moments shared by attendees.</p>
           {session?.role === "traveller" && (
             <div className="mt-3">
-              <PostComposer eventId={event.id} placeholder={`Share something about ${event.title}…`} />
+              <PostComposer
+                presetContext={{ type: "event", id: event.id, label: event.title }}
+                placeholder={`Share something about ${event.title}…`}
+              />
             </div>
           )}
           <div className="mt-4 grid gap-3 sm:grid-cols-2">

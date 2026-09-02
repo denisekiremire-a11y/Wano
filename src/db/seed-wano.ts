@@ -143,7 +143,8 @@ async function main() {
             .values({
               travellerId: amina.id,
               content: "Can't wait for this one — rooftop Afrobeat with a view. Who else is going? 🎶",
-              eventId: musicNight.id,
+              contextType: "event",
+              contextId: musicNight.id,
             })
             .returning()
         : [];
@@ -159,7 +160,8 @@ async function main() {
         await db.insert(posts).values({
           travellerId: amina.id,
           content: "Booked my spot for sunrise yoga on the Nile this weekend — perfect way to reset.",
-          eventId: yoga.id,
+          contextType: "event",
+          contextId: yoga.id,
         });
       }
 

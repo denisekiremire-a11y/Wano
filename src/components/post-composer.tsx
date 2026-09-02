@@ -1,25 +1,27 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { createPostAction } from "@/lib/actions/social-actions";
+import { createPostAction, searchMentionablesAction } from "@/lib/actions/social-actions";
 import { compressImage } from "@/lib/image-compress";
+import type { PostContextType, SuggestedAttachment } from "@/lib/data/post-context";
 import type { ActionState } from "@/lib/validation";
 
 const MAX_IMAGES = 4;
 const MAX_CHARS = 500;
 
 type PendingImage = { file: File; previewUrl: string; compressing: boolean };
+type Attachment = { type: PostContextType; id: string; label: string };
 
 export function PostComposer({
-  listingId,
-  eventId,
-  clubId,
+  presetContext,
+  presetAudienceClubId,
+  suggestions = [],
   placeholder = "What's happening?",
 }: {
-  listingId?: string;
-  eventId?: string;
-  clubId?: string;
+  presetContext?: Attachment;
+  presetAudienceClubId?: string;
+  suggestions?: SuggestedAttachment[];
   placeholder?: string;
 }) {
   const [content, setContent] = useState("");
@@ -28,6 +30,19 @@ export function PostComposer({
   const [posted, setPosted] = useState(false);
   const [isPending, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const [attachment, setAttachment] = useState<Attachment | null>(presetContext ?? null);
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionResults, setMentionResults] = useState<SuggestedAttachment[]>([]);
+
+  useEffect(() => {
+    if (mentionQuery === null) return;
+    const handle = setTimeout(() => {
+      searchMentionablesAction(mentionQuery).then(setMentionResults);
+    }, 200);
+    return () => clearTimeout(handle);
+  }, [mentionQuery]);
 
   async function handleFilesSelected(files: FileList | null) {
     if (!files) return;
@@ -62,15 +77,48 @@ export function PostComposer({
     });
   }
 
+  function handleContentChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    const value = e.target.value;
+    setContent(value);
+
+    const cursor = e.target.selectionStart ?? value.length;
+    const upToCursor = value.slice(0, cursor);
+    const match = upToCursor.match(/(?:^|\s)@([^\s@]*)$/);
+    if (match) {
+      setMentionQuery(match[1]);
+    } else {
+      setMentionQuery(null);
+      setMentionResults([]);
+    }
+  }
+
+  function selectMention(result: SuggestedAttachment) {
+    setAttachment(result);
+    const textarea = textareaRef.current;
+    const cursor = textarea?.selectionStart ?? content.length;
+    const upToCursor = content.slice(0, cursor);
+    const replaced = upToCursor.replace(/(?:^|\s)@([^\s@]*)$/, (m) => (m.startsWith(" ") ? " " : "") + `@${result.label} `);
+    const next = replaced + content.slice(cursor);
+    setContent(next);
+    setMentionQuery(null);
+    setMentionResults([]);
+  }
+
+  function selectSuggestion(s: SuggestedAttachment) {
+    setAttachment((prev) => (prev && prev.type === s.type && prev.id === s.id ? null : { type: s.type, id: s.id, label: s.label }));
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!content.trim()) return;
 
     const formData = new FormData();
     formData.set("content", content);
-    if (listingId) formData.set("listingId", listingId);
-    if (eventId) formData.set("eventId", eventId);
-    if (clubId) formData.set("clubId", clubId);
+    if (attachment) {
+      formData.set("contextType", attachment.type);
+      formData.set("contextId", attachment.id);
+    }
+    if (presetAudienceClubId) formData.set("audienceClubId", presetAudienceClubId);
     for (const img of images) formData.append("images", img.file);
 
     startTransition(async () => {
@@ -80,6 +128,7 @@ export function PostComposer({
         setContent("");
         images.forEach((img) => URL.revokeObjectURL(img.previewUrl));
         setImages([]);
+        if (!presetContext) setAttachment(null);
         setPosted(true);
         setTimeout(() => setPosted(false), 4000);
       }
@@ -89,17 +138,70 @@ export function PostComposer({
   const stillCompressing = images.some((img) => img.compressing);
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-2xl border border-forest-900/10 bg-white p-4">
-      <textarea
-        name="content"
-        required
-        maxLength={MAX_CHARS}
-        rows={2}
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        placeholder={placeholder}
-        className="w-full resize-none rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
-      />
+    <form onSubmit={handleSubmit} className="relative rounded-2xl border border-forest-900/10 bg-white p-4">
+      {suggestions.length > 0 && !presetContext && (
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {suggestions.map((s) => {
+            const isSelected = attachment?.type === s.type && attachment?.id === s.id;
+            return (
+              <button
+                key={`${s.type}:${s.id}`}
+                type="button"
+                onClick={() => selectSuggestion(s)}
+                className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${
+                  isSelected
+                    ? "border-forest-800 bg-forest-800 text-white"
+                    : "border-forest-900/15 text-forest-800 hover:bg-forest-50"
+                }`}
+              >
+                {s.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="relative">
+        <textarea
+          ref={textareaRef}
+          name="content"
+          required
+          maxLength={MAX_CHARS}
+          rows={2}
+          value={content}
+          onChange={handleContentChange}
+          placeholder={placeholder}
+          className="w-full resize-none rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+        />
+        {mentionQuery !== null && mentionResults.length > 0 && (
+          <div className="absolute z-10 mt-1 w-full rounded-lg border border-forest-900/10 bg-white shadow-md">
+            {mentionResults.map((r) => (
+              <button
+                key={`${r.type}:${r.id}`}
+                type="button"
+                onClick={() => selectMention(r)}
+                className="block w-full px-3 py-1.5 text-left text-sm text-forest-800 hover:bg-forest-50"
+              >
+                {r.label} <span className="text-xs text-forest-800/40">· {r.type}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {attachment && (
+        <div className="mt-1.5 flex items-center gap-1.5">
+          <span className="inline-flex items-center gap-1 rounded-full bg-forest-100 px-2 py-0.5 text-[11px] font-medium text-forest-800">
+            📎 {attachment.label}
+            {!presetContext && (
+              <button type="button" onClick={() => setAttachment(null)} className="text-forest-800/50 hover:text-forest-800">
+                ×
+              </button>
+            )}
+          </span>
+        </div>
+      )}
+
       <div className="mt-1 flex items-center justify-between text-[11px] text-forest-800/40">
         <span>
           {content.length}/{MAX_CHARS}

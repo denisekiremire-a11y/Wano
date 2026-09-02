@@ -132,7 +132,11 @@ export default async function ClubDetailPage({ params }: { params: Promise<{ id:
         <p className="mt-1 text-sm text-forest-800/60">Photos and moments shared by members.</p>
         {joined && (
           <div className="mt-3">
-            <PostComposer clubId={club.id} placeholder={`Share something with ${club.name}…`} />
+            <PostComposer
+              presetContext={{ type: "club", id: club.id, label: club.name }}
+              presetAudienceClubId={club.id}
+              placeholder={`Share something with ${club.name}…`}
+            />
           </div>
         )}
         <div className="mt-4 grid gap-3 sm:grid-cols-2">

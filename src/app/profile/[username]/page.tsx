@@ -3,9 +3,11 @@ import { UserIcon } from "@/components/icons";
 import { PassportGrid } from "@/components/passport-grid";
 import { FollowButton } from "@/components/follow-button";
 import { ReportBlockMenu } from "@/components/report-block-menu";
+import { AudienceChip, PostContextCard } from "@/components/post-context-card";
 import { getSession } from "@/lib/session";
 import { getPassportProgress, getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { getFollowCounts, getPostsByTraveller, getTravellerByUsername, isFollowing } from "@/lib/data/social";
+import { resolvePostContexts, type PostContextType } from "@/lib/data/post-context";
 
 export default async function PublicProfilePage({
   params,
@@ -23,6 +25,11 @@ export default async function PublicProfilePage({
     getFollowCounts(traveller.id),
     getPostsByTraveller(traveller.id),
   ]);
+  const contextMap = await resolvePostContexts(
+    postRows
+      .filter((r) => r.post.contextType && r.post.contextId)
+      .map((r) => ({ type: r.post.contextType as PostContextType, id: r.post.contextId as string })),
+  );
 
   let viewerFollows = false;
   let isOwnProfile = false;
@@ -73,13 +80,23 @@ export default async function PublicProfilePage({
         {(() => {
           const visiblePosts = isOwnProfile ? postRows : postRows.filter((r) => r.post.status === "visible");
           if (visiblePosts.length === 0) return <p className="text-sm text-forest-800/60">No posts yet.</p>;
-          return visiblePosts.map(({ post, listing, event }) => (
-            <div key={post.id} className="rounded-xl border border-forest-900/10 bg-white p-4">
-              <p className="text-sm text-forest-900">{post.content}</p>
-              {listing && <p className="mt-1 text-xs text-forest-800/50">📍 {listing.title}</p>}
-              {event && <p className="mt-1 text-xs text-forest-800/50">🎟️ {event.title}</p>}
-            </div>
-          ));
+          return visiblePosts.map(({ post, audienceClub }) => {
+            const context =
+              post.contextType && post.contextId
+                ? (contextMap.get(`${post.contextType}:${post.contextId}`) ?? null)
+                : null;
+            return (
+              <div key={post.id} className="rounded-xl border border-forest-900/10 bg-white p-4">
+                {audienceClub && (
+                  <div className="mb-1.5">
+                    <AudienceChip clubId={audienceClub.id} clubName={audienceClub.name} />
+                  </div>
+                )}
+                <p className="text-sm text-forest-900">{post.content}</p>
+                {context && <PostContextCard context={context} />}
+              </div>
+            );
+          });
         })()}
       </section>
     </main>

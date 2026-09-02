@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import {
   clubs,
@@ -20,6 +20,7 @@ import {
 } from "@/lib/feed-ranking";
 import { getCommentsForPost, getEngagementCounts, getLikedPostIds } from "@/lib/data/social";
 import { getBlockedTravellerIds } from "@/lib/data/moderation";
+import { resolvePostContexts, type PostContextCard, type PostContextType } from "@/lib/data/post-context";
 
 const FEED_WINDOW_DAYS = 30;
 
@@ -59,6 +60,7 @@ export type FeedEntry =
       liked: boolean;
       canInteract: boolean;
       comments: Awaited<ReturnType<typeof getCommentsForPost>>;
+      context: PostContextCard | null;
     };
 
 /** The public Social feed — generated items ranked alongside live user
@@ -134,10 +136,11 @@ export async function getRankedFeed(viewerTravellerId: string | null, limit = 30
       .from(posts)
       .innerJoin(travellerProfiles, eq(travellerProfiles.id, posts.travellerId))
       .innerJoin(users, eq(users.id, travellerProfiles.userId))
-      // Only ever hydrate visible posts — hidden/removed/pending_review
-      // posts simply drop out of the feed here (their feed_items row can
-      // still exist, it just resolves to nothing to render).
-      .where(and(inArray(posts.id, postIds), eq(posts.status, "visible")));
+      // Only ever hydrate visible, public posts — hidden/removed/
+      // pending_review posts and posts addressed to a club (never the
+      // global feed) simply drop out here (their feed_items row can still
+      // exist, it just resolves to nothing to render).
+      .where(and(inArray(posts.id, postIds), eq(posts.status, "visible"), isNull(posts.audienceClubId)));
     livePosts = new Map(
       rows.map((r) => [
         r.post.id,
@@ -172,6 +175,11 @@ export async function getRankedFeed(viewerTravellerId: string | null, limit = 30
     }
   }
 
+  const contextRefs = [...livePosts.values()]
+    .filter((live) => live.post.contextType && live.post.contextId)
+    .map((live) => ({ type: live.post.contextType as PostContextType, id: live.post.contextId as string }));
+  const contextMap = await resolvePostContexts(contextRefs);
+
   const entries: FeedEntry[] = [];
   for (const { row } of scored) {
     if (row.type === "user_post") {
@@ -191,6 +199,10 @@ export async function getRankedFeed(viewerTravellerId: string | null, limit = 30
         liked: likedIds.has(live.post.id),
         canInteract: Boolean(viewerTravellerId),
         comments: commentsMap.get(live.post.id) ?? [],
+        context:
+          live.post.contextType && live.post.contextId
+            ? (contextMap.get(`${live.post.contextType}:${live.post.contextId}`) ?? null)
+            : null,
       });
     } else {
       entries.push({

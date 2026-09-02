@@ -9,7 +9,6 @@ import { LiteModeToggle } from "@/components/lite-mode-toggle";
 import { LogoutButton } from "@/components/logout-button";
 import { PassportGrid } from "@/components/passport-grid";
 import { PassportTabs } from "@/components/passport-tabs";
-import { PostCard } from "@/components/post-card";
 import { ReviewForm } from "@/components/review-form";
 import { PASSPORT_TABS, type PassportTabKey } from "@/lib/passport-tabs";
 import { requireRole } from "@/lib/auth";
@@ -21,9 +20,12 @@ import {
   getCommentsForPost,
   getEngagementCounts,
   getLikedPostIds,
+  getMyClubs,
   getPostImageIds,
   getPostsByTraveller,
 } from "@/lib/data/social";
+import { resolvePostContexts, type PostContextType } from "@/lib/data/post-context";
+import { PostsTab } from "@/components/posts-tab";
 import { getPassportProgress, getTravellerBookings, getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { getMyBlockedList } from "@/lib/data/moderation";
 import { BlockedAccountsList } from "@/components/blocked-accounts-list";
@@ -39,7 +41,7 @@ export default async function PassportPage({
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
   if (!travellerProfile) return null;
 
-  const [user, passportProgress, bookingRows, reviewableRows, rewardsSummary, deals, claimedIds, postRows, blockedList] =
+  const [user, passportProgress, bookingRows, reviewableRows, rewardsSummary, deals, claimedIds, postRows, blockedList, myClubs] =
     await Promise.all([
       db.select().from(users).where(eq(users.id, session.userId)).limit(1).then((r) => r[0]),
       getPassportProgress(travellerProfile.id),
@@ -50,6 +52,7 @@ export default async function PassportPage({
       getClaimedDealIds(travellerProfile.id),
       getPostsByTraveller(travellerProfile.id),
       getMyBlockedList(travellerProfile.id),
+      getMyClubs(travellerProfile.id),
     ]);
   const reviewableBookingIds = new Set(reviewableRows.map((r) => r.booking.id));
   const { progress, stampCount, totalJourneys, grandPrizeQualified } = passportProgress;
@@ -64,6 +67,11 @@ export default async function PassportPage({
   );
   const commentsMap = new Map(commentsByPost);
   const imageIdsMap = await getPostImageIds(postIds);
+  const contextMap = await resolvePostContexts(
+    postRows
+      .filter((r) => r.post.contextType && r.post.contextId)
+      .map((r) => ({ type: r.post.contextType as PostContextType, id: r.post.contextId as string })),
+  );
 
   const defaultTab: PassportTabKey = stampCount > 0 ? "stamps" : bookingRows.length > 0 ? "bookings" : "stamps";
   const activeTab: PassportTabKey = PASSPORT_TABS.some((t) => t.key === tab)
@@ -141,6 +149,8 @@ export default async function PassportPage({
             likedPostIds={likedPostIds}
             commentsMap={commentsMap}
             imageIdsMap={imageIdsMap}
+            contextMap={contextMap}
+            myClubs={myClubs}
           />
         )}
         {activeTab === "account" && (
@@ -376,72 +386,6 @@ function RewardsTab({
           })
         )}
       </section>
-    </div>
-  );
-}
-
-function PostsTab({
-  postRows,
-  authorTravellerId,
-  authorName,
-  authorUsername,
-  likeMap,
-  commentMap,
-  likedPostIds,
-  commentsMap,
-  imageIdsMap,
-}: {
-  postRows: Awaited<ReturnType<typeof getPostsByTraveller>>;
-  authorTravellerId: string;
-  authorName: string;
-  authorUsername: string | null;
-  likeMap: Map<string, number>;
-  commentMap: Map<string, number>;
-  likedPostIds: Set<string>;
-  commentsMap: Map<string, Awaited<ReturnType<typeof getCommentsForPost>>>;
-  imageIdsMap: Map<string, string[]>;
-}) {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="font-display text-xl font-semibold text-forest-900">Your posts</h2>
-        <p className="mt-1 text-sm text-forest-800/60">Everything you&apos;ve shared across Wano.</p>
-      </div>
-
-      {postRows.length === 0 ? (
-        <div className="rounded-2xl border border-forest-900/10 bg-white p-6 text-center">
-          <p className="text-sm text-forest-800/60">
-            You haven&apos;t posted anything yet — share something on Social.
-          </p>
-          <Link
-            href="/social"
-            className="mt-3 inline-flex rounded-full bg-forest-800 px-4 py-2 text-sm font-semibold text-white"
-          >
-            Go to Social
-          </Link>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {postRows.map(({ post }) => (
-            <PostCard
-              key={post.id}
-              postId={post.id}
-              authorTravellerId={authorTravellerId}
-              authorName={authorName}
-              authorUsername={authorUsername}
-              content={post.content}
-              imageUrl={post.imageUrl}
-              imageIds={imageIdsMap.get(post.id) ?? []}
-              createdAt={new Date(post.createdAt)}
-              likeCount={likeMap.get(post.id) ?? 0}
-              commentCount={commentMap.get(post.id) ?? 0}
-              liked={likedPostIds.has(post.id)}
-              canInteract
-              comments={commentsMap.get(post.id) ?? []}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 }

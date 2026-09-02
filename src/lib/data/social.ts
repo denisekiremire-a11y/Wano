@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, inArray, isNull, lt } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, lt } from "drizzle-orm";
 import { db } from "@/db";
 import {
   clubMemberships,
@@ -6,7 +6,6 @@ import {
   events,
   follows,
   interests,
-  listings,
   postComments,
   postImages,
   postLikes,
@@ -17,41 +16,24 @@ import {
 } from "@/db/schema";
 import { AFCON_CLUB_ENABLED, LAUNCH_CLUB_CATEGORY_KEYS } from "@/lib/feature-flags";
 
-/** The general Social feed — deliberately excludes posts tagged to a
- * listing/event/club: those live only on that place/event/club's own page
- * (via getMediaPostsFor), not mixed into the general feed. */
-export async function getFeedPosts(limit = 30) {
-  const rows = await db
-    .select({ post: posts, author: travellerProfiles, authorUser: users })
-    .from(posts)
-    .innerJoin(travellerProfiles, eq(travellerProfiles.id, posts.travellerId))
-    .innerJoin(users, eq(users.id, travellerProfiles.userId))
-    .where(and(isNull(posts.listingId), isNull(posts.eventId), isNull(posts.clubId)))
-    .orderBy(desc(posts.createdAt))
-    .limit(limit);
-  return rows;
-}
-
 export async function getPostsByTraveller(travellerId: string) {
   return db
-    .select({ post: posts, listing: listings, event: events, club: clubs })
+    .select({ post: posts, audienceClub: clubs })
     .from(posts)
-    .leftJoin(listings, eq(listings.id, posts.listingId))
-    .leftJoin(events, eq(events.id, posts.eventId))
-    .leftJoin(clubs, eq(clubs.id, posts.clubId))
+    .leftJoin(clubs, eq(clubs.id, posts.audienceClubId))
     .where(eq(posts.travellerId, travellerId))
     .orderBy(desc(posts.createdAt));
 }
 
-/** Media feed for a listing/club/event detail page — posts tagged to it,
- * newest first, for display as a photo/moments grid. */
+/** Media feed for a listing/event detail page ("What people are saying"),
+ * or a club's own page (posts addressed to it) — newest first, visible only. */
 export async function getMediaPostsFor(target: { listingId?: string; clubId?: string; eventId?: string }) {
   const condition = target.listingId
-    ? eq(posts.listingId, target.listingId)
-    : target.clubId
-      ? eq(posts.clubId, target.clubId)
-      : target.eventId
-        ? eq(posts.eventId, target.eventId)
+    ? and(eq(posts.contextType, "listing"), eq(posts.contextId, target.listingId))
+    : target.eventId
+      ? and(eq(posts.contextType, "event"), eq(posts.contextId, target.eventId))
+      : target.clubId
+        ? eq(posts.audienceClubId, target.clubId)
         : undefined;
   if (!condition) return [];
 
@@ -60,7 +42,7 @@ export async function getMediaPostsFor(target: { listingId?: string; clubId?: st
     .from(posts)
     .innerJoin(travellerProfiles, eq(travellerProfiles.id, posts.travellerId))
     .innerJoin(users, eq(users.id, travellerProfiles.userId))
-    .where(condition)
+    .where(and(condition, eq(posts.status, "visible")))
     .orderBy(desc(posts.createdAt));
 }
 
@@ -278,6 +260,17 @@ export async function hasUpcomingMeetup(clubId: string) {
     .where(and(eq(events.clubId, clubId), gte(events.startAt, new Date())))
     .limit(1);
   return Boolean(row);
+}
+
+/** Clubs a traveller belongs to — for the "post to this club instead"
+ * audience picker on their own posts. */
+export async function getMyClubs(travellerId: string) {
+  const rows = await db
+    .select({ club: clubs })
+    .from(clubMemberships)
+    .innerJoin(clubs, eq(clubs.id, clubMemberships.clubId))
+    .where(eq(clubMemberships.travellerId, travellerId));
+  return rows.map((r) => r.club);
 }
 
 export async function getClubMembers(clubId: string) {
