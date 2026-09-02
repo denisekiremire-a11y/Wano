@@ -2,7 +2,7 @@
 
 import { requireRole } from "@/lib/auth";
 import { backfillFeedItems } from "@/lib/feed-generators";
-import { seedJournalPosts, seedLaunchClubs } from "@/lib/seed-content";
+import { backfillEditorialJourneysJ1, seedJournalPosts, seedLaunchClubs } from "@/lib/seed-content";
 
 /** One-time (but safe to re-run) production bootstrap for Milestone S:
  * seeds the 6 Journal guide posts and the 4 launch clubs (with placeholder
@@ -18,4 +18,12 @@ export async function runMilestoneSBackfillAction() {
   const feed = await backfillFeedItems();
 
   return { journal, clubs: clubsResult, feed };
+}
+
+/** One-time (safe to re-run) production bootstrap for Milestone J, Phase
+ * J1: backfills cost range/region/duration and day-by-day stops for the 5
+ * editorial journeys, then publishes each once it has both. */
+export async function runJourneysJ1BackfillAction() {
+  await requireRole("admin");
+  return backfillEditorialJourneysJ1();
 }

@@ -88,6 +88,22 @@ export const moderationActionEnum = pgEnum("moderation_action", [
   "warn",
   "suspend",
 ]);
+export const journeyKindEnum = pgEnum("journey_kind", ["editorial", "user", "creator"]);
+export const journeyStatusEnum = pgEnum("journey_status", [
+  "draft",
+  "in_review",
+  "published",
+  "unlisted",
+  "rejected",
+]);
+export const budgetBandEnum = pgEnum("budget_band", ["budget", "mid", "premium"]);
+export const journeyStopTypeEnum = pgEnum("journey_stop_type", ["stay", "do", "eat", "move", "rest"]);
+export const supplyLeadStatusEnum = pgEnum("supply_lead_status", [
+  "open",
+  "contacted",
+  "listed",
+  "dismissed",
+]);
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -130,6 +146,10 @@ export const travellerProfiles = pgTable("traveller_profiles", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// A journey is the atomic shareable/bookable unit — an ordered trip, not a
+// single listing (see journeyStops). editorial ones are Wano's own 5
+// campaign journeys; user/creator kinds (Milestone J phases 2-3) reuse the
+// exact same shape, differing only in authorId, review gate, and byline.
 export const journeys = pgTable("journeys", {
   id: uuid("id").primaryKey().defaultRandom(),
   slug: text("slug").notNull().unique(),
@@ -140,6 +160,95 @@ export const journeys = pgTable("journeys", {
   targetAudience: text("target_audience").notNull(),
   heroImage: text("hero_image").notNull(),
   sortOrder: integer("sort_order").notNull().default(0),
+  kind: journeyKindEnum("kind").notNull().default("editorial"),
+  // Null for editorial journeys — set for a user's auto-drafted recap or a
+  // creator's published journey (both post-launch phases).
+  authorId: uuid("author_id").references(() => travellerProfiles.id, { onDelete: "set null" }),
+  // Free-text on purpose (not a fixed enum) — Uganda-only today, ready to
+  // cover the wider East Africa region without a schema change later.
+  region: text("region"),
+  city: text("city"),
+  durationDays: integer("duration_days"),
+  budgetBand: budgetBandEnum("budget_band"),
+  // "What does this actually cost" — a journey can't publish without both
+  // of these set (enforced in the admin action, not the DB, so a draft can
+  // still be saved incomplete).
+  estCostMinMinor: integer("est_cost_min_minor"),
+  estCostMaxMinor: integer("est_cost_max_minor"),
+  currency: text("currency").notNull().default("UGX"),
+  bestSeason: text("best_season"),
+  difficulty: text("difficulty"),
+  status: journeyStatusEnum("status").notNull().default("draft"),
+  publishedAt: timestamp("published_at", { withTimezone: true }),
+  viewCount: integer("view_count").notNull().default(0),
+  bookingCount: integer("booking_count").notNull().default(0),
+  isFeatured: boolean("is_featured").notNull().default(false),
+});
+
+// One ordered stop in a journey's itinerary. A stop with listingId/eventId
+// renders a real booking CTA; a custom stop (customName set, no listing/
+// event) is information-only and generates a supplyLeads row — a real
+// place someone travelled to that Wano doesn't list yet.
+export const journeyStops = pgTable("journey_stops", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  journeyId: uuid("journey_id")
+    .notNull()
+    .references(() => journeys.id, { onDelete: "cascade" }),
+  dayNumber: integer("day_number").notNull(),
+  orderIndex: integer("order_index").notNull().default(0),
+  listingId: uuid("listing_id").references(() => listings.id, { onDelete: "set null" }),
+  eventId: uuid("event_id").references((): AnyPgColumn => events.id, { onDelete: "set null" }),
+  customName: text("custom_name"),
+  customAddress: text("custom_address"),
+  customLat: numeric("custom_lat", { precision: 9, scale: 6 }),
+  customLng: numeric("custom_lng", { precision: 9, scale: 6 }),
+  note: text("note"),
+  durationMinutes: integer("duration_minutes"),
+  estCostMinor: integer("est_cost_minor"),
+  stopType: journeyStopTypeEnum("stop_type").notNull().default("do"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const journeySaves = pgTable(
+  "journey_saves",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    journeyId: uuid("journey_id")
+      .notNull()
+      .references(() => journeys.id, { onDelete: "cascade" }),
+    travellerId: uuid("traveller_id")
+      .notNull()
+      .references(() => travellerProfiles.id, { onDelete: "cascade" }),
+    savedAt: timestamp("saved_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique().on(table.journeyId, table.travellerId)],
+);
+
+export const journeyMedia = pgTable("journey_media", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  journeyId: uuid("journey_id")
+    .notNull()
+    .references(() => journeys.id, { onDelete: "cascade" }),
+  storageRef: text("storage_ref").notNull(),
+  caption: text("caption"),
+  orderIndex: integer("order_index").notNull().default(0),
+  credit: text("credit"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// A real place a traveller (or an admin curating a journey) referenced that
+// Wano doesn't list yet — one of the better provider-acquisition channels:
+// ops works this queue to recruit the vendor onto the platform.
+export const supplyLeads = pgTable("supply_leads", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  journeyStopId: uuid("journey_stop_id")
+    .notNull()
+    .references(() => journeyStops.id, { onDelete: "cascade" }),
+  customName: text("custom_name").notNull(),
+  customAddress: text("custom_address"),
+  city: text("city"),
+  status: supplyLeadStatusEnum("status").notNull().default("open"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // A vendor's category now comes from what they list, not the account itself —
@@ -853,6 +962,24 @@ export const journeysRelations = relations(journeys, ({ many }) => ({
   bookings: many(bookings),
   stamps: many(stamps),
   promoCodes: many(promoCodes),
+  stops: many(journeyStops),
+  saves: many(journeySaves),
+  media: many(journeyMedia),
+}));
+
+export const journeyStopsRelations = relations(journeyStops, ({ one, many }) => ({
+  journey: one(journeys, { fields: [journeyStops.journeyId], references: [journeys.id] }),
+  listing: one(listings, { fields: [journeyStops.listingId], references: [listings.id] }),
+  supplyLeads: many(supplyLeads),
+}));
+
+export const journeySavesRelations = relations(journeySaves, ({ one }) => ({
+  journey: one(journeys, { fields: [journeySaves.journeyId], references: [journeys.id] }),
+  traveller: one(travellerProfiles, { fields: [journeySaves.travellerId], references: [travellerProfiles.id] }),
+}));
+
+export const supplyLeadsRelations = relations(supplyLeads, ({ one }) => ({
+  journeyStop: one(journeyStops, { fields: [supplyLeads.journeyStopId], references: [journeyStops.id] }),
 }));
 
 export const listingsRelations = relations(listings, ({ one, many }) => ({

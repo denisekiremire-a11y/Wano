@@ -28,12 +28,24 @@ export default async function AdminOverviewPage() {
             The success measures behind the Wano platform.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Link
             href="/admin/bookings"
             className="rounded-full border border-forest-800/20 px-4 py-2 text-sm font-semibold text-forest-800"
           >
             Manage bookings
+          </Link>
+          <Link
+            href="/admin/journeys"
+            className="rounded-full border border-forest-800/20 px-4 py-2 text-sm font-semibold text-forest-800"
+          >
+            Manage journeys
+          </Link>
+          <Link
+            href="/admin/supply-leads"
+            className="rounded-full border border-forest-800/20 px-4 py-2 text-sm font-semibold text-forest-800"
+          >
+            Supply leads
           </Link>
           <Link
             href="/admin/vendors"

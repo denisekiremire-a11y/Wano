@@ -1,15 +1,18 @@
-import { and, eq, ilike, or } from "drizzle-orm";
+import { and, count, desc, eq, ilike, or } from "drizzle-orm";
 import { db } from "@/db";
 import {
+  events,
   experienceDetails,
   hotelDetails,
   journeys,
+  journeyStops,
   listingJourneys,
   listings,
   offers,
   promoCodes,
   restaurantDetails,
   savedListings,
+  supplyLeads,
   travellerProfiles,
   users,
   vendorProfiles,
@@ -185,4 +188,75 @@ export async function getJourneyTagsForListings(listingIds: string[]) {
     map.set(row.listingId, existing);
   }
   return map;
+}
+
+/** Day-by-day itinerary for a journey's detail page, with the listing/event
+ * a stop books joined in. A custom stop (no listingId/eventId) renders
+ * information-only from customName/customAddress. */
+export async function getJourneyStops(journeyId: string) {
+  const rows = await db
+    .select({ stop: journeyStops, listing: listings, event: events })
+    .from(journeyStops)
+    .leftJoin(listings, eq(listings.id, journeyStops.listingId))
+    .leftJoin(events, eq(events.id, journeyStops.eventId))
+    .where(eq(journeyStops.journeyId, journeyId))
+    .orderBy(journeyStops.dayNumber, journeyStops.orderIndex);
+  return rows;
+}
+
+/** "Featured in these journeys" on a listing's detail page — published
+ * journeys that actually route to this exact listing via a real stop, not
+ * just the looser theme tag (listingJourneys). */
+export async function getJourneysFeaturingListing(listingId: string) {
+  const rows = await db
+    .selectDistinct({ journey: journeys })
+    .from(journeyStops)
+    .innerJoin(journeys, eq(journeys.id, journeyStops.journeyId))
+    .where(and(eq(journeyStops.listingId, listingId), eq(journeys.status, "published")));
+  return rows.map((r) => r.journey);
+}
+
+/** Every journey for the admin list, with a stop count so incomplete ones
+ * (no stops yet, no cost range) are obvious at a glance. */
+export async function getAllJourneysForAdmin() {
+  const [rows, stopCounts] = await Promise.all([
+    db.select().from(journeys).orderBy(journeys.sortOrder, journeys.slug),
+    db.select({ journeyId: journeyStops.journeyId, total: count() }).from(journeyStops).groupBy(journeyStops.journeyId),
+  ]);
+  const countMap = new Map(stopCounts.map((r) => [r.journeyId, r.total]));
+  return rows.map((journey) => ({ journey, stopCount: countMap.get(journey.id) ?? 0 }));
+}
+
+export async function getJourneyStopById(stopId: string) {
+  const [row] = await db.select().from(journeyStops).where(eq(journeyStops.id, stopId)).limit(1);
+  return row ?? null;
+}
+
+/** The ops queue — real places referenced in a journey that aren't on Wano
+ * yet, grouped with enough context (journey + stop) to actually chase. */
+export async function getSupplyLeads(statusFilter?: "open" | "contacted" | "listed" | "dismissed") {
+  const rows = await db
+    .select({ lead: supplyLeads, stop: journeyStops, journey: journeys })
+    .from(supplyLeads)
+    .innerJoin(journeyStops, eq(journeyStops.id, supplyLeads.journeyStopId))
+    .innerJoin(journeys, eq(journeys.id, journeyStops.journeyId))
+    .where(statusFilter ? eq(supplyLeads.status, statusFilter) : undefined)
+    .orderBy(desc(supplyLeads.createdAt));
+  return rows;
+}
+
+/** Active listings for the admin stop-picker dropdown. */
+export async function getListingOptions() {
+  const rows = await db
+    .select({ id: listings.id, title: listings.title, vendorName: vendorProfiles.businessName })
+    .from(listings)
+    .innerJoin(vendorProfiles, eq(vendorProfiles.id, listings.vendorProfileId))
+    .where(eq(listings.active, true))
+    .orderBy(listings.title);
+  return rows;
+}
+
+/** Guard used before publishing — "what does this cost" must be answered. */
+export function journeyHasCostRange(journey: { estCostMinMinor: number | null; estCostMaxMinor: number | null }) {
+  return journey.estCostMinMinor != null && journey.estCostMaxMinor != null;
 }

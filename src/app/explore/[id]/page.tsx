@@ -8,7 +8,7 @@ import { VerifiedBadge } from "@/components/verified-badge";
 import { getBirthdayPerksForListing } from "@/lib/data/birthday";
 import {
   getInterestedTravellers,
-  getJourneyTagsForListing,
+  getJourneysFeaturingListing,
   getListingById,
   getListingTypeDetails,
 } from "@/lib/data/journeys";
@@ -61,7 +61,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
   }
 
   const [tags, birthdayPerks, rating, reviews, interested, media, typeDetails] = await Promise.all([
-    getJourneyTagsForListing(listing.id),
+    getJourneysFeaturingListing(listing.id),
     getBirthdayPerksForListing(listing.id),
     getRatingSummary(listing.id),
     getReviewsForListing(listing.id),
@@ -108,16 +108,19 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
         <p className="mt-2 font-medium text-nile-700">{listing.priceHint}</p>
 
         {tags.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {tags.map((t) => (
-              <Link
-                key={t.id}
-                href={`/journeys/${t.slug}`}
-                className="rounded-full bg-marigold-50 px-2 py-0.5 text-[11px] font-medium text-marigold-800"
-              >
-                {t.name}
-              </Link>
-            ))}
+          <div className="mt-3">
+            <p className="text-xs font-medium text-forest-800/50">Featured in these journeys</p>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {tags.map((t) => (
+                <Link
+                  key={t.id}
+                  href={`/journeys/${t.slug}`}
+                  className="rounded-full bg-marigold-50 px-2 py-0.5 text-[11px] font-medium text-marigold-800"
+                >
+                  {t.name}
+                </Link>
+              ))}
+            </div>
           </div>
         )}
 

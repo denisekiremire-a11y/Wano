@@ -3,10 +3,19 @@ import { notFound } from "next/navigation";
 import { bookListingFormAction } from "@/lib/actions/booking-actions";
 import { JourneyArt } from "@/components/journey-art";
 import { OfferTeaser } from "@/components/offer-teaser";
-import { getJourneyBySlug, getPublicListingsForJourney } from "@/lib/data/journeys";
+import { getJourneyBySlug, getJourneyStops, getPublicListingsForJourney, journeyHasCostRange } from "@/lib/data/journeys";
 import { getPassportProgress, getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { journeyTheme } from "@/lib/journey-theme";
 import { getSession } from "@/lib/session";
+import { formatCostRange } from "@/lib/currency";
+
+const STOP_TYPE_LABEL: Record<string, string> = {
+  stay: "🛏️ Stay",
+  do: "🎟️ Do",
+  eat: "🍽️ Eat",
+  move: "🚗 Move",
+  rest: "🧘 Rest",
+};
 
 export default async function JourneyDetailPage({
   params,
@@ -17,10 +26,19 @@ export default async function JourneyDetailPage({
   const journey = await getJourneyBySlug(slug);
   if (!journey) notFound();
 
-  const [session, partners] = await Promise.all([
+  const [session, partners, stops] = await Promise.all([
     getSession(),
     getPublicListingsForJourney(journey.id),
+    getJourneyStops(journey.id),
   ]);
+
+  const stopsByDay = new Map<number, typeof stops>();
+  for (const row of stops) {
+    const list = stopsByDay.get(row.stop.dayNumber) ?? [];
+    list.push(row);
+    stopsByDay.set(row.stop.dayNumber, list);
+  }
+  const days = [...stopsByDay.keys()].sort((a, b) => a - b);
 
   let unlocked = false;
   if (session?.role === "traveller") {
@@ -49,12 +67,58 @@ export default async function JourneyDetailPage({
           <div className="mt-4 flex flex-wrap gap-2 text-sm">
             <span className="rounded-full bg-white/15 px-3 py-1">{journey.location}</span>
             <span className="rounded-full bg-white/15 px-3 py-1">{journey.targetAudience}</span>
+            {journeyHasCostRange(journey) && (
+              <span className="rounded-full bg-white/15 px-3 py-1 font-semibold">
+                {formatCostRange(journey.estCostMinMinor!, journey.estCostMaxMinor!, journey.currency)}
+              </span>
+            )}
+            {journey.durationDays && (
+              <span className="rounded-full bg-white/15 px-3 py-1">
+                {journey.durationDays} {journey.durationDays === 1 ? "day" : "days"}
+              </span>
+            )}
+            {journey.difficulty && <span className="rounded-full bg-white/15 px-3 py-1">{journey.difficulty}</span>}
           </div>
+          {journey.bestSeason && <p className="mt-2 text-sm text-white/70">Best: {journey.bestSeason}</p>}
         </div>
       </section>
 
       <section className="mx-auto max-w-4xl px-4 py-10 md:px-6">
         <p className="max-w-2xl text-forest-800/80">{journey.description}</p>
+
+        {days.length > 0 && (
+          <div className="mt-6">
+            <h2 className="font-display text-xl font-semibold text-forest-900">The itinerary</h2>
+            <div className="mt-3 space-y-4">
+              {days.map((day) => (
+                <div key={day}>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-forest-800/50">Day {day}</p>
+                  <div className="mt-2 space-y-2">
+                    {stopsByDay.get(day)!.map(({ stop, listing, event }) => {
+                      const href = listing ? `/explore/${listing.id}` : event ? `/events/${event.id}` : null;
+                      const title = listing?.title ?? event?.title ?? stop.customName ?? "Stop";
+                      const content = (
+                        <div className="rounded-xl border border-forest-900/10 bg-white p-3">
+                          <p className="text-sm font-medium text-forest-900">
+                            {STOP_TYPE_LABEL[stop.stopType] ?? stop.stopType} {title}
+                          </p>
+                          {stop.note && <p className="mt-0.5 text-xs text-forest-800/60">{stop.note}</p>}
+                        </div>
+                      );
+                      return href ? (
+                        <Link key={stop.id} href={href} className="block transition hover:border-forest-900/20">
+                          {content}
+                        </Link>
+                      ) : (
+                        <div key={stop.id}>{content}</div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {session?.role === "traveller" && (
           <p

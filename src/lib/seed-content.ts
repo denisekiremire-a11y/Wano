@@ -5,7 +5,7 @@
 import bcrypt from "bcryptjs";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { clubs, events, interests, journalPosts, users } from "@/db/schema";
+import { clubs, events, interests, journalPosts, journeys, journeyStops, listings, users } from "@/db/schema";
 import { generateClubMeetupItem, generateJournalPublishedItem } from "@/lib/feed-generators";
 import { uniqueSlug } from "@/lib/slug";
 
@@ -350,4 +350,227 @@ export async function seedLaunchClubs(adminUserId: string) {
   }
 
   return { clubsCreated, clubsBackfilled, meetupsCreated, interestsCreated };
+}
+
+// Migration content for Milestone J, Phase J1 — turns the 5 read-only
+// campaign journeys into real, published, database-backed itineraries with
+// day-by-day stops linked to the real listings already seeded for them
+// (see vendorSeed's journeySlugs in src/db/seed.ts). Cost ranges are
+// editorial estimates, same basis as the listing priceHints they're built
+// from — not pulled from a live pricing feed.
+const JOURNEY_DETAILS: Record<
+  string,
+  {
+    region: string;
+    city: string | null;
+    durationDays: number;
+    budgetBand: "budget" | "mid" | "premium";
+    estCostMinMinor: number;
+    estCostMaxMinor: number;
+    bestSeason: string;
+    difficulty: string;
+    stops: {
+      dayNumber: number;
+      orderIndex: number;
+      listingTitle: string;
+      stopType: "stay" | "do" | "eat" | "move" | "rest";
+      note: string;
+    }[];
+  }
+> = {
+  "relax-unwind": {
+    region: "Jinja, Lake Victoria & Kampala",
+    city: "Jinja",
+    durationDays: 3,
+    budgetBand: "mid",
+    estCostMinMinor: 700_000,
+    estCostMaxMinor: 1_400_000,
+    bestSeason: "Year-round",
+    difficulty: "Easy",
+    stops: [
+      {
+        dayNumber: 1,
+        orderIndex: 0,
+        listingTitle: "Riverside Deluxe Escape",
+        stopType: "stay",
+        note: "Check in and settle by the river — spa access and a sunset cruise are included.",
+      },
+      {
+        dayNumber: 2,
+        orderIndex: 0,
+        listingTitle: "Riverside Spa Day Package",
+        stopType: "rest",
+        note: "A full spa day — massage, facial, and the private riverside relaxation lounge.",
+      },
+    ],
+  },
+  "adrenaline-on-the-nile": {
+    region: "Jinja / Bujagali Falls",
+    city: "Jinja",
+    durationDays: 2,
+    budgetBand: "mid",
+    estCostMinMinor: 550_000,
+    estCostMaxMinor: 900_000,
+    bestSeason: "Jun–Sep & Dec–Feb (drier river conditions)",
+    difficulty: "Challenging",
+    stops: [
+      {
+        dayNumber: 1,
+        orderIndex: 0,
+        listingTitle: "Riverside Deluxe Escape",
+        stopType: "stay",
+        note: "Base yourself riverside before the big day.",
+      },
+      {
+        dayNumber: 2,
+        orderIndex: 0,
+        listingTitle: "Full-Day Rafting & Bungee Combo",
+        stopType: "do",
+        note: "Grade 5 rapids in the morning, bungee jump at sunset — safety gear, guide and lunch included.",
+      },
+    ],
+  },
+  "big-five-safari": {
+    region: "Queen Elizabeth NP, Kazinga Channel & Murchison Falls",
+    city: null,
+    durationDays: 3,
+    budgetBand: "premium",
+    estCostMinMinor: 1_500_000,
+    estCostMaxMinor: 1_900_000,
+    bestSeason: "Jun–Sep & Dec–Feb (dry season game viewing)",
+    difficulty: "Moderate",
+    stops: [
+      {
+        dayNumber: 1,
+        orderIndex: 0,
+        listingTitle: "3-Day Big Five Explorer",
+        stopType: "do",
+        note: "Two game drives and a Kazinga Channel boat cruise — park fees and guide included.",
+      },
+    ],
+  },
+  "gorilla-trekking": {
+    region: "Bwindi Impenetrable Forest & Mgahinga",
+    city: null,
+    durationDays: 3,
+    budgetBand: "premium",
+    estCostMinMinor: 2_700_000,
+    estCostMaxMinor: 3_200_000,
+    bestSeason: "Jun–Sep & Dec–Feb (dry season trekking)",
+    difficulty: "Challenging",
+    stops: [
+      {
+        dayNumber: 1,
+        orderIndex: 0,
+        listingTitle: "Gorilla Permit & Lodge Package",
+        stopType: "stay",
+        note: "Permit handling and two nights at the lodge — guided trek to a habituated family included.",
+      },
+    ],
+  },
+  "kampala-city-experience": {
+    region: "Kampala & Entebbe",
+    city: "Kampala",
+    durationDays: 1,
+    budgetBand: "budget",
+    estCostMinMinor: 250_000,
+    estCostMaxMinor: 400_000,
+    bestSeason: "Year-round",
+    difficulty: "Easy",
+    stops: [
+      {
+        dayNumber: 1,
+        orderIndex: 0,
+        listingTitle: "Kampala & Entebbe Day Tour",
+        stopType: "do",
+        note: "Uganda Museum, Owino Market, and UWEC Entebbe in one day.",
+      },
+      {
+        dayNumber: 1,
+        orderIndex: 1,
+        listingTitle: "Le Chateau Brasserie",
+        stopType: "eat",
+        note: "Round off the day with Ugandan and continental dishes.",
+      },
+    ],
+  },
+};
+
+/** Idempotent — safe to click more than once. Backfills cost range, region/
+ * city, duration, and stops for the 5 editorial journeys, then publishes
+ * them. Skips a journey's stops entirely if it already has any (so hand
+ * edits made afterward in /admin/journeys are never clobbered by a rerun). */
+export async function backfillEditorialJourneysJ1() {
+  let journeysUpdated = 0;
+  let stopsCreated = 0;
+  let journeysPublished = 0;
+  const missingListings: string[] = [];
+
+  for (const [slug, details] of Object.entries(JOURNEY_DETAILS)) {
+    const [journey] = await db.select().from(journeys).where(eq(journeys.slug, slug)).limit(1);
+    if (!journey) continue;
+
+    await db
+      .update(journeys)
+      .set({
+        kind: "editorial",
+        region: details.region,
+        city: details.city,
+        durationDays: details.durationDays,
+        budgetBand: details.budgetBand,
+        estCostMinMinor: details.estCostMinMinor,
+        estCostMaxMinor: details.estCostMaxMinor,
+        currency: "UGX",
+        bestSeason: details.bestSeason,
+        difficulty: details.difficulty,
+        isFeatured: true,
+      })
+      .where(eq(journeys.id, journey.id));
+    journeysUpdated++;
+
+    const [existingStop] = await db
+      .select({ id: journeyStops.id })
+      .from(journeyStops)
+      .where(eq(journeyStops.journeyId, journey.id))
+      .limit(1);
+
+    if (!existingStop) {
+      for (const stop of details.stops) {
+        const [listing] = await db
+          .select({ id: listings.id })
+          .from(listings)
+          .where(eq(listings.title, stop.listingTitle))
+          .limit(1);
+        if (!listing) {
+          missingListings.push(`${slug}: ${stop.listingTitle}`);
+          continue;
+        }
+        await db.insert(journeyStops).values({
+          journeyId: journey.id,
+          dayNumber: stop.dayNumber,
+          orderIndex: stop.orderIndex,
+          listingId: listing.id,
+          stopType: stop.stopType,
+          note: stop.note,
+        });
+        stopsCreated++;
+      }
+    }
+
+    const [refreshed] = await db.select().from(journeys).where(eq(journeys.id, journey.id)).limit(1);
+    const [hasStop] = await db
+      .select({ id: journeyStops.id })
+      .from(journeyStops)
+      .where(eq(journeyStops.journeyId, journey.id))
+      .limit(1);
+    if (refreshed && refreshed.status !== "published" && hasStop) {
+      await db
+        .update(journeys)
+        .set({ status: "published", publishedAt: refreshed.publishedAt ?? new Date() })
+        .where(eq(journeys.id, journey.id));
+      journeysPublished++;
+    }
+  }
+
+  return { journeysUpdated, stopsCreated, journeysPublished, missingListings };
 }
