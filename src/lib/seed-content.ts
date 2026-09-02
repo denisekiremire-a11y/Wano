@@ -41,7 +41,8 @@ Registration is mandatory under Ugandan law — there's no way around bringing y
 
 ## Where to buy
 
-- **Entebbe International Airport**: kiosks in the arrivals hall, open for every flight. Slightly pricier, but you land connected.
+- **The Wano stand, Entebbe International Airport**: right in the arrivals hall — get your SIM set up and your ride into town booked in one stop.
+- **Other airport kiosks**: also in the arrivals hall, open for every flight. Slightly pricier, but you land connected.
 - **Kampala**: any MTN or Airtel shop, or countless street kiosks. Cheaper, and staff will usually set up data bundles for you on the spot.
 
 ## Data bundles
@@ -60,7 +61,7 @@ Buy a bundle, not pay-as-you-go — it's a fraction of the cost. A weekly 5–10
 
 ## The options
 
-**Ride-hailing apps** — the easiest for a first-time visitor. Book from inside the arrivals hall once you have SIM data; fixed pricing means no negotiation.
+**Ride-hailing apps** — the easiest for a first-time visitor. SafeBoda is Wano's ride partner: book straight from the arrivals hall once you have SIM data (the Wano stand sets both up in one stop); fixed upfront pricing means no negotiation.
 
 **Airport taxis** — parked directly outside arrivals. Agree the fare before getting in; it isn't metered.
 

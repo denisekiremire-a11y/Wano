@@ -76,6 +76,7 @@ const listingSchema = z.object({
   currency: z.string().min(1).max(10).optional().or(z.literal("")),
   priceUnit: z.string().max(20).optional().or(z.literal("")),
   isPublished: z.boolean(),
+  externalBookingUrl: z.string().url().max(300).optional().or(z.literal("")),
   latitude: z.coerce.number().min(-90).max(90).optional().or(z.literal("")),
   longitude: z.coerce.number().min(-180).max(180).optional().or(z.literal("")),
   journeyIds: z.array(z.string().uuid()).default([]),
@@ -114,6 +115,7 @@ export async function upsertVendorListingAction(
     currency: formData.get("currency") ?? "",
     priceUnit: formData.get("priceUnit") ?? "",
     isPublished: formData.get("isPublished") === "on",
+    externalBookingUrl: formData.get("externalBookingUrl") ?? "",
     latitude: formData.get("latitude") ?? "",
     longitude: formData.get("longitude") ?? "",
     journeyIds: formData.getAll("journeyIds"),
@@ -160,6 +162,7 @@ export async function upsertVendorListingAction(
     currency: d.currency || "UGX",
     priceUnit: d.priceUnit || null,
     isPublished: d.isPublished,
+    externalBookingUrl: d.externalBookingUrl || null,
     latitude: d.latitude === "" || d.latitude === undefined ? null : String(d.latitude),
     longitude: d.longitude === "" || d.longitude === undefined ? null : String(d.longitude),
   };

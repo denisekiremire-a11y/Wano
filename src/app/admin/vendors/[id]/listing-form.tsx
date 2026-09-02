@@ -33,6 +33,7 @@ export function ListingForm({
     currency: string;
     priceUnit: string | null;
     isPublished: boolean;
+    externalBookingUrl: string | null;
     latitude: string | null;
     longitude: string | null;
     discountText: string;
@@ -132,6 +133,21 @@ export function ListingForm({
             className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
           />
         </div>
+      </div>
+
+      <div>
+        <label className="text-sm font-medium text-forest-900">External booking URL (optional)</label>
+        <input
+          name="externalBookingUrl"
+          type="url"
+          placeholder="https://safeboda.com — leave blank for normal in-app booking"
+          defaultValue={existing?.externalBookingUrl ?? ""}
+          className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+        />
+        <p className="mt-1 text-xs text-forest-800/50">
+          Set this when the partner books on their own platform (e.g. a ride-hailing partner) — the Book
+          button becomes a link to this URL instead of Wano&apos;s own booking form.
+        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">

@@ -74,6 +74,7 @@ export default async function AdminVendorDetailPage({
                 currency: listingRow.listing.currency,
                 priceUnit: listingRow.listing.priceUnit,
                 isPublished: listingRow.listing.isPublished,
+                externalBookingUrl: listingRow.listing.externalBookingUrl,
                 latitude: listingRow.listing.latitude,
                 longitude: listingRow.listing.longitude,
                 discountText: listingRow.offer?.discountText ?? "",

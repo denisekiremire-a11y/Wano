@@ -176,7 +176,16 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
         )}
 
         <div className="mt-6">
-          {session?.role === "traveller" ? (
+          {listing.externalBookingUrl ? (
+            <a
+              href={listing.externalBookingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex rounded-full bg-forest-800 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-forest-700"
+            >
+              Book on {vendor.businessName} →
+            </a>
+          ) : session?.role === "traveller" ? (
             <form action={bookListingFormAction} className="space-y-2">
               <input type="hidden" name="listingId" value={listing.id} />
               {birthdayPerks.length > 0 && (

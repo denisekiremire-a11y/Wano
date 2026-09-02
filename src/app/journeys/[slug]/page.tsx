@@ -176,7 +176,16 @@ export default async function JourneyDetailPage({
                   />
                 )}
 
-                {session?.role === "traveller" ? (
+                {listing.externalBookingUrl ? (
+                  <a
+                    href={listing.externalBookingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full rounded-full bg-forest-800 px-4 py-2 text-center text-sm font-semibold text-white transition hover:bg-forest-700"
+                  >
+                    Book on {vendor.businessName} →
+                  </a>
+                ) : session?.role === "traveller" ? (
                   <form action={bookListingFormAction}>
                     <input type="hidden" name="listingId" value={listing.id} />
                     <input type="hidden" name="journeyId" value={journey.id} />
@@ -196,7 +205,9 @@ export default async function JourneyDetailPage({
                   </Link>
                 )}
                 <p className="text-center text-[11px] text-forest-800/50">
-                  Booking creates a direct contract with {vendor.businessName}.
+                  {listing.externalBookingUrl
+                    ? `Booking happens on ${vendor.businessName}'s own platform.`
+                    : `Booking creates a direct contract with ${vendor.businessName}.`}
                 </p>
               </div>
             </div>

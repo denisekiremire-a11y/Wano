@@ -290,6 +290,11 @@ export const listings = pgTable("listings", {
   priceMinor: integer("price_minor"),
   currency: text("currency").notNull().default("UGX"),
   priceUnit: text("price_unit"),
+  // Set for a listing whose booking happens on the partner's own platform
+  // (e.g. a ride-hailing partner) rather than through Wano — the booking
+  // CTA becomes an outbound link to this URL instead of the internal
+  // booking form. Null for every normal directly-bookable listing.
+  externalBookingUrl: text("external_booking_url"),
   latitude: numeric("latitude", { precision: 9, scale: 6 }),
   longitude: numeric("longitude", { precision: 9, scale: 6 }),
   active: boolean("active").notNull().default(true),
