@@ -7,6 +7,7 @@ import { VerifiedBadge } from "@/components/verified-badge";
 import type { BirthdayPerk } from "@/lib/data/birthday";
 import type { searchListings } from "@/lib/data/journeys";
 import type { RatingSummary } from "@/lib/data/reviews";
+import { formatListingPrice } from "@/lib/currency";
 import { listingTypeGradient, listingTypeLabels, type ListingType } from "@/lib/listing-type";
 import type { SessionPayload } from "@/lib/session";
 
@@ -67,7 +68,7 @@ export function PartnerCard({
         )}
 
         <p className="mt-2 text-sm text-forest-800/60">{listing.description}</p>
-        <p className="mt-2 text-sm font-medium text-nile-700">{listing.priceHint}</p>
+        <p className="mt-2 text-sm font-medium text-nile-700">{formatListingPrice(listing)}</p>
 
         {tags.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1.5">

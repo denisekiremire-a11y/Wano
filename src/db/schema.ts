@@ -282,10 +282,23 @@ export const listings = pgTable("listings", {
   type: listingTypeEnum("type").notNull().default("experience"),
   title: text("title").notNull(),
   description: text("description").notNull(),
-  priceHint: text("price_hint").notNull(),
+  // Price is structured, not a free-text string — no currency symbols or
+  // floats stored. priceLabel is the lead phrase ("From", "Mains from");
+  // priceUnit the trailing one ("/night", "/person", ""). The display
+  // formatter (formatListingPrice) is the one place these combine into text.
+  priceLabel: text("price_label").notNull().default("From"),
+  priceMinor: integer("price_minor"),
+  currency: text("currency").notNull().default("UGX"),
+  priceUnit: text("price_unit"),
   latitude: numeric("latitude", { precision: 9, scale: 6 }),
   longitude: numeric("longitude", { precision: 9, scale: 6 }),
   active: boolean("active").notNull().default(true),
+  // Platform-level publish gate, separate from the vendor's own active
+  // toggle — see listingMeetsPublishBar. Defaults true; a listing missing
+  // real content (description/price/location) is filtered out regardless
+  // of this flag, and a deliberately incomplete one (see supply leads,
+  // Milestone J) can be set false explicitly.
+  isPublished: boolean("is_published").notNull().default(true),
   viewCount: integer("view_count").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

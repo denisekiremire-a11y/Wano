@@ -28,7 +28,11 @@ export function ListingForm({
     type: ListingType;
     title: string;
     description: string;
-    priceHint: string;
+    priceLabel: string;
+    priceMinor: number | null;
+    currency: string;
+    priceUnit: string | null;
+    isPublished: boolean;
     latitude: string | null;
     longitude: string | null;
     discountText: string;
@@ -88,17 +92,49 @@ export function ListingForm({
         />
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        <div className="col-span-1">
-          <label className="text-sm font-medium text-forest-900">Price hint</label>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div>
+          <label className="text-sm font-medium text-forest-900">Price label</label>
           <input
-            name="priceHint"
-            required
-            placeholder="From $120/night"
-            defaultValue={existing?.priceHint}
+            name="priceLabel"
+            placeholder="From"
+            defaultValue={existing?.priceLabel ?? "From"}
             className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
           />
         </div>
+        <div>
+          <label className="text-sm font-medium text-forest-900">Price (UGX)</label>
+          <input
+            name="priceMinor"
+            type="number"
+            min={0}
+            step={1}
+            required
+            placeholder="670000"
+            defaultValue={existing?.priceMinor ?? ""}
+            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium text-forest-900">Price unit</label>
+          <input
+            name="priceUnit"
+            placeholder="/night"
+            defaultValue={existing?.priceUnit ?? ""}
+            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium text-forest-900">Currency</label>
+          <input
+            name="currency"
+            defaultValue={existing?.currency ?? "UGX"}
+            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="text-sm font-medium text-forest-900">Latitude</label>
           <input
@@ -120,6 +156,11 @@ export function ListingForm({
           />
         </div>
       </div>
+
+      <label className="flex items-center gap-2 text-sm text-forest-900">
+        <input type="checkbox" name="isPublished" defaultChecked={existing?.isPublished ?? true} />
+        Published — shows in Explore, Home, and journey grids once complete
+      </label>
 
       <div>
         <label className="text-sm font-medium text-forest-900">Journey tags (optional)</label>
@@ -183,7 +224,7 @@ export function ListingForm({
           <div className="grid grid-cols-2 gap-3">
             <input
               name="restaurantPriceRange"
-              placeholder="Price range (e.g. $$)"
+              placeholder="Price range (e.g. Mid-range) — not shown publicly"
               defaultValue={existing?.restaurant?.priceRange ?? ""}
               className="rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
             />

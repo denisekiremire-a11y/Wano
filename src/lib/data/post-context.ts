@@ -10,7 +10,9 @@ import {
   journeys,
   listings,
   promoCodes,
+  vendorProfiles,
 } from "@/db/schema";
+import { listingPublishConditions } from "@/lib/listing-publish";
 import { listingTypeLabels, type ListingType } from "@/lib/listing-type";
 
 export type PostContextType = "listing" | "event" | "club" | "journey" | "perk" | "journal_post";
@@ -225,7 +227,12 @@ export async function searchMentionables(query: string, limit = 6): Promise<Sugg
   const pattern = `%${q}%`;
 
   const [listingRows, eventRows, clubRows] = await Promise.all([
-    db.select({ id: listings.id, title: listings.title }).from(listings).where(and(eq(listings.active, true), ilike(listings.title, pattern))).limit(limit),
+    db
+      .select({ id: listings.id, title: listings.title })
+      .from(listings)
+      .innerJoin(vendorProfiles, eq(vendorProfiles.id, listings.vendorProfileId))
+      .where(and(ilike(listings.title, pattern), ...listingPublishConditions))
+      .limit(limit),
     db.select({ id: events.id, title: events.title }).from(events).where(and(eq(events.active, true), ilike(events.title, pattern))).limit(limit),
     db.select({ id: clubs.id, name: clubs.name }).from(clubs).where(and(eq(clubs.status, "approved"), ilike(clubs.name, pattern))).limit(limit),
   ]);

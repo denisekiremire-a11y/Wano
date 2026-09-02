@@ -10,7 +10,8 @@ import { uniqueUsername } from "../lib/username";
 // real address/hours/etc. should be confirmed and edited by the business
 // owner via the vendor dashboard once they're onboarded for real.
 
-const DEMO_PASSWORD = "Passport2027!";
+// Local dev only — see README.md and .env.example for the current value.
+const DEMO_PASSWORD = "WanoLocalDev-9214!";
 
 function hoursFromNow(hours: number) {
   return new Date(Date.now() + hours * 60 * 60 * 1000);
@@ -86,7 +87,10 @@ async function main() {
             type: "restaurant",
             title: "Izumi",
             description: "Placeholder details — to be confirmed by the business.",
-            priceHint: "$$$ (placeholder)",
+            // Not published — no confirmed price/details yet, see
+            // listingPublishConditions. Confirm with the business, then
+            // fill in a real price and flip isPublished via /admin/vendors.
+            isPublished: false,
           })
           .returning()
       )[0];
@@ -136,7 +140,8 @@ async function main() {
             type: "restaurant",
             title: "1420",
             description: "Placeholder details — to be confirmed by the business.",
-            priceHint: "$$ (placeholder)",
+            // Not published — see the same note on the Izumi listing above.
+            isPublished: false,
           })
           .returning()
       )[0];
@@ -155,13 +160,16 @@ async function main() {
           .values({
             title: "Malfy Brunch",
             description:
-              "Weekly brunch at 1420 — placeholder details, to be confirmed by the business.",
+              "Weekly brunch at 1420 — details to be confirmed by the business.",
             category: "food",
             startAt: hoursFromNow(96),
             endAt: hoursFromNow(99),
             location: "1420, Kampala",
             organizerVendorProfileId: venue1420Vendor.id,
-            priceHint: "Placeholder",
+            priceHint: "TBC",
+            // Tied to the not-yet-published 1420 listing above — don't show
+            // this publicly until the venue is confirmed and flipped on.
+            active: false,
           })
           .returning()
       )[0];

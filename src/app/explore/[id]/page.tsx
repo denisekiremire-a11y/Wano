@@ -6,6 +6,7 @@ import { RatingBadge } from "@/components/rating-badge";
 import { SaveButton } from "@/components/save-button";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { getBirthdayPerksForListing } from "@/lib/data/birthday";
+import { formatListingPrice } from "@/lib/currency";
 import {
   getInterestedTravellers,
   getJourneysFeaturingListing,
@@ -105,7 +106,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
           <p className="max-w-2xl text-forest-800/80">{listing.description}</p>
           {session?.role === "traveller" && <SaveButton listingId={listing.id} initialSaved={saved} />}
         </div>
-        <p className="mt-2 font-medium text-nile-700">{listing.priceHint}</p>
+        <p className="mt-2 font-medium text-nile-700">{formatListingPrice(listing)}</p>
 
         {tags.length > 0 && (
           <div className="mt-3">
@@ -161,7 +162,6 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
             {typeDetails.restaurant && (
               <dl className="mt-2 space-y-1 text-sm text-forest-800/80">
                 {typeDetails.restaurant.cuisine && <p>🍽️ {typeDetails.restaurant.cuisine}</p>}
-                {typeDetails.restaurant.priceRange && <p>💵 {typeDetails.restaurant.priceRange}</p>}
                 {typeDetails.restaurant.hours && <p>🕒 {typeDetails.restaurant.hours}</p>}
               </dl>
             )}

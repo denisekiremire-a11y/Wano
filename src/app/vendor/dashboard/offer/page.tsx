@@ -1,3 +1,4 @@
+import { formatListingPrice } from "@/lib/currency";
 import { getVendorListingFull, getVendorProfileByUserId } from "@/lib/data/vendor";
 import { journeyTheme } from "@/lib/journey-theme";
 import { getSession } from "@/lib/session";
@@ -39,7 +40,7 @@ export default async function VendorOfferPage() {
         listingId={listingRow.listing.id}
         listingTitle={listingRow.listing.title}
         businessName={vendorProfile.businessName}
-        priceHint={listingRow.listing.priceHint}
+        priceHint={formatListingPrice(listingRow.listing)}
         gradient={theme.gradient}
         artSlug={artSlug}
         initialDiscountText={listingRow.offer?.discountText ?? ""}

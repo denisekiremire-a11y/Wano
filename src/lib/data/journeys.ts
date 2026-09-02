@@ -17,6 +17,7 @@ import {
   users,
   vendorProfiles,
 } from "@/db/schema";
+import { listingPublishConditions } from "@/lib/listing-publish";
 import type { ListingType } from "@/lib/listing-type";
 
 export async function getJourneys() {
@@ -52,8 +53,8 @@ export async function getPublicListingsForJourney(journeyId: string) {
     .where(
       and(
         eq(listingJourneys.journeyId, journeyId),
-        eq(listings.active, true),
         eq(vendorProfiles.accreditationStatus, "trusted"),
+        ...listingPublishConditions,
       ),
     );
 
@@ -82,7 +83,7 @@ export type ListingSearchFilters = {
  * still gated to the same accredited-partner network. Supports optional
  * type/location/text filters for the "browse all partners" explore view. */
 export async function searchListings(filters: ListingSearchFilters = {}) {
-  const conditions = [eq(listings.active, true), eq(vendorProfiles.accreditationStatus, "trusted")];
+  const conditions = [eq(vendorProfiles.accreditationStatus, "trusted"), ...listingPublishConditions];
 
   if (filters.type) conditions.push(eq(listings.type, filters.type));
   if (filters.location) conditions.push(eq(vendorProfiles.location, filters.location));

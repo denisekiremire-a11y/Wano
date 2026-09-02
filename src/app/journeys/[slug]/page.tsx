@@ -7,7 +7,7 @@ import { getJourneyBySlug, getJourneyStops, getPublicListingsForJourney, journey
 import { getPassportProgress, getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { journeyTheme } from "@/lib/journey-theme";
 import { getSession } from "@/lib/session";
-import { formatCostRange } from "@/lib/currency";
+import { formatCostRange, formatListingPrice } from "@/lib/currency";
 
 const STOP_TYPE_LABEL: Record<string, string> = {
   stay: "🛏️ Stay",
@@ -153,7 +153,7 @@ export default async function JourneyDetailPage({
                 </p>
                 <p className="text-sm text-forest-800/70">{vendor.businessName}</p>
                 <p className="mt-1 text-sm text-forest-800/60">{listing.description}</p>
-                <p className="mt-2 text-sm font-medium text-nile-700">{listing.priceHint}</p>
+                <p className="mt-2 text-sm font-medium text-nile-700">{formatListingPrice(listing)}</p>
               </div>
 
               <div className="mt-4 flex flex-col gap-3 sm:mt-0 sm:w-64">

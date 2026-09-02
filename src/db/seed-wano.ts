@@ -77,7 +77,7 @@ async function main() {
         endAt: hoursFromNow(57),
         location: "Jinja, Uganda",
         organizerVendorProfileId: byName("Nile Serenity Spa")?.id ?? null,
-        priceHint: "$25/person",
+        priceHint: "UGX 90,000/person",
         capacity: 40,
       },
       {
@@ -89,7 +89,7 @@ async function main() {
         endAt: hoursFromNow(79),
         location: "Kampala, Uganda",
         organizerVendorProfileId: byName("Kampala Culture Tours")?.id ?? null,
-        priceHint: "$10/person",
+        priceHint: "UGX 35,000/person",
         capacity: 80,
       },
       {

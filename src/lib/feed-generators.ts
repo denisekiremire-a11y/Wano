@@ -13,6 +13,7 @@ import {
   travellerProfiles,
   vendorProfiles,
 } from "@/db/schema";
+import { listingPublishConditions } from "@/lib/listing-publish";
 
 /** RSVP counts at which an event gets a fresh event_momentum feed item. */
 const MOMENTUM_THRESHOLDS = [3, 10, 25] as const;
@@ -37,7 +38,13 @@ export async function generatePlaceAddedItem(listingId: string) {
     .select({ listing: listings, vendor: vendorProfiles })
     .from(listings)
     .innerJoin(vendorProfiles, eq(vendorProfiles.id, listings.vendorProfileId))
-    .where(and(eq(listings.id, listingId), eq(vendorProfiles.accreditationStatus, "trusted")))
+    .where(
+      and(
+        eq(listings.id, listingId),
+        eq(vendorProfiles.accreditationStatus, "trusted"),
+        ...listingPublishConditions,
+      ),
+    )
     .limit(1);
   if (!row) return;
 

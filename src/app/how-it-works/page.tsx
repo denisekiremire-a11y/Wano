@@ -63,7 +63,7 @@ export default function HowItWorksPage() {
 
       <div className="mt-12 rounded-2xl border border-forest-900/10 bg-forest-50 p-6">
         <h2 className="font-display text-lg font-semibold text-forest-900">
-          Ready to start your Wano Passport?
+          Ready to get started?
         </h2>
         <p className="mt-1 text-sm text-forest-800/70">It&apos;s free, and takes under a minute.</p>
         <Link

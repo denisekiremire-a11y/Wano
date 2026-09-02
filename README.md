@@ -49,10 +49,14 @@ platform.
    ```
 
    The seed script creates the 5 fixed journeys, 3 challenges, 5 demo accredited partners
-   (one pending accreditation), and demo accounts — all with password `Passport2027!`:
+   (one pending accreditation), and demo accounts — all with password `WanoLocalDev-9214!`
+   (local dev only; see `src/db/seed.ts` if you change it):
    - Traveller: `amina@example.com` (already has 2 of 5 stamps)
    - Vendor: `jinja.nile.resort@example.com` (and 4 others — see `src/db/seed.ts`)
-   - Admin: `admin@pamoja2027.ug`
+   - Admin: `admin@wano.app`
+
+   These credentials are for a local database only — never rendered on any page, and never
+   the credentials for the live/production deployment.
 
 5. **Run the dev server:**
 

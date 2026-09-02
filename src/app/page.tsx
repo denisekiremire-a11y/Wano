@@ -133,7 +133,7 @@ export default async function LandingPage() {
               Sign up to see member deals
             </p>
             <p className="text-sm text-forest-800/70">
-              Deals unlock once you create a free account and start your Wano Passport.
+              Deals unlock once you create a free account.
             </p>
           </Link>
         </div>

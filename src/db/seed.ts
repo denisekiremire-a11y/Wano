@@ -24,7 +24,8 @@ import { generateReferralCode } from "../lib/referral";
 import { uniqueUsername } from "../lib/username";
 import { backfillFeedItems } from "../lib/feed-generators";
 
-const DEMO_PASSWORD = "Passport2027!";
+// Local dev only — see README.md and .env.example for the current value.
+const DEMO_PASSWORD = "WanoLocalDev-9214!";
 
 async function hash(password: string) {
   return bcrypt.hash(password, 10);
@@ -128,7 +129,7 @@ async function main() {
   const [admin] = await db
     .insert(users)
     .values({
-      email: "admin@pamoja2027.ug",
+      email: "admin@wano.app",
       passwordHash,
       name: "Wano Campaign Admin",
       role: "admin",
@@ -165,7 +166,9 @@ async function main() {
         type: "hotel" as const,
         title: "Riverside Deluxe Escape",
         description: "Two-night stays with spa access and sunset river cruises included.",
-        priceHint: "From $180/night",
+        priceLabel: "From",
+        priceMinor: 670_000,
+        priceUnit: "/night",
         latitude: "0.437700",
         longitude: "33.208700",
       },
@@ -192,7 +195,9 @@ async function main() {
         type: "experience" as const,
         title: "Full-Day Rafting & Bungee Combo",
         description: "Grade 5 rapids in the morning, bungee jump at sunset.",
-        priceHint: "From $140/person",
+        priceLabel: "From",
+        priceMinor: 520_000,
+        priceUnit: "/person",
         latitude: "0.487200",
         longitude: "33.140800",
       },
@@ -218,7 +223,9 @@ async function main() {
         type: "experience" as const,
         title: "3-Day Big Five Explorer",
         description: "Two game drives and a Kazinga Channel boat cruise.",
-        priceHint: "From $420/person",
+        priceLabel: "From",
+        priceMinor: 1_550_000,
+        priceUnit: "/person",
         latitude: "-0.200000",
         longitude: "29.900000",
       },
@@ -244,7 +251,9 @@ async function main() {
         type: "hotel" as const,
         title: "Gorilla Permit & Lodge Package",
         description: "Guided trek, permit handling, and two nights at the lodge.",
-        priceHint: "From $750/person",
+        priceLabel: "From",
+        priceMinor: 2_800_000,
+        priceUnit: "/person",
         latitude: "-1.063600",
         longitude: "29.661500",
       },
@@ -275,7 +284,9 @@ async function main() {
         type: "experience" as const,
         title: "Kampala & Entebbe Day Tour",
         description: "Uganda Museum, Owino Market, and UWEC Entebbe in one day.",
-        priceHint: "From $65/person",
+        priceLabel: "From",
+        priceMinor: 240_000,
+        priceUnit: "/person",
         latitude: "0.313600",
         longitude: "32.581100",
       },
@@ -301,13 +312,14 @@ async function main() {
         type: "restaurant" as const,
         title: "Le Chateau Brasserie",
         description: "Ugandan and continental cuisine in a relaxed courtyard setting.",
-        priceHint: "$$ · Mains from $8",
+        priceLabel: "Mains from",
+        priceMinor: 30_000,
+        priceUnit: null,
         latitude: "0.314900",
         longitude: "32.590200",
       },
       restaurantDetails: {
         cuisine: "Ugandan, Continental",
-        priceRange: "$$",
         hours: "11:00 AM – 11:00 PM daily",
       },
       offer: {
@@ -328,7 +340,9 @@ async function main() {
         type: "hotel" as const,
         title: "Airport Transit Rooms",
         description: "Soundproofed rooms and a 24-hour airport shuttle.",
-        priceHint: "From $95/night",
+        priceLabel: "From",
+        priceMinor: 350_000,
+        priceUnit: "/night",
         latitude: "0.042300",
         longitude: "32.443600",
       },
@@ -355,7 +369,9 @@ async function main() {
         type: "spa_salon" as const,
         title: "Riverside Spa Day Package",
         description: "Full-body massage, facial, and a private riverside relaxation lounge.",
-        priceHint: "From $45/session",
+        priceLabel: "From",
+        priceMinor: 165_000,
+        priceUnit: "/session",
         latitude: "0.435100",
         longitude: "33.205400",
       },
@@ -396,7 +412,9 @@ async function main() {
         type: v.listing.type,
         title: v.listing.title,
         description: v.listing.description,
-        priceHint: v.listing.priceHint,
+        priceLabel: v.listing.priceLabel,
+        priceMinor: v.listing.priceMinor,
+        priceUnit: v.listing.priceUnit,
         latitude: v.listing.latitude,
         longitude: v.listing.longitude,
         viewCount: Math.floor(Math.random() * 400) + 20,
@@ -518,7 +536,7 @@ async function main() {
 
   console.log("Seed complete.");
   console.log(`Demo password for all accounts: ${DEMO_PASSWORD}`);
-  console.log(`Admin login: admin@pamoja2027.ug`);
+  console.log(`Admin login: admin@wano.app`);
   console.log(`Traveller login: amina@example.com`);
   console.log(`Vendor logins: ${vendorSeed.map((v) => v.email).join(", ")}`);
   process.exit(0);

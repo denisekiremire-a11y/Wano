@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { JourneyArt } from "@/components/journey-art";
 import { OfferTeaser } from "@/components/offer-teaser";
+import { formatListingPrice } from "@/lib/currency";
 import type { getAllPublicListings } from "@/lib/data/journeys";
 import { journeyTheme } from "@/lib/journey-theme";
 import type { SessionPayload } from "@/lib/session";
@@ -60,7 +61,7 @@ export function ByJourneyView({
                     <div>
                       <p className="font-medium text-forest-900">{listing.title}</p>
                       <p className="text-sm text-forest-800/70">{vendor.businessName}</p>
-                      <p className="mt-1 text-xs text-forest-800/50">{listing.priceHint}</p>
+                      <p className="mt-1 text-xs text-forest-800/50">{formatListingPrice(listing)}</p>
                     </div>
                     <div className="mt-3 space-y-2 sm:mt-0 sm:w-56">
                       {offer && (

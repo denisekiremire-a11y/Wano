@@ -9,7 +9,8 @@ import { clubs, events, interests, journalPosts, journeys, journeyStops, listing
 import { generateClubMeetupItem, generateJournalPublishedItem } from "@/lib/feed-generators";
 import { uniqueSlug } from "@/lib/slug";
 
-const DEMO_PASSWORD = "Passport2027!";
+// Local dev only — see README.md and .env.example for the current value.
+const DEMO_PASSWORD = "WanoLocalDev-9214!";
 
 function daysAgo(n: number) {
   return new Date(Date.now() - n * 24 * 60 * 60 * 1000);

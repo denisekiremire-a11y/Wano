@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { JourneyArt } from "@/components/journey-art";
 import { OfferTeaser } from "@/components/offer-teaser";
+import { formatListingPrice } from "@/lib/currency";
 import { getVendorListingFull, getVendorProfileByUserId } from "@/lib/data/vendor";
 import { journeyTheme } from "@/lib/journey-theme";
 import { listingTypeLabels } from "@/lib/listing-type";
@@ -82,7 +83,7 @@ export default async function VendorDashboardPage() {
                 <p className="text-sm text-forest-800/70">{vendorProfile.businessName}</p>
                 <p className="mt-1 text-sm text-forest-800/60">{listingRow.listing.description}</p>
                 <p className="mt-2 text-sm font-medium text-nile-700">
-                  {listingRow.listing.priceHint}
+                  {formatListingPrice(listingRow.listing)}
                 </p>
                 {listingRow.journeyTags.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1.5">

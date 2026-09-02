@@ -22,7 +22,7 @@ export function OfferEditor({
   listingId: string;
   listingTitle: string;
   businessName: string;
-  priceHint: string;
+  priceHint: string | null;
   gradient: string;
   artSlug: string;
   initialDiscountText: string;
