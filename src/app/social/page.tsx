@@ -39,7 +39,10 @@ export default async function SocialPage({
       getRankedFeed(travellerProfile?.id ?? null, 30),
       getClubCategories(),
       travellerProfile ? getSuggestedPeople(travellerProfile.id) : Promise.resolve([]),
-      travellerProfile ? getTopInfluencers(travellerProfile.id) : Promise.resolve([]),
+      // Public — a highlight rail, not personalized, so it shows for any
+      // visitor (including logged out or logged in as vendor/admin), unlike
+      // "People you may know" which needs a traveller viewer to mean anything.
+      getTopInfluencers(travellerProfile?.id ?? null),
       travellerProfile ? getBlockedTravellerIds(travellerProfile.id) : Promise.resolve(new Set<string>()),
       travellerProfile ? getSuggestedAttachments(travellerProfile.id) : Promise.resolve([]),
       context_type && context_id && SHARE_CONTEXT_TYPES.has(context_type as PostContextType)
@@ -48,13 +51,14 @@ export default async function SocialPage({
     ]);
 
   const topInfluencerIds = new Set(topInfluencersRaw.map((i) => i.traveller.id));
-  const topInfluencers = travellerProfile
-    ? await Promise.all(
-        topInfluencersRaw
-          .filter((i) => !blockedIds.has(i.traveller.id))
-          .map(async (i) => ({ ...i, following: await isFollowing(travellerProfile.id, i.traveller.id) })),
-      )
-    : [];
+  const topInfluencers = await Promise.all(
+    topInfluencersRaw
+      .filter((i) => !blockedIds.has(i.traveller.id))
+      .map(async (i) => ({
+        ...i,
+        following: travellerProfile ? await isFollowing(travellerProfile.id, i.traveller.id) : false,
+      })),
+  );
 
   const suggestedWithFollow = travellerProfile
     ? await Promise.all(
@@ -161,7 +165,7 @@ export default async function SocialPage({
 
       <aside className="space-y-3">
         {travellerProfile && <UserSearch />}
-        {travellerProfile && topInfluencers.length > 0 && (
+        {topInfluencers.length > 0 && (
           <>
             <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-forest-800/60">
               Top Influencers
@@ -178,7 +182,13 @@ export default async function SocialPage({
                   </p>
                   <p className="text-xs text-forest-800/50">{followers.toLocaleString()} followers</p>
                 </Link>
-                <FollowButton targetTravellerId={traveller.id} initialFollowing={following} />
+                {travellerProfile ? (
+                  <FollowButton targetTravellerId={traveller.id} initialFollowing={following} />
+                ) : (
+                  <Link href="/signup" className="flex-none text-xs font-semibold text-nile-700 hover:underline">
+                    Follow
+                  </Link>
+                )}
               </div>
             ))}
           </>
