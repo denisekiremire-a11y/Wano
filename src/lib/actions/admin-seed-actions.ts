@@ -2,7 +2,12 @@
 
 import { requireRole } from "@/lib/auth";
 import { backfillFeedItems } from "@/lib/feed-generators";
-import { backfillEditorialJourneysJ1, seedJournalPosts, seedLaunchClubs } from "@/lib/seed-content";
+import {
+  backfillEditorialJourneysJ1,
+  seedDemoInventory,
+  seedJournalPosts,
+  seedLaunchClubs,
+} from "@/lib/seed-content";
 
 /** One-time (but safe to re-run) production bootstrap for Milestone S:
  * seeds the 6 Journal guide posts and the 4 launch clubs (with placeholder
@@ -26,4 +31,14 @@ export async function runMilestoneSBackfillAction() {
 export async function runJourneysJ1BackfillAction() {
   await requireRole("admin");
   return backfillEditorialJourneysJ1();
+}
+
+/** One-time (safe to re-run) demo-content bootstrap: ten fictional but
+ * fully bookable listings per type (hotel, restaurant, experience,
+ * transport, spa_salon), ten demo events, and twelve demo clubs (three per
+ * launch category) with a scheduled meetup each — enough breadth to click
+ * through the whole app live. */
+export async function runDemoInventoryBackfillAction() {
+  const session = await requireRole("admin");
+  return seedDemoInventory(session.userId);
 }
