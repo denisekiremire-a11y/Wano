@@ -1,55 +1,79 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f9f7f2;
-  --foreground: #14231c;
+  /* --- Pale-blue theme tokens (source of truth) --- */
+  --color-bg-page: #f4f8fc;
+  --color-bg-surface: #ffffff;
+  --color-border: #d8e4f0;
+  --color-text-primary: #1b3a5c;
+  --color-text-muted: #5b7085;
+  --color-brand: #2c4a6e; /* navy — nav, primary buttons */
+  --color-accent: #2f7d6b; /* teal — CTAs, active states */
+  --color-warm: #b79b72; /* tan — badges, highlights */
 
-  /* Deep forest green — primary */
-  --color-forest-950: #08160f;
-  --color-forest-900: #0d2419;
-  --color-forest-800: #123626;
-  --color-forest-700: #184a33;
-  --color-forest-600: #1f5f41;
-  --color-forest-500: #2c7a54;
-  --color-forest-400: #4a9a70;
-  --color-forest-300: #7ebc9a;
-  --color-forest-200: #b3dcc6;
-  --color-forest-100: #dcf0e5;
-  --color-forest-50: #f0f9f4;
+  --background: var(--color-bg-page);
+  --foreground: var(--color-text-primary);
 
-  /* Marigold / gold — accent */
-  --color-marigold-900: #5c3c05;
-  --color-marigold-800: #7a4f07;
-  --color-marigold-700: #9c6709;
-  --color-marigold-600: #c1830f;
-  --color-marigold-500: #e0a11c;
-  --color-marigold-400: #eeb840;
-  --color-marigold-300: #f3cb6e;
-  --color-marigold-200: #f8dfa2;
-  --color-marigold-100: #fbecc9;
-  --color-marigold-50: #fdf7e8;
+  /* "forest" is now the brand/navy ramp — kept under its original name
+     since ~1,460 existing `forest-*` utility classes reference it
+     directly; re-pointing the values here re-themes the whole app
+     without touching every component. 900/800 are pinned exactly to
+     text-primary/brand; the rest is a generated navy tint/shade ramp. */
+  --color-forest-950: #182534;
+  --color-forest-900: var(--color-text-primary);
+  --color-forest-800: var(--color-brand);
+  --color-forest-700: #3c6290;
+  --color-forest-600: #4d7bb2;
+  --color-forest-500: #7396bf;
+  --color-forest-400: #98b0cd;
+  --color-forest-300: #b9c8da;
+  --color-forest-200: #d6dde6;
+  --color-forest-100: #eaedf1;
+  --color-forest-50: #f6f7f8;
 
-  /* Nile blue — secondary */
-  --color-nile-950: #06222f;
-  --color-nile-900: #0a3345;
-  --color-nile-800: #0f4a61;
-  --color-nile-700: #146080;
-  --color-nile-600: #1b7aa1;
-  --color-nile-500: #2a94bd;
-  --color-nile-400: #5cafd1;
-  --color-nile-300: #93cbe2;
-  --color-nile-200: #c4e3f0;
-  --color-nile-100: #e2f1f8;
-  --color-nile-50: #f1f9fc;
+  /* "marigold" is now the warm/tan ramp. 500 pinned exactly to `warm`. */
+  --color-marigold-900: #4d3f2a;
+  --color-marigold-800: #665234;
+  --color-marigold-700: #866c46;
+  --color-marigold-600: #a68759;
+  --color-marigold-500: var(--color-warm);
+  --color-marigold-400: #c6b69f;
+  --color-marigold-300: #d6ccbd;
+  --color-marigold-200: #e4dfd8;
+  --color-marigold-100: #f0eeeb;
+  --color-marigold-50: #f8f7f7;
 
-  --color-sand-50: #f9f7f2;
-  --color-sand-100: #f1ede2;
-  --color-sand-200: #e4dcc9;
+  /* "nile" is now the accent/teal ramp. 700 pinned exactly to `accent`. */
+  --color-nile-950: #18352e;
+  --color-nile-900: #235449;
+  --color-nile-800: #2a7060;
+  --color-nile-700: var(--color-accent);
+  --color-nile-600: #4ab59c;
+  --color-nile-500: #70c2af;
+  --color-nile-400: #97cec1;
+  --color-nile-300: #b8dad3;
+  --color-nile-200: #d5e7e3;
+  --color-nile-100: #eaf1ef;
+  --color-nile-50: #f6f8f8;
+
+  /* "sand" is now the pale-page family. 50 pinned to bg-page, 100 to border. */
+  --color-sand-50: var(--color-bg-page);
+  --color-sand-100: var(--color-border);
+  --color-sand-200: #d3dee9;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
+  --color-bg-page: var(--color-bg-page);
+  --color-bg-surface: var(--color-bg-surface);
+  --color-border: var(--color-border);
+  --color-text-primary: var(--color-text-primary);
+  --color-text-muted: var(--color-text-muted);
+  --color-brand: var(--color-brand);
+  --color-accent: var(--color-accent);
+  --color-warm: var(--color-warm);
 
   --color-forest-950: var(--color-forest-950);
   --color-forest-900: var(--color-forest-900);

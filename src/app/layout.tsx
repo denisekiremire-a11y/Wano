@@ -27,7 +27,9 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0d2419",
+  // Browser chrome theme-color reads this from a static <meta> tag, so it
+  // can't reference a CSS variable — mirrors --color-text-primary.
+  themeColor: "#1B3A5C",
   width: "device-width",
   initialScale: 1,
 };

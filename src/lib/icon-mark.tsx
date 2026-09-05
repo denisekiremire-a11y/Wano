@@ -7,7 +7,9 @@ export function iconMark(size: number) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "linear-gradient(135deg, #0d2419 0%, #145a44 55%, #eeb840 130%)",
+        // Rendered via next/og (Satori) for the PWA icon — no CSS variable
+        // support there, so these are literal: text-primary, brand, warm.
+        background: "linear-gradient(135deg, #1B3A5C 0%, #2C4A6E 55%, #B79B72 130%)",
         borderRadius: size * 0.26,
       }}
     >
@@ -15,7 +17,7 @@ export function iconMark(size: number) {
         style={{
           fontSize: size * 0.46,
           fontWeight: 800,
-          color: "#eeb840",
+          color: "#B79B72", // warm
           fontFamily: "sans-serif",
           letterSpacing: -1,
         }}
