@@ -13,6 +13,7 @@ import {
   getListingById,
   getListingTypeDetails,
 } from "@/lib/data/journeys";
+import { getListingImageIdsFor } from "@/lib/data/listing-images";
 import { getRatingSummary, getReviewsForListing } from "@/lib/data/reviews";
 import { getMediaPostsFor } from "@/lib/data/social";
 import {
@@ -61,7 +62,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
     }
   }
 
-  const [tags, birthdayPerks, rating, reviews, interested, media, typeDetails] = await Promise.all([
+  const [tags, birthdayPerks, rating, reviews, interested, media, typeDetails, imageIds] = await Promise.all([
     getJourneysFeaturingListing(listing.id),
     getBirthdayPerksForListing(listing.id),
     getRatingSummary(listing.id),
@@ -69,6 +70,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
     getInterestedTravellers(listing.id),
     getMediaPostsFor({ listingId: listing.id }),
     getListingTypeDetails(listing.id),
+    getListingImageIdsFor(listing.id),
   ]);
 
   const activeSocials = socialLinks.filter((s) => vendor[s.key]);
@@ -100,6 +102,22 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
           )}
         </div>
       </section>
+
+      {imageIds.length > 0 && (
+        <div className="mx-auto max-w-3xl px-4 pt-6 md:px-6">
+          <div className="flex gap-2 overflow-x-auto">
+            {imageIds.map((imgId) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={imgId}
+                src={`/api/listing-images/${imgId}`}
+                alt={listing.title}
+                className="h-56 w-80 flex-none rounded-xl object-cover"
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       <section className="mx-auto max-w-3xl px-4 py-10 md:px-6">
         <div className="flex items-start justify-between gap-4">

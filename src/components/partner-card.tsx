@@ -22,6 +22,7 @@ export function PartnerCard({
   rating,
   saved,
   birthdayPerk,
+  coverImageId,
 }: {
   item: PartnerResult;
   tags: Journey[];
@@ -30,17 +31,27 @@ export function PartnerCard({
   rating?: RatingSummary;
   saved?: boolean;
   birthdayPerk?: BirthdayPerk;
+  coverImageId?: string;
 }) {
   const { listing, offer, vendor, promo } = item;
   const type = listing.type as ListingType;
 
   return (
     <div className="overflow-hidden rounded-2xl border border-forest-900/10 bg-white">
-      <div
-        className={`flex h-16 items-center justify-center bg-gradient-to-br ${listingTypeGradient[type]}`}
-      >
-        <ListingTypeIcon type={type} className="h-7 w-7 text-white/70" />
-      </div>
+      {coverImageId ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={`/api/listing-images/${coverImageId}`}
+          alt={listing.title}
+          className="h-32 w-full object-cover"
+        />
+      ) : (
+        <div
+          className={`flex h-16 items-center justify-center bg-gradient-to-br ${listingTypeGradient[type]}`}
+        >
+          <ListingTypeIcon type={type} className="h-7 w-7 text-white/70" />
+        </div>
+      )}
       <div className="p-4">
         <div className="flex items-start justify-between gap-2">
           <div className="flex flex-wrap items-center gap-1.5">

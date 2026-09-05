@@ -6,6 +6,7 @@ import {
   getJourneyTagsForListings,
   searchListings,
 } from "@/lib/data/journeys";
+import { getListingImageIds } from "@/lib/data/listing-images";
 import { getPassportProgress, getTravellerProfileByUserId } from "@/lib/data/traveller";
 import type { ListingType } from "@/lib/listing-type";
 import { getSession } from "@/lib/session";
@@ -38,6 +39,7 @@ export default async function PartnersPage({
 
   const journeyTagsByListing = await getJourneyTagsForListings(results.map((r) => r.listing.id));
   const birthdayPerks = await getBirthdayPerksForListings(results.map((r) => r.listing.id));
+  const imagesByListing = await getListingImageIds(results.map((r) => r.listing.id));
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-12 md:px-6">
@@ -73,6 +75,7 @@ export default async function PartnersPage({
                 unlocked={unlocked}
                 session={session}
                 birthdayPerk={birthdayPerks.get(item.listing.id)?.[0]}
+                coverImageId={imagesByListing.get(item.listing.id)?.[0]}
               />
             );
           })}

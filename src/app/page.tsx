@@ -5,6 +5,7 @@ import { JourneyArt } from "@/components/journey-art";
 import { PartnerCard } from "@/components/partner-card";
 import { getBirthdayPerksForListings } from "@/lib/data/birthday";
 import { getJourneyTagsForListings, getJourneys, searchListings } from "@/lib/data/journeys";
+import { getListingImageIds } from "@/lib/data/listing-images";
 import { getRatingSummaries } from "@/lib/data/reviews";
 import { journeyTheme } from "@/lib/journey-theme";
 import { getSession } from "@/lib/session";
@@ -17,10 +18,11 @@ export default async function LandingPage() {
 
   const [journeyList, featured] = await Promise.all([getJourneys(), searchListings()]);
   const featuredListings = featured.slice(0, 3);
-  const [journeyTagsByListing, ratings, birthdayPerks] = await Promise.all([
+  const [journeyTagsByListing, ratings, birthdayPerks, imagesByListing] = await Promise.all([
     getJourneyTagsForListings(featuredListings.map((r) => r.listing.id)),
     getRatingSummaries(featuredListings.map((r) => r.listing.id)),
     getBirthdayPerksForListings(featuredListings.map((r) => r.listing.id)),
+    getListingImageIds(featuredListings.map((r) => r.listing.id)),
   ]);
 
   return (
@@ -167,6 +169,7 @@ export default async function LandingPage() {
                 session={session}
                 rating={ratings.get(item.listing.id)}
                 birthdayPerk={birthdayPerks.get(item.listing.id)?.[0]}
+                coverImageId={imagesByListing.get(item.listing.id)?.[0]}
               />
             );
           })}

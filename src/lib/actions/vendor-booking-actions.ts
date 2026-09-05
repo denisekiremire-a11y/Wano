@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { bookings, listings, stamps } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
+import { notifyTravellerOfBookingStatus } from "@/lib/booking-notifications";
 import { getVendorProfileByUserId } from "@/lib/data/vendor";
 
 export async function respondToBookingAction(
@@ -51,6 +52,8 @@ export async function respondToBookingAction(
       });
     }
   }
+
+  await notifyTravellerOfBookingStatus(bookingId, decision);
 
   revalidatePath("/vendor/dashboard/bookings");
   revalidatePath("/vendor/dashboard/referrals");

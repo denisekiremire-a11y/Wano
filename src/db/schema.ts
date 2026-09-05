@@ -308,6 +308,20 @@ export const listings = pgTable("listings", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// A listing's photos — same bytea-in-Postgres approach as postImages, kept
+// consistent rather than introducing a separate blob-storage dependency.
+// sortOrder's first image (0) is the cover shown on cards/grids.
+export const listingImages = pgTable("listing_images", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  listingId: uuid("listing_id")
+    .notNull()
+    .references(() => listings.id, { onDelete: "cascade" }),
+  data: bytea("data").notNull(),
+  mimeType: text("mime_type").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Many-to-many: a listing can tag any number of the 5 campaign journeys (or
 // none at all, if it's a general discovery-only place with no journey tie-in).
 export const listingJourneys = pgTable(

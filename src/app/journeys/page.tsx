@@ -7,6 +7,7 @@ import {
   getJourneyTagsForListings,
   searchListings,
 } from "@/lib/data/journeys";
+import { getListingImageIds } from "@/lib/data/listing-images";
 import { getPassportProgress, getTravellerProfileByUserId } from "@/lib/data/traveller";
 import type { ListingType } from "@/lib/listing-type";
 import { getSession } from "@/lib/session";
@@ -123,11 +124,13 @@ async function ExploreContent({
   ]);
 
   const journeyTagsByListing = await getJourneyTagsForListings(results.map((r) => r.listing.id));
+  const imagesByListing = await getListingImageIds(results.map((r) => r.listing.id));
 
   return (
     <ExploreView
       results={results}
       journeyTagsByListing={journeyTagsByListing}
+      imagesByListing={imagesByListing}
       locations={locations}
       unlockedJourneyIds={unlockedJourneyIds}
       session={session}

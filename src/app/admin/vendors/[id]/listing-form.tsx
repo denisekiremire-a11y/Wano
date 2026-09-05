@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { upsertVendorListingAction } from "@/lib/actions/admin-actions";
+import { useActionState, useState, useTransition } from "react";
+import { deleteListingImageAction, upsertVendorListingAction } from "@/lib/actions/admin-actions";
 import type { ActionState } from "@/lib/validation";
 import { listingTypeLabels, type ListingType } from "@/lib/listing-type";
 
@@ -13,6 +13,7 @@ export function ListingForm({
   vendorProfileId,
   journeys,
   vendorSocials,
+  existingImages = [],
   existing,
 }: {
   vendorProfileId: string;
@@ -23,6 +24,7 @@ export function ListingForm({
     tiktokUrl: string | null;
     websiteUrl: string | null;
   };
+  existingImages?: string[];
   existing?: {
     listingId: string;
     type: ListingType;
@@ -46,6 +48,7 @@ export function ListingForm({
 }) {
   const [state, formAction, pending] = useActionState(upsertVendorListingAction, initialState);
   const [type, setType] = useState<ListingType>(existing?.type ?? "experience");
+  const [isDeletingImage, startDeleteImageTransition] = useTransition();
 
   return (
     <form action={formAction} className="space-y-4 rounded-2xl border border-forest-900/10 bg-white p-5">
@@ -177,6 +180,43 @@ export function ListingForm({
         <input type="checkbox" name="isPublished" defaultChecked={existing?.isPublished ?? true} />
         Published — shows in Explore, Home, and journey grids once complete
       </label>
+
+      <div>
+        <label className="text-sm font-medium text-forest-900">Photos</label>
+        {existingImages.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {existingImages.map((imageId) => (
+              <div key={imageId} className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`/api/listing-images/${imageId}`}
+                  alt=""
+                  className="h-20 w-20 rounded-lg border border-forest-900/10 object-cover"
+                />
+                <button
+                  type="button"
+                  disabled={isDeletingImage}
+                  onClick={() =>
+                    startDeleteImageTransition(() => deleteListingImageAction(imageId, vendorProfileId))
+                  }
+                  className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs text-white disabled:opacity-50"
+                  aria-label="Remove photo"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <input
+          name="images"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          multiple
+          className="mt-2 w-full text-sm text-forest-800/70 file:mr-3 file:rounded-full file:border-0 file:bg-forest-800 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white"
+        />
+        <p className="mt-1 text-xs text-forest-800/50">JPG, PNG, or WebP, up to 8MB each. Added to the existing photos above.</p>
+      </div>
 
       <div>
         <label className="text-sm font-medium text-forest-900">Journey tags (optional)</label>

@@ -9,6 +9,7 @@ import {
   getJourneys,
   searchListings,
 } from "@/lib/data/journeys";
+import { getListingImageIds } from "@/lib/data/listing-images";
 import { getRatingSummaries } from "@/lib/data/reviews";
 import {
   getPassportProgress,
@@ -61,6 +62,7 @@ export default async function ExplorePage({
   const journeyTagsByListing = await getJourneyTagsForListings(results.map((r) => r.listing.id));
   const ratings = await getRatingSummaries(results.map((r) => r.listing.id));
   const birthdayPerks = await getBirthdayPerksForListings(results.map((r) => r.listing.id));
+  const imagesByListing = await getListingImageIds(results.map((r) => r.listing.id));
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-12 md:px-6">
@@ -127,6 +129,7 @@ export default async function ExplorePage({
                   rating={ratings.get(item.listing.id)}
                   saved={savedIds.has(item.listing.id)}
                   birthdayPerk={birthdayPerks.get(item.listing.id)?.[0]}
+                  coverImageId={imagesByListing.get(item.listing.id)?.[0]}
                 />
               );
             })}

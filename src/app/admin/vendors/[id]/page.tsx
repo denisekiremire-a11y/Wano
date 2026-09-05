@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getVendorDetail } from "@/lib/data/admin";
+import { getListingImageIdsFor } from "@/lib/data/listing-images";
 import { AccreditationPanel } from "./accreditation-panel";
 import { DocumentReviewRow } from "./document-review-row";
 import { ListingForm } from "./listing-form";
@@ -15,6 +16,7 @@ export default async function AdminVendorDetailPage({
   if (!detail) notFound();
 
   const { vendorProfile, vendorUser, listingRow, documents, reviews, allJourneys } = detail;
+  const existingImages = listingRow ? await getListingImageIdsFor(listingRow.listing.id) : [];
 
   return (
     <div className="space-y-6">
@@ -56,6 +58,7 @@ export default async function AdminVendorDetailPage({
       <ListingForm
         vendorProfileId={vendorProfile.id}
         journeys={allJourneys.map((j) => ({ id: j.id, name: j.name }))}
+        existingImages={existingImages}
         vendorSocials={{
           instagramUrl: vendorProfile.instagramUrl,
           facebookUrl: vendorProfile.facebookUrl,

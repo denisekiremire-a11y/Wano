@@ -4,7 +4,7 @@ import { eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { bookingMessages, bookings, listings, travellerProfiles, users, vendorProfiles } from "@/db/schema";
-import { sendEmail } from "@/lib/email";
+import { notifyUser } from "@/lib/notify";
 import { getSession } from "@/lib/session";
 import { countInLastHour, RATE_LIMITS } from "@/lib/rate-limit";
 
@@ -116,15 +116,11 @@ export async function postBookingMessageAction(
       .where(inArray(users.id, recipientUserIds));
     await Promise.all(
       recipients.map((r) =>
-        sendEmail({
-          to: r.email,
-          subject: `[Wano] New message about booking ${access.row.booking.bookingRef}`,
-          html: [
-            `<p>You have a new message about booking <strong>${access.row.booking.bookingRef}</strong>.</p>`,
-            `<p>"${trimmed.slice(0, 200)}"</p>`,
-            `<p><a href="${APP_URL}/bookings/${access.row.booking.bookingRef}">View the conversation</a>.</p>`,
-          ].join("\n"),
-        }).catch(() => {}),
+        notifyUser(r.email, `New message about booking ${access.row.booking.bookingRef}`, [
+          `You have a new message about booking <strong>${access.row.booking.bookingRef}</strong>.`,
+          `"${trimmed.slice(0, 200)}"`,
+          `<a href="${APP_URL}/bookings/${access.row.booking.bookingRef}">View the conversation</a>.`,
+        ]),
       ),
     );
   }

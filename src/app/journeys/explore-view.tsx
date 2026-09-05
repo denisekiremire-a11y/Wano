@@ -9,6 +9,7 @@ type Results = Awaited<ReturnType<typeof searchListings>>;
 export function ExploreView({
   results,
   journeyTagsByListing,
+  imagesByListing,
   locations,
   unlockedJourneyIds,
   session,
@@ -16,6 +17,7 @@ export function ExploreView({
 }: {
   results: Results;
   journeyTagsByListing: Map<string, Journey[]>;
+  imagesByListing?: Map<string, string[]>;
   locations: string[];
   unlockedJourneyIds: Set<string>;
   session: SessionPayload | null;
@@ -35,7 +37,14 @@ export function ExploreView({
           const unlocked =
             session != null && (tags.length === 0 || tags.some((t) => unlockedJourneyIds.has(t.id)));
           return (
-            <PartnerCard key={item.listing.id} item={item} tags={tags} unlocked={unlocked} session={session} />
+            <PartnerCard
+              key={item.listing.id}
+              item={item}
+              tags={tags}
+              unlocked={unlocked}
+              session={session}
+              coverImageId={imagesByListing?.get(item.listing.id)?.[0]}
+            />
           );
         })}
         {results.length === 0 && (

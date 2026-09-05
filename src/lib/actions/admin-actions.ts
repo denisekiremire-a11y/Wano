@@ -9,6 +9,7 @@ import {
   bookings,
   experienceDetails,
   hotelDetails,
+  listingImages,
   listingJourneys,
   listings,
   offers,
@@ -19,7 +20,11 @@ import {
 } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { generatePlaceAddedItem, generatePlaceAddedItemsForVendor } from "@/lib/feed-generators";
+import { notifyTravellerOfBookingStatus } from "@/lib/booking-notifications";
 import type { ActionState } from "@/lib/validation";
+
+const MAX_LISTING_IMAGE_BYTES = 8 * 1024 * 1024;
+const ALLOWED_LISTING_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 export async function setAccreditationStatusAction(
   vendorProfileId: string,
@@ -142,6 +147,12 @@ export async function upsertVendorListingAction(
   }
   const d = parsed.data;
 
+  const images = formData.getAll("images").filter((f): f is File => f instanceof File && f.size > 0);
+  for (const file of images) {
+    if (file.size > MAX_LISTING_IMAGE_BYTES) return { error: "Each photo must be under 8MB." };
+    if (!ALLOWED_LISTING_IMAGE_TYPES.has(file.type)) return { error: "Photos must be JPG, PNG, or WebP." };
+  }
+
   await db
     .update(vendorProfiles)
     .set({
@@ -247,11 +258,42 @@ export async function upsertVendorListingAction(
     else await db.insert(experienceDetails).values({ listingId, ...values });
   }
 
+  if (images.length > 0) {
+    const existing = await db
+      .select({ id: listingImages.id })
+      .from(listingImages)
+      .where(eq(listingImages.listingId, listingId));
+    for (let i = 0; i < images.length; i++) {
+      const buffer = Buffer.from(await images[i].arrayBuffer());
+      await db.insert(listingImages).values({
+        listingId,
+        data: buffer,
+        mimeType: images[i].type,
+        sortOrder: existing.length + i,
+      });
+    }
+  }
+
   revalidatePath("/admin/vendors");
   revalidatePath(`/admin/vendors/${d.vendorProfileId}`);
   revalidatePath("/journeys");
+  revalidatePath("/explore");
+  revalidatePath(`/explore/${listingId}`);
+  revalidatePath("/");
+  revalidatePath("/partners");
 
   return {};
+}
+
+export async function deleteListingImageAction(imageId: string, vendorProfileId: string) {
+  await requireRole("admin");
+  await db.delete(listingImages).where(eq(listingImages.id, imageId));
+
+  revalidatePath(`/admin/vendors/${vendorProfileId}`);
+  revalidatePath("/explore");
+  revalidatePath("/journeys");
+  revalidatePath("/");
+  revalidatePath("/partners");
 }
 
 export async function adminSetBookingStatusAction(
@@ -280,6 +322,8 @@ export async function adminSetBookingStatusAction(
       });
     }
   }
+
+  if (status !== booking.status) await notifyTravellerOfBookingStatus(bookingId, status);
 
   revalidatePath("/admin/bookings");
   revalidatePath("/admin");
