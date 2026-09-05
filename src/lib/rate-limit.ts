@@ -23,4 +23,5 @@ export const RATE_LIMITS = {
   postsPerHour: 10,
   commentsPerHour: 30,
   reportsPerHour: 10,
+  messagesPerHour: 60,
 } as const;

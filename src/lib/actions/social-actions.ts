@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { clubMemberships, follows, postComments, postImages, postLikes, posts, users } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { generateUserPostItem } from "@/lib/feed-generators";
+import { notifyAdmin } from "@/lib/notify";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { searchMentionables, type SuggestedAttachment } from "@/lib/data/post-context";
 import { countInLastHour, RATE_LIMITS } from "@/lib/rate-limit";
@@ -14,6 +15,7 @@ import type { ActionState } from "@/lib/validation";
 
 const MAX_IMAGES = 4;
 const NEW_ACCOUNT_REVIEW_WINDOW_MS = 24 * 60 * 60 * 1000;
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 const EDIT_WINDOW_MS = 15 * 60 * 1000;
 const CONTEXT_TYPES = ["listing", "event", "club", "journey", "perk", "journal_post"] as const;
 
@@ -82,6 +84,14 @@ export async function createPostAction(_prev: ActionState, formData: FormData): 
   // audienceClubId filter, which drops these even if a row existed here.
   if (post.status === "visible" && !audienceClubId) {
     await generateUserPostItem(post.id, travellerProfile.id, travellerProfile.displayName);
+  }
+
+  if (post.status === "pending_review") {
+    await notifyAdmin("Post waiting for review", [
+      `<strong>${travellerProfile.displayName}</strong> (new account) posted — it's held from the public feed until you approve it.`,
+      `"${parsed.data.content.slice(0, 200)}"`,
+      `Review in <a href="${APP_URL}/admin/moderation">/admin/moderation</a>.`,
+    ]);
   }
 
   revalidatePath("/social");

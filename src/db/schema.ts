@@ -1247,6 +1247,39 @@ export const blocks = pgTable(
   (table) => [unique().on(table.blockerId, table.blockedId)],
 );
 
+// A private 1:1 thread between two travellers. travellerOneId is always
+// whichever of the pair's UUIDs sorts first (enforced by the app, not the
+// db) — that canonical ordering lets the unique index dedupe a
+// conversation regardless of who messaged first, with no separate
+// participants table.
+export const conversations = pgTable(
+  "conversations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    travellerOneId: uuid("traveller_one_id")
+      .notNull()
+      .references(() => travellerProfiles.id, { onDelete: "cascade" }),
+    travellerTwoId: uuid("traveller_two_id")
+      .notNull()
+      .references(() => travellerProfiles.id, { onDelete: "cascade" }),
+    lastMessageAt: timestamp("last_message_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique().on(table.travellerOneId, table.travellerTwoId)],
+);
+
+export const messages = pgTable("messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  conversationId: uuid("conversation_id")
+    .notNull()
+    .references(() => conversations.id, { onDelete: "cascade" }),
+  senderTravellerId: uuid("sender_traveller_id")
+    .notNull()
+    .references(() => travellerProfiles.id, { onDelete: "cascade" }),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Append-only audit log of every moderation decision.
 export const moderationActions = pgTable("moderation_actions", {
   id: uuid("id").primaryKey().defaultRandom(),

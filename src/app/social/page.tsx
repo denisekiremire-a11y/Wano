@@ -157,10 +157,12 @@ export default async function SocialPage({
                 key={traveller.id}
                 className="flex items-center justify-between rounded-xl border border-forest-900/10 bg-white p-3"
               >
-                <div>
-                  <p className="text-sm font-medium text-forest-900">{traveller.displayName}</p>
+                <Link href={user.username ? `/profile/${user.username}` : "#"} className="min-w-0">
+                  <p className="truncate text-sm font-medium text-forest-900 hover:underline">
+                    {traveller.displayName}
+                  </p>
                   <p className="text-xs text-forest-800/50">@{user.username}</p>
-                </div>
+                </Link>
                 <FollowButton targetTravellerId={traveller.id} initialFollowing={following} />
               </div>
             ))}

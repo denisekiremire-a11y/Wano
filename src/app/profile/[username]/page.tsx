@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { UserIcon } from "@/components/icons";
 import { PassportGrid } from "@/components/passport-grid";
 import { FollowButton } from "@/components/follow-button";
+import { MessageButton } from "@/components/message-button";
 import { ReportBlockMenu } from "@/components/report-block-menu";
 import { AudienceChip, PostContextCard } from "@/components/post-context-card";
 import { getSession } from "@/lib/session";
@@ -58,6 +59,7 @@ export default async function PublicProfilePage({
         {!isOwnProfile && session?.role === "traveller" && (
           <div className="relative flex flex-none items-center gap-2">
             <FollowButton targetTravellerId={traveller.id} initialFollowing={viewerFollows} />
+            <MessageButton targetTravellerId={traveller.id} />
             <ReportBlockMenu
               targetType="user"
               targetId={traveller.id}

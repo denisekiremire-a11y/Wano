@@ -8,6 +8,7 @@ import {
   GaugeIcon,
   GridIcon,
   HomeIcon,
+  MailIcon,
   MegaphoneIcon,
   StampIcon,
   TagIcon,
@@ -31,6 +32,7 @@ const map: Record<NavItem["icon"], (props: { className?: string }) => React.JSX.
   file: FileIcon,
   calendar: CalendarIcon,
   chat: ChatIcon,
+  mail: MailIcon,
   user: UserIcon,
   ticket: TicketIcon,
 };

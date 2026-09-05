@@ -17,6 +17,7 @@ export type NavItem = {
     | "file"
     | "calendar"
     | "chat"
+    | "mail"
     | "user"
     | "ticket";
 };
@@ -27,6 +28,7 @@ export function navItemsFor(role: SessionPayload["role"] | "guest"): NavItem[] {
       { href: "/explore", label: "Explore", icon: "compass" },
       { href: "/events", label: "Events", icon: "calendar" },
       { href: "/social", label: "Social", icon: "chat" },
+      { href: "/messages", label: "Messages", icon: "mail" },
       { href: "/passport", label: "Passport", icon: "stamp" },
     ];
   }
