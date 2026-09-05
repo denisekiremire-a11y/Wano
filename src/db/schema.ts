@@ -674,9 +674,11 @@ export const posts = pgTable(
     // Null = public (the global feed). Set = visible only on that club's
     // page and in its members' feeds, never the global feed.
     audienceClubId: uuid("audience_club_id").references(() => clubs.id, { onDelete: "set null" }),
-    // visible by default; a first post from an account under 24h old is
-    // pending_review instead (see createPostAction). hidden = auto-hidden by
-    // report threshold; removed = an admin took it down.
+    // visible by default — createPostAction rejects profanity outright
+    // rather than queuing it, so nothing sets pending_review anymore (the
+    // value stays valid for old rows and the admin review UI, just unused
+    // going forward). hidden = auto-hidden by report threshold; removed =
+    // an admin took it down.
     status: postStatusEnum("status").notNull().default("visible"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

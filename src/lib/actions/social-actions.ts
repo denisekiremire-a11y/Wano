@@ -4,18 +4,16 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
-import { clubMemberships, follows, postComments, postImages, postLikes, posts, users } from "@/db/schema";
+import { clubMemberships, follows, postComments, postImages, postLikes, posts } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { generateUserPostItem } from "@/lib/feed-generators";
-import { notifyAdmin } from "@/lib/notify";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { searchMentionables, type SuggestedAttachment } from "@/lib/data/post-context";
+import { containsProfanity } from "@/lib/profanity";
 import { countInLastHour, RATE_LIMITS } from "@/lib/rate-limit";
 import type { ActionState } from "@/lib/validation";
 
 const MAX_IMAGES = 4;
-const NEW_ACCOUNT_REVIEW_WINDOW_MS = 24 * 60 * 60 * 1000;
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 const EDIT_WINDOW_MS = 15 * 60 * 1000;
 const CONTEXT_TYPES = ["listing", "event", "club", "journey", "perk", "journal_post"] as const;
 
@@ -35,6 +33,9 @@ export async function createPostAction(_prev: ActionState, formData: FormData): 
     audienceClubId: formData.get("audienceClubId") ?? "",
   });
   if (!parsed.success) return { error: "Write something before you post." };
+  if (containsProfanity(parsed.data.content)) {
+    return { error: "That post contains language we don't allow — please edit it and try again." };
+  }
 
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
   if (!travellerProfile) return { error: "Profile not found." };
@@ -49,9 +50,6 @@ export async function createPostAction(_prev: ActionState, formData: FormData): 
     .filter((f): f is File => f instanceof File && f.size > 0)
     .slice(0, MAX_IMAGES);
 
-  const [user] = await db.select({ createdAt: users.createdAt }).from(users).where(eq(users.id, session.userId)).limit(1);
-  const isNewAccount = user ? Date.now() - user.createdAt.getTime() < NEW_ACCOUNT_REVIEW_WINDOW_MS : false;
-
   const contextType = parsed.data.contextType || null;
   const contextId = parsed.data.contextId || null;
   const audienceClubId = parsed.data.audienceClubId || null;
@@ -64,9 +62,7 @@ export async function createPostAction(_prev: ActionState, formData: FormData): 
       contextType: contextType && contextId ? contextType : null,
       contextId: contextType && contextId ? contextId : null,
       audienceClubId,
-      // First posts from a brand-new account go to the moderation queue
-      // before they're visible to anyone else — see /admin/moderation.
-      status: isNewAccount ? "pending_review" : "visible",
+      status: "visible",
     })
     .returning();
 
@@ -82,16 +78,8 @@ export async function createPostAction(_prev: ActionState, formData: FormData): 
 
   // Club-addressed posts never enter the global feed — see getRankedFeed's
   // audienceClubId filter, which drops these even if a row existed here.
-  if (post.status === "visible" && !audienceClubId) {
+  if (!audienceClubId) {
     await generateUserPostItem(post.id, travellerProfile.id, travellerProfile.displayName);
-  }
-
-  if (post.status === "pending_review") {
-    await notifyAdmin("Post waiting for review", [
-      `<strong>${travellerProfile.displayName}</strong> (new account) posted — it's held from the public feed until you approve it.`,
-      `"${parsed.data.content.slice(0, 200)}"`,
-      `Review in <a href="${APP_URL}/admin/moderation">/admin/moderation</a>.`,
-    ]);
   }
 
   revalidatePath("/social");
@@ -109,6 +97,9 @@ export async function editPostAction(_prev: ActionState, formData: FormData): Pr
   const content = String(formData.get("content") ?? "").trim();
   if (!postId || !content) return { error: "Write something before saving." };
   if (content.length > 500) return { error: "Keep it under 500 characters." };
+  if (containsProfanity(content)) {
+    return { error: "That post contains language we don't allow — please edit it and try again." };
+  }
 
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
   if (!travellerProfile) return { error: "Profile not found." };
