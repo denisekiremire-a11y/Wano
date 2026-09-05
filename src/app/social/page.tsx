@@ -3,6 +3,7 @@ import { FeedItemCard } from "@/components/feed-item-card";
 import { FollowButton } from "@/components/follow-button";
 import { PostCard } from "@/components/post-card";
 import { PostComposer } from "@/components/post-composer";
+import { UserSearch } from "@/components/user-search";
 import { getSession } from "@/lib/session";
 import { getRankedFeed } from "@/lib/data/feed";
 import { getBlockedTravellerIds } from "@/lib/data/moderation";
@@ -147,6 +148,7 @@ export default async function SocialPage({
       </div>
 
       <aside className="space-y-3">
+        {travellerProfile && <UserSearch />}
         {travellerProfile && suggestedWithFollow.length > 0 && (
           <>
             <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-forest-800/60">

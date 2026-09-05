@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, inArray, lt } from "drizzle-orm";
+import { and, count, desc, eq, gte, ilike, inArray, lt, or } from "drizzle-orm";
 import { db } from "@/db";
 import {
   clubMemberships,
@@ -135,6 +135,24 @@ export async function getSuggestedPeople(excludeTravellerId: string, limit = 5) 
     .from(travellerProfiles)
     .innerJoin(users, eq(users.id, travellerProfiles.userId))
     .limit(limit + 1);
+  return rows.filter((r) => r.traveller.id !== excludeTravellerId).slice(0, limit);
+}
+
+/** Traveller search by display name or @username, for the Social page
+ * search box. Requires 2+ characters so it doesn't return the whole table
+ * on an empty query. */
+export async function searchTravellers(query: string, excludeTravellerId: string | null, limit = 10) {
+  const q = query.trim();
+  if (q.length < 2) return [];
+  const pattern = `%${q}%`;
+
+  const rows = await db
+    .select({ traveller: travellerProfiles, user: users })
+    .from(travellerProfiles)
+    .innerJoin(users, eq(users.id, travellerProfiles.userId))
+    .where(or(ilike(travellerProfiles.displayName, pattern), ilike(users.username, pattern)))
+    .limit(limit + 1);
+
   return rows.filter((r) => r.traveller.id !== excludeTravellerId).slice(0, limit);
 }
 

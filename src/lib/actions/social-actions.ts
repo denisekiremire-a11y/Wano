@@ -7,8 +7,10 @@ import { db } from "@/db";
 import { clubMemberships, follows, postComments, postImages, postLikes, posts } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { generateUserPostItem } from "@/lib/feed-generators";
-import { getTravellerProfileByUserId } from "@/lib/data/traveller";
+import { getBlockedTravellerIds } from "@/lib/data/moderation";
 import { searchMentionables, type SuggestedAttachment } from "@/lib/data/post-context";
+import { isFollowing, searchTravellers } from "@/lib/data/social";
+import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { containsProfanity } from "@/lib/profanity";
 import { countInLastHour, RATE_LIMITS } from "@/lib/rate-limit";
 import type { ActionState } from "@/lib/validation";
@@ -155,6 +157,21 @@ export async function changePostAudienceAction(postId: string, audienceClubId: s
 export async function searchMentionablesAction(query: string): Promise<SuggestedAttachment[]> {
   await requireRole("traveller");
   return searchMentionables(query);
+}
+
+export async function searchTravellersAction(query: string) {
+  const session = await requireRole("traveller");
+  const travellerProfile = await getTravellerProfileByUserId(session.userId);
+  if (!travellerProfile) return [];
+
+  const [results, blockedIds] = await Promise.all([
+    searchTravellers(query, travellerProfile.id),
+    getBlockedTravellerIds(travellerProfile.id),
+  ]);
+  const visible = results.filter((r) => !blockedIds.has(r.traveller.id));
+  return Promise.all(
+    visible.map(async (r) => ({ ...r, following: await isFollowing(travellerProfile.id, r.traveller.id) })),
+  );
 }
 
 export async function togglePostLikeAction(postId: string) {
