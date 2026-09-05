@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { vendorDocuments } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { getVendorProfileByUserId } from "@/lib/data/vendor";
+import { notifyAdmin } from "@/lib/notify";
 import type { ActionState } from "@/lib/validation";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
@@ -49,6 +50,10 @@ export async function submitVendorDocumentAction(
     fileSize: file.size,
     fileData,
   });
+
+  await notifyAdmin("New accreditation document", [
+    `<strong>${vendorProfile.businessName}</strong> submitted a ${parsed.data.docType.replace("_", " ")} document for review.`,
+  ]);
 
   revalidatePath("/vendor/dashboard/documents");
   revalidatePath("/admin/vendors");

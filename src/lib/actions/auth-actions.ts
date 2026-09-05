@@ -13,6 +13,7 @@ import {
 } from "@/db/schema";
 import { hashPassword, verifyPassword } from "@/lib/auth";
 import { logEvent } from "@/lib/analytics";
+import { notifyAdmin } from "@/lib/notify";
 import { generateReferralCode } from "@/lib/referral";
 import { clearSessionCookie, createSessionCookie } from "@/lib/session";
 import { uniqueUsername } from "@/lib/username";
@@ -20,6 +21,7 @@ import { loginSchema, signupSchema, type ActionState } from "@/lib/validation";
 
 const MAX_FAILED_ATTEMPTS = 5;
 const ATTEMPT_WINDOW_MINUTES = 15;
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 async function recordLoginAttempt(email: string, success: boolean) {
   await db.insert(loginAttempts).values({ email: email.toLowerCase(), success });
@@ -194,6 +196,19 @@ export async function signupAction(_prev: ActionState, formData: FormData): Prom
       description: parsed.data.description,
       accreditationStatus: "pending",
     });
+  }
+
+  if (parsed.data.role === "vendor") {
+    await notifyAdmin("New partner signup", [
+      `<strong>${parsed.data.businessName}</strong> just signed up as a partner.`,
+      `Contact: ${parsed.data.name} — ${parsed.data.email}`,
+      `Location: ${parsed.data.location}`,
+      `Review in <a href="${APP_URL}/admin/vendors">/admin/vendors</a>.`,
+    ]);
+  } else {
+    await notifyAdmin("New user signup", [
+      `<strong>${parsed.data.name}</strong> just signed up — ${parsed.data.email}`,
+    ]);
   }
 
   await createSessionCookie({

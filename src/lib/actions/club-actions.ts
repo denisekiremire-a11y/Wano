@@ -8,6 +8,7 @@ import { clubs } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { hasUpcomingMeetup } from "@/lib/data/social";
 import { getVendorProfileByUserId } from "@/lib/data/vendor";
+import { notifyAdmin } from "@/lib/notify";
 import { uniqueSlug } from "@/lib/slug";
 import type { ActionState } from "@/lib/validation";
 
@@ -47,6 +48,10 @@ export async function submitClubAction(_prev: ActionState, formData: FormData): 
     createdByUserId: session.userId,
     status: "pending",
   });
+
+  await notifyAdmin("New club submission", [
+    `<strong>${vendorProfile.businessName}</strong> submitted a club: ${parsed.data.name}`,
+  ]);
 
   revalidatePath("/vendor/dashboard/clubs");
   revalidatePath("/admin/clubs");
@@ -90,6 +95,12 @@ export async function applyToStartClubAction(_prev: ActionState, formData: FormD
     createdByUserId: session.userId,
     status: "pending",
   });
+
+  await notifyAdmin("New \"Start a club\" application", [
+    `Someone applied to start a club: <strong>${parsed.data.name}</strong>`,
+    `Cadence: ${parsed.data.cadence}`,
+    `Contact: ${parsed.data.contact}`,
+  ]);
 
   revalidatePath("/admin/clubs");
   return {};

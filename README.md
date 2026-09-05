@@ -66,6 +66,25 @@ platform.
 
    Open [http://localhost:3000](http://localhost:3000).
 
+6. **(Optional) Admin email notifications.** The admin gets an email whenever someone signs up
+   (traveller or partner), a partner submits an accreditation document, or someone submits/applies
+   to start a club. This works out of the box in a sort of way — without any setup it just logs the
+   email to the server console instead of sending it, so nothing breaks, but nothing actually
+   arrives anywhere either. To get real emails:
+
+   - Sign up at [resend.com](https://resend.com) (free tier is plenty for this) and grab an API key
+     from **API Keys** in the dashboard.
+   - Set `RESEND_API_KEY` in `.env.local` (and in your Vercel project's environment variables for
+     production).
+   - By default notifications go to `denisekiremire@gmail.com` (same as the site's public support
+     address) — set `ADMIN_NOTIFICATION_EMAIL` to change that.
+   - By default they're sent from Resend's shared `onboarding@resend.dev` address, which only
+     delivers to the email on your own Resend account. To send to any address, verify a real domain
+     under **Domains** in Resend, then set `EMAIL_FROM` to an address on that domain (e.g.
+     `Wano <notifications@yourdomain.com>`).
+   - Set `NEXT_PUBLIC_APP_URL` to your real deployed URL so the links inside notification emails
+     (e.g. "review this partner") point somewhere real instead of `localhost:3000`.
+
 ## Data model
 
 See `src/db/schema.ts`. Summary: `users` (role: traveller/vendor/admin) → `traveller_profiles` /
