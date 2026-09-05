@@ -16,11 +16,19 @@ import {
   journeyStops,
   listings,
   offers,
+  posts,
   restaurantDetails,
+  travellerProfiles,
   users,
   vendorProfiles,
 } from "@/db/schema";
-import { generateClubMeetupItem, generatePlaceAddedItem, generateJournalPublishedItem } from "@/lib/feed-generators";
+import {
+  generateClubMeetupItem,
+  generatePlaceAddedItem,
+  generateJournalPublishedItem,
+  generateUserPostItem,
+} from "@/lib/feed-generators";
+import { generateReferralCode } from "@/lib/referral";
 import { uniqueSlug } from "@/lib/slug";
 import { uniqueUsername } from "@/lib/username";
 
@@ -882,6 +890,81 @@ export async function seedDemoInventory(adminUserId: string) {
   }
 
   return { vendorsCreated, listingsCreated, eventsCreated, clubsCreated };
+}
+
+// A single demo account to try out the Influencer feature end to end
+// without needing 1,000 real followers or hundreds of real likes — see
+// travellerProfiles.bonusFollowers and posts.bonusLikes. Three posts,
+// deliberately spanning below/at/above the 500-like earning threshold so
+// all three states (not eligible, eligible, eligible) are visible at once.
+const DEMO_INFLUENCER_EMAIL = "demo.influencer@wano.app";
+const DEMO_INFLUENCER_NAME = "Amara Nsubuga";
+const DEMO_INFLUENCER_POSTS = [
+  { content: "Just tried the rolex crawl in Kampala — five stalls, one evening, zero regrets. 🌯", bonusLikes: 300 },
+  { content: "Sunset cruise on Lake Victoria was worth every shilling. Booked through Wano in two minutes.", bonusLikes: 800 },
+  { content: "Bwindi gorilla trek: hardest 6 hours of my life and I'd do it again tomorrow. 🦍", bonusLikes: 500 },
+];
+
+export async function seedDemoInfluencer() {
+  let [user] = await db.select().from(users).where(eq(users.email, DEMO_INFLUENCER_EMAIL)).limit(1);
+  let created = false;
+  if (!user) {
+    const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
+    [user] = await db
+      .insert(users)
+      .values({
+        email: DEMO_INFLUENCER_EMAIL,
+        passwordHash,
+        name: DEMO_INFLUENCER_NAME,
+        role: "traveller",
+        username: await uniqueUsername(DEMO_INFLUENCER_NAME),
+      })
+      .returning();
+    created = true;
+  }
+
+  let [traveller] = await db.select().from(travellerProfiles).where(eq(travellerProfiles.userId, user.id)).limit(1);
+  if (!traveller) {
+    [traveller] = await db
+      .insert(travellerProfiles)
+      .values({
+        userId: user.id,
+        displayName: DEMO_INFLUENCER_NAME,
+        referralCode: generateReferralCode(),
+        bonusFollowers: 1000,
+      })
+      .returning();
+  } else if (traveller.bonusFollowers < 1000) {
+    [traveller] = await db
+      .update(travellerProfiles)
+      .set({ bonusFollowers: 1000 })
+      .where(eq(travellerProfiles.id, traveller.id))
+      .returning();
+  }
+
+  let postsCreated = 0;
+  for (const spec of DEMO_INFLUENCER_POSTS) {
+    const [existing] = await db
+      .select({ id: posts.id })
+      .from(posts)
+      .where(and(eq(posts.travellerId, traveller.id), eq(posts.content, spec.content)))
+      .limit(1);
+    if (existing) continue;
+
+    const [post] = await db
+      .insert(posts)
+      .values({
+        travellerId: traveller.id,
+        content: spec.content,
+        status: "visible",
+        bonusLikes: spec.bonusLikes,
+      })
+      .returning();
+    await generateUserPostItem(post.id, traveller.id, traveller.displayName);
+    postsCreated++;
+  }
+
+  return { accountCreated: created, username: user.username, postsCreated };
 }
 
 // Migration content for Milestone J, Phase J1 — turns the 5 read-only

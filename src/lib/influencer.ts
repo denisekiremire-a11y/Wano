@@ -14,3 +14,13 @@ export function isInfluencerByFollowers(followerCount: number): boolean {
 export function isPostMonetizable(authorFollowerCount: number, postLikeCount: number): boolean {
   return isInfluencerByFollowers(authorFollowerCount) && postLikeCount >= MONETIZABLE_POST_LIKE_THRESHOLD;
 }
+
+// UGX 50,000 for every 500 likes a qualifying post has — a flat per-tier
+// rate, not per-like. A post under the like threshold earns nothing.
+export const EARNINGS_PER_TIER_MINOR = 50_000;
+export const LIKES_PER_EARNINGS_TIER = 500;
+
+export function calculatePostEarningsMinor(postLikeCount: number): number {
+  if (postLikeCount < MONETIZABLE_POST_LIKE_THRESHOLD) return 0;
+  return Math.floor(postLikeCount / LIKES_PER_EARNINGS_TIER) * EARNINGS_PER_TIER_MINOR;
+}

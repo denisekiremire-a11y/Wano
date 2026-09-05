@@ -1,9 +1,11 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { backfillFeedItems } from "@/lib/feed-generators";
 import {
   backfillEditorialJourneysJ1,
+  seedDemoInfluencer,
   seedDemoInventory,
   seedJournalPosts,
   seedLaunchClubs,
@@ -41,4 +43,16 @@ export async function runJourneysJ1BackfillAction() {
 export async function runDemoInventoryBackfillAction() {
   const session = await requireRole("admin");
   return seedDemoInventory(session.userId);
+}
+
+/** One-time (safe to re-run) demo bootstrap for the Influencer feature: one
+ * traveller account boosted to 1,000 followers, with three posts boosted
+ * to 300 / 800 / 500 likes — spanning below, well above, and exactly at the
+ * 500-like earning threshold, so /admin/influencers has something to show
+ * without needing real follower/like activity. */
+export async function runDemoInfluencerBackfillAction() {
+  await requireRole("admin");
+  const result = await seedDemoInfluencer();
+  revalidatePath("/admin/influencers");
+  return result;
 }

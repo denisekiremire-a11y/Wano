@@ -16,7 +16,7 @@ import {
   vendorDocuments,
   vendorProfiles,
 } from "@/db/schema";
-import { isInfluencerByFollowers, MONETIZABLE_POST_LIKE_THRESHOLD } from "@/lib/influencer";
+import { calculatePostEarningsMinor, isInfluencerByFollowers, MONETIZABLE_POST_LIKE_THRESHOLD } from "@/lib/influencer";
 import { getEngagementCounts } from "./social";
 import { getJourneyTagsForListing } from "./journeys";
 import {
@@ -224,10 +224,17 @@ export async function getHostCandidates() {
  * see src/lib/influencer.ts. This is eligibility bookkeeping only, no
  * payout mechanism exists yet. */
 export async function getInfluencersWithMonetizablePosts() {
-  const followRows = await db.select({ followingId: follows.followingId }).from(follows);
+  const [followRows, bonusRows] = await Promise.all([
+    db.select({ followingId: follows.followingId }).from(follows),
+    db.select({ id: travellerProfiles.id, bonusFollowers: travellerProfiles.bonusFollowers }).from(travellerProfiles),
+  ]);
+
   const followerCounts = new Map<string, number>();
   for (const row of followRows) {
     followerCounts.set(row.followingId, (followerCounts.get(row.followingId) ?? 0) + 1);
+  }
+  for (const row of bonusRows) {
+    if (row.bonusFollowers > 0) followerCounts.set(row.id, (followerCounts.get(row.id) ?? 0) + row.bonusFollowers);
   }
 
   const influencerIds = [...followerCounts.entries()]
@@ -249,12 +256,19 @@ export async function getInfluencersWithMonetizablePosts() {
 
   const { likeMap } = await getEngagementCounts(influencerPosts.map((p) => p.id));
 
-  return travellerRows.map(({ traveller, user }) => ({
-    traveller,
-    user,
-    followers: followerCounts.get(traveller.id) ?? 0,
-    eligiblePosts: influencerPosts
+  return travellerRows.map(({ traveller, user }) => {
+    const eligiblePosts = influencerPosts
       .filter((p) => p.travellerId === traveller.id && (likeMap.get(p.id) ?? 0) >= MONETIZABLE_POST_LIKE_THRESHOLD)
-      .map((p) => ({ id: p.id, content: p.content, likes: likeMap.get(p.id) ?? 0 })),
-  }));
+      .map((p) => {
+        const likes = likeMap.get(p.id) ?? 0;
+        return { id: p.id, content: p.content, likes, earningsMinor: calculatePostEarningsMinor(likes) };
+      });
+    return {
+      traveller,
+      user,
+      followers: followerCounts.get(traveller.id) ?? 0,
+      eligiblePosts,
+      totalEarningsMinor: eligiblePosts.reduce((sum, p) => sum + p.earningsMinor, 0),
+    };
+  });
 }

@@ -143,6 +143,11 @@ export const travellerProfiles = pgTable("traveller_profiles", {
   referredByTravellerId: uuid("referred_by_traveller_id").references(
     (): AnyPgColumn => travellerProfiles.id,
   ),
+  // Admin-settable manual boost added on top of the real follows-table
+  // count everywhere followers are shown (see getFollowCounts) — lets
+  // admin demo/test influencer status without needing thousands of real
+  // follow rows. Zero for every real account.
+  bonusFollowers: integer("bonus_followers").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -711,6 +716,10 @@ export const posts = pgTable(
     // going forward). hidden = auto-hidden by report threshold; removed =
     // an admin took it down.
     status: postStatusEnum("status").notNull().default("visible"),
+    // Admin-settable manual boost added on top of the real postLikes count
+    // everywhere likes are shown (see getEngagementCounts) — same reasoning
+    // as travellerProfiles.bonusFollowers. Zero for every real post.
+    bonusLikes: integer("bonus_likes").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [index("posts_context_idx").on(table.contextType, table.contextId)],

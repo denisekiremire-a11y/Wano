@@ -58,6 +58,14 @@ export async function getEngagementCounts(postIds: string[]) {
     .groupBy(postLikes.postId);
   for (const row of likeRows) likeMap.set(row.postId, row.total);
 
+  const bonusRows = await db
+    .select({ id: posts.id, bonusLikes: posts.bonusLikes })
+    .from(posts)
+    .where(inArray(posts.id, postIds));
+  for (const row of bonusRows) {
+    if (row.bonusLikes > 0) likeMap.set(row.id, (likeMap.get(row.id) ?? 0) + row.bonusLikes);
+  }
+
   const commentRows = await db
     .select({ postId: postComments.postId, total: count() })
     .from(postComments)
@@ -103,11 +111,15 @@ export async function getPostImageIds(postIds: string[]): Promise<Map<string, st
 }
 
 export async function getFollowCounts(travellerId: string) {
-  const [[followers], [following]] = await Promise.all([
+  const [[followers], [following], [profile]] = await Promise.all([
     db.select({ total: count() }).from(follows).where(eq(follows.followingId, travellerId)),
     db.select({ total: count() }).from(follows).where(eq(follows.followerId, travellerId)),
+    db.select({ bonusFollowers: travellerProfiles.bonusFollowers }).from(travellerProfiles).where(eq(travellerProfiles.id, travellerId)),
   ]);
-  return { followers: followers?.total ?? 0, following: following?.total ?? 0 };
+  return {
+    followers: (followers?.total ?? 0) + (profile?.bonusFollowers ?? 0),
+    following: following?.total ?? 0,
+  };
 }
 
 export async function isFollowing(followerId: string, followingId: string) {
