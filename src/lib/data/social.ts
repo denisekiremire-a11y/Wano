@@ -15,6 +15,7 @@ import {
   vendorProfiles,
 } from "@/db/schema";
 import { AFCON_CLUB_ENABLED, LAUNCH_CLUB_CATEGORY_KEYS } from "@/lib/feature-flags";
+import { isInfluencerByFollowers } from "@/lib/influencer";
 
 export async function getPostsByTraveller(travellerId: string) {
   return db
@@ -148,6 +149,40 @@ export async function getSuggestedPeople(excludeTravellerId: string, limit = 5) 
     .innerJoin(users, eq(users.id, travellerProfiles.userId))
     .limit(limit + 1);
   return rows.filter((r) => r.traveller.id !== excludeTravellerId).slice(0, limit);
+}
+
+/** Travellers who've crossed the influencer follower threshold, highest
+ * followers first — for the Social page's "Top Influencers" rail. Real
+ * follows plus any admin bonusFollowers boost (see src/lib/influencer.ts). */
+export async function getTopInfluencers(excludeTravellerId: string | null, limit = 5) {
+  const [followRows, profileRows] = await Promise.all([
+    db.select({ followingId: follows.followingId }).from(follows),
+    db.select({ id: travellerProfiles.id, bonusFollowers: travellerProfiles.bonusFollowers }).from(travellerProfiles),
+  ]);
+
+  const followerCounts = new Map<string, number>();
+  for (const row of followRows) followerCounts.set(row.followingId, (followerCounts.get(row.followingId) ?? 0) + 1);
+  for (const row of profileRows) {
+    if (row.bonusFollowers > 0) followerCounts.set(row.id, (followerCounts.get(row.id) ?? 0) + row.bonusFollowers);
+  }
+
+  const rankedIds = [...followerCounts.entries()]
+    .filter(([id, followerCount]) => isInfluencerByFollowers(followerCount) && id !== excludeTravellerId)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([id]) => id);
+  if (rankedIds.length === 0) return [];
+
+  const rows = await db
+    .select({ traveller: travellerProfiles, user: users })
+    .from(travellerProfiles)
+    .innerJoin(users, eq(users.id, travellerProfiles.userId))
+    .where(inArray(travellerProfiles.id, rankedIds));
+
+  const rank = new Map(rankedIds.map((id, i) => [id, i]));
+  return rows
+    .sort((a, b) => (rank.get(a.traveller.id) ?? 0) - (rank.get(b.traveller.id) ?? 0))
+    .map((r) => ({ ...r, followers: followerCounts.get(r.traveller.id) ?? 0 }));
 }
 
 /** Traveller search by display name or @username, for the Social page

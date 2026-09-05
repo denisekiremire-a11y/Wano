@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { FeedItemCard } from "@/components/feed-item-card";
 import { FollowButton } from "@/components/follow-button";
+import { TrophyIcon } from "@/components/icons";
 import { PostCard } from "@/components/post-card";
 import { PostComposer } from "@/components/post-composer";
 import { UserSearch } from "@/components/user-search";
@@ -8,7 +9,7 @@ import { getSession } from "@/lib/session";
 import { getRankedFeed } from "@/lib/data/feed";
 import { getBlockedTravellerIds } from "@/lib/data/moderation";
 import { getSuggestedAttachments, resolvePostContext, type PostContextType } from "@/lib/data/post-context";
-import { getClubCategories, getSuggestedPeople, isFollowing } from "@/lib/data/social";
+import { getClubCategories, getSuggestedPeople, getTopInfluencers, isFollowing } from "@/lib/data/social";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 
 const SHARE_CONTEXT_TYPES = new Set<PostContextType>([
@@ -33,21 +34,32 @@ export default async function SocialPage({
     session?.role === "traveller" ? await getTravellerProfileByUserId(session.userId) : null;
   const { context_type, context_id } = await searchParams;
 
-  const [feed, categories, suggestedRaw, blockedIds, suggestions, shareContext] = await Promise.all([
-    getRankedFeed(travellerProfile?.id ?? null, 30),
-    getClubCategories(),
-    travellerProfile ? getSuggestedPeople(travellerProfile.id) : Promise.resolve([]),
-    travellerProfile ? getBlockedTravellerIds(travellerProfile.id) : Promise.resolve(new Set<string>()),
-    travellerProfile ? getSuggestedAttachments(travellerProfile.id) : Promise.resolve([]),
-    context_type && context_id && SHARE_CONTEXT_TYPES.has(context_type as PostContextType)
-      ? resolvePostContext(context_type as PostContextType, context_id)
-      : Promise.resolve(null),
-  ]);
+  const [feed, categories, suggestedRaw, topInfluencersRaw, blockedIds, suggestions, shareContext] =
+    await Promise.all([
+      getRankedFeed(travellerProfile?.id ?? null, 30),
+      getClubCategories(),
+      travellerProfile ? getSuggestedPeople(travellerProfile.id) : Promise.resolve([]),
+      travellerProfile ? getTopInfluencers(travellerProfile.id) : Promise.resolve([]),
+      travellerProfile ? getBlockedTravellerIds(travellerProfile.id) : Promise.resolve(new Set<string>()),
+      travellerProfile ? getSuggestedAttachments(travellerProfile.id) : Promise.resolve([]),
+      context_type && context_id && SHARE_CONTEXT_TYPES.has(context_type as PostContextType)
+        ? resolvePostContext(context_type as PostContextType, context_id)
+        : Promise.resolve(null),
+    ]);
+
+  const topInfluencerIds = new Set(topInfluencersRaw.map((i) => i.traveller.id));
+  const topInfluencers = travellerProfile
+    ? await Promise.all(
+        topInfluencersRaw
+          .filter((i) => !blockedIds.has(i.traveller.id))
+          .map(async (i) => ({ ...i, following: await isFollowing(travellerProfile.id, i.traveller.id) })),
+      )
+    : [];
 
   const suggestedWithFollow = travellerProfile
     ? await Promise.all(
         suggestedRaw
-          .filter((s) => !blockedIds.has(s.traveller.id))
+          .filter((s) => !blockedIds.has(s.traveller.id) && !topInfluencerIds.has(s.traveller.id))
           .map(async (s) => ({
             ...s,
             following: await isFollowing(travellerProfile.id, s.traveller.id),
@@ -149,6 +161,28 @@ export default async function SocialPage({
 
       <aside className="space-y-3">
         {travellerProfile && <UserSearch />}
+        {travellerProfile && topInfluencers.length > 0 && (
+          <>
+            <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-forest-800/60">
+              Top Influencers
+            </h2>
+            {topInfluencers.map(({ traveller, user, followers, following }) => (
+              <div
+                key={traveller.id}
+                className="flex items-center justify-between rounded-xl border border-forest-900/10 bg-white p-3"
+              >
+                <Link href={user.username ? `/profile/${user.username}` : "#"} className="min-w-0">
+                  <p className="flex items-center gap-1 truncate text-sm font-medium text-forest-900 hover:underline">
+                    <TrophyIcon className="h-3.5 w-3.5 flex-none text-marigold-600" />
+                    {traveller.displayName}
+                  </p>
+                  <p className="text-xs text-forest-800/50">{followers.toLocaleString()} followers</p>
+                </Link>
+                <FollowButton targetTravellerId={traveller.id} initialFollowing={following} />
+              </div>
+            ))}
+          </>
+        )}
         {travellerProfile && suggestedWithFollow.length > 0 && (
           <>
             <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-forest-800/60">

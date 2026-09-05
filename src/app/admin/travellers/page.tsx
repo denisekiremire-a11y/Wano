@@ -1,5 +1,6 @@
 import { getAllTravellersWithProgress } from "@/lib/data/admin";
 import { TrophyIcon } from "@/components/icons";
+import { TravellerNameEditor } from "./traveller-name-editor";
 
 export default async function AdminTravellersPage() {
   const travellers = await getAllTravellersWithProgress();
@@ -42,7 +43,7 @@ export default async function AdminTravellersPage() {
             className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-forest-900/10 bg-white p-4"
           >
             <div>
-              <p className="font-medium text-forest-900">{t.user.name}</p>
+              <TravellerNameEditor travellerId={t.traveller.id} initialName={t.user.name} />
               <p className="text-sm text-forest-800/60">{t.user.email}</p>
             </div>
             <div className="flex flex-wrap gap-4 text-sm text-forest-800/70">

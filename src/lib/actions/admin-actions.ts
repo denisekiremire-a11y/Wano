@@ -15,6 +15,8 @@ import {
   offers,
   restaurantDetails,
   stamps,
+  travellerProfiles,
+  users,
   vendorDocuments,
   vendorProfiles,
 } from "@/db/schema";
@@ -333,4 +335,24 @@ export async function adminSetBookingStatusAction(
   revalidatePath("/dashboard/bookings");
   revalidatePath("/vendor/dashboard/bookings");
   revalidatePath("/vendor/dashboard/referrals");
+}
+
+/** Admin renaming a traveller — keeps travellerProfiles.displayName (shown
+ * on profile/social/feed) and users.name (shown in admin lists and emails)
+ * in sync, since nothing else updates both together. */
+export async function updateTravellerNameAction(travellerId: string, name: string) {
+  await requireRole("admin");
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("Name can't be empty.");
+
+  const [traveller] = await db.select().from(travellerProfiles).where(eq(travellerProfiles.id, travellerId)).limit(1);
+  if (!traveller) throw new Error("Traveller not found.");
+
+  await Promise.all([
+    db.update(travellerProfiles).set({ displayName: trimmed }).where(eq(travellerProfiles.id, travellerId)),
+    db.update(users).set({ name: trimmed }).where(eq(users.id, traveller.userId)),
+  ]);
+
+  revalidatePath("/admin/travellers");
+  revalidatePath("/social");
 }
