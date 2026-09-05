@@ -479,6 +479,23 @@ export const bookings = pgTable("bookings", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// A booking's own message thread — the traveller who made it, the vendor
+// who owns the listing, and any admin can all post here. No separate
+// thread table: a booking IS the thread, one per booking, identified by
+// bookingId. senderUserId points at users directly (not travellerProfiles/
+// vendorProfiles) since a sender could be any of the three roles.
+export const bookingMessages = pgTable("booking_messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  bookingId: uuid("booking_id")
+    .notNull()
+    .references(() => bookings.id, { onDelete: "cascade" }),
+  senderUserId: uuid("sender_user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const stamps = pgTable(
   "stamps",
   {

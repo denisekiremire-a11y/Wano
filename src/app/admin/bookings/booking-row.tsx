@@ -1,6 +1,7 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
+import { BookingThread } from "@/components/booking-thread";
 import { adminSetBookingStatusAction } from "@/lib/actions/admin-actions";
 
 const statusStyles: Record<string, string> = {
@@ -42,6 +43,7 @@ export function BookingRow({
   birthdayInfo?: { perkTitle: string; eligible: boolean; reason: string } | null;
 }) {
   const [pending, startTransition] = useTransition();
+  const [showThread, setShowThread] = useState(false);
 
   const setStatus = (next: Status) => startTransition(() => adminSetBookingStatusAction(bookingId, next));
 
@@ -109,8 +111,20 @@ export function BookingRow({
           >
             Cancel
           </button>
+          <button
+            type="button"
+            onClick={() => setShowThread((v) => !v)}
+            className="rounded-full border border-forest-900/15 px-2.5 py-1 text-[11px] font-semibold text-forest-800 hover:bg-forest-900/5"
+          >
+            {showThread ? "Hide messages" : "Messages"}
+          </button>
         </div>
       </div>
+      {showThread && (
+        <div className="mt-3 border-t border-forest-900/5 pt-3">
+          <BookingThread bookingId={bookingId} heading="Booking messages" />
+        </div>
+      )}
     </div>
   );
 }

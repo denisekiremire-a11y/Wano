@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { BookingThread } from "@/components/booking-thread";
 import { CheckCircleIcon } from "@/components/icons";
 import { CopyCodeButton } from "@/components/copy-code-button";
 import { requireRole } from "@/lib/auth";
@@ -63,6 +64,10 @@ export default async function BookingConfirmationPage({ params }: { params: Prom
           {booking.partySize && <p>Party size: {booking.partySize}</p>}
           {journey && <p>Part of your {journey.name} journey</p>}
         </div>
+      </div>
+
+      <div className="mt-4">
+        <BookingThread bookingId={booking.id} heading={`Message ${vendor.businessName}`} />
       </div>
 
       <div className="mt-6 flex justify-center gap-3">
