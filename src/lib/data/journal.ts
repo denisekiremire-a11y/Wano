@@ -1,4 +1,4 @@
-import { and, desc, eq, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, ne, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { journalPosts, users } from "@/db/schema";
 
@@ -8,6 +8,25 @@ export async function getPublishedJournalPosts(limit = 50) {
     .from(journalPosts)
     .innerJoin(users, eq(users.id, journalPosts.authorUserId))
     .where(and(eq(journalPosts.status, "published"), sql`${journalPosts.publishedAt} <= now()`))
+    .orderBy(desc(journalPosts.publishedAt))
+    .limit(limit);
+}
+
+export async function searchJournalPosts(query: string, limit = 10) {
+  const q = query.trim();
+  if (q.length < 2) return [];
+  const pattern = `%${q}%`;
+  return db
+    .select({ post: journalPosts, authorName: users.name })
+    .from(journalPosts)
+    .innerJoin(users, eq(users.id, journalPosts.authorUserId))
+    .where(
+      and(
+        eq(journalPosts.status, "published"),
+        sql`${journalPosts.publishedAt} <= now()`,
+        or(ilike(journalPosts.title, pattern), ilike(journalPosts.excerpt, pattern))!,
+      ),
+    )
     .orderBy(desc(journalPosts.publishedAt))
     .limit(limit);
 }

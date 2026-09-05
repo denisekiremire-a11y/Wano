@@ -29,6 +29,22 @@ export async function getJourneyBySlug(slug: string) {
   return journey ?? null;
 }
 
+export async function searchJourneys(query: string, limit = 10) {
+  const q = query.trim();
+  if (q.length < 2) return [];
+  const pattern = `%${q}%`;
+  return db
+    .select()
+    .from(journeys)
+    .where(
+      and(
+        eq(journeys.status, "published"),
+        or(ilike(journeys.name, pattern), ilike(journeys.tagline, pattern), ilike(journeys.description, pattern))!,
+      ),
+    )
+    .limit(limit);
+}
+
 export async function getJourneyById(id: string) {
   const [journey] = await db.select().from(journeys).where(eq(journeys.id, id)).limit(1);
   return journey ?? null;

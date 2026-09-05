@@ -1,6 +1,25 @@
-import { and, asc, count, eq, gte, inArray } from "drizzle-orm";
+import { and, asc, count, eq, gte, ilike, inArray, or } from "drizzle-orm";
 import { db } from "@/db";
 import { eventAttendance, events, follows, travellerProfiles, users, vendorProfiles } from "@/db/schema";
+
+export async function searchEvents(query: string, limit = 10) {
+  const q = query.trim();
+  if (q.length < 2) return [];
+  const pattern = `%${q}%`;
+  return db
+    .select({ event: events, organizer: vendorProfiles })
+    .from(events)
+    .leftJoin(vendorProfiles, eq(events.organizerVendorProfileId, vendorProfiles.id))
+    .where(
+      and(
+        eq(events.active, true),
+        gte(events.startAt, new Date()),
+        or(ilike(events.title, pattern), ilike(events.description, pattern), ilike(events.location, pattern))!,
+      ),
+    )
+    .orderBy(asc(events.startAt))
+    .limit(limit);
+}
 
 export async function getUpcomingEvents(filters: { category?: string } = {}) {
   const conditions = [eq(events.active, true), gte(events.startAt, new Date())];

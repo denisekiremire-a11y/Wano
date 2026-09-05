@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { HeaderLogoutButton } from "@/components/header-logout-button";
+import { HeaderSearch } from "@/components/header-search";
 import { navItemsFor } from "@/lib/nav-items";
 import type { SessionPayload } from "@/lib/session";
 
@@ -42,6 +43,7 @@ export function SiteHeader({
         </nav>
 
         <div className="flex items-center gap-3">
+          <HeaderSearch />
           {session ? (
             <HeaderLogoutButton />
           ) : (
