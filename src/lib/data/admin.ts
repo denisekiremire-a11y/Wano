@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { count, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import {
   accreditationReviews,
@@ -45,6 +45,13 @@ export async function getVendorDetail(vendorProfileId: string) {
   ]);
 
   return { vendorProfile, vendorUser, listingRow, documents, reviews, allJourneys };
+}
+
+/** Lightweight count for the admin nav badge — avoids the full N+1 queue
+ * fetch in getVendorApprovalQueue just to show a number. */
+export async function getPendingAccreditationCount() {
+  const [row] = await db.select({ total: count() }).from(vendorProfiles).where(eq(vendorProfiles.accreditationStatus, "pending"));
+  return row?.total ?? 0;
 }
 
 export async function getVendorApprovalQueue() {

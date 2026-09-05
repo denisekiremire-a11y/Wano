@@ -1,4 +1,4 @@
-import { desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import {
   bookings,
@@ -133,6 +133,23 @@ export async function getVendorReferralStats(vendorProfileId: string) {
     totalViews,
     pendingCount: bookingRows.filter((b) => b.status === "pending").length,
   };
+}
+
+/** Lightweight count for the nav badge — how many requests are waiting on
+ * this vendor's response right now. */
+export async function getVendorPendingBookingsCount(vendorProfileId: string) {
+  const vendorListings = await db
+    .select({ id: listings.id })
+    .from(listings)
+    .where(eq(listings.vendorProfileId, vendorProfileId));
+  const listingIds = vendorListings.map((l) => l.id);
+  if (listingIds.length === 0) return 0;
+
+  const [row] = await db
+    .select({ total: count() })
+    .from(bookings)
+    .where(and(inArray(bookings.listingId, listingIds), eq(bookings.status, "pending")));
+  return row?.total ?? 0;
 }
 
 /** All booking requests for a vendor's listing(s), newest first — used on

@@ -1,6 +1,11 @@
-import { and, desc, eq } from "drizzle-orm";
+import { count, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { blocks, moderationActions, postComments, posts, reports, travellerProfiles, users } from "@/db/schema";
+
+export async function getOpenReportsCount() {
+  const [row] = await db.select({ total: count() }).from(reports).where(eq(reports.status, "open"));
+  return row?.total ?? 0;
+}
 
 export async function getOpenReports() {
   return db

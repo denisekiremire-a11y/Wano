@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatCommission } from "@/lib/currency";
 import { getVendorProfileByUserId, getVendorReferralStats } from "@/lib/data/vendor";
 import { getSession } from "@/lib/session";
 
@@ -11,7 +12,7 @@ export default async function VendorReferralsPage() {
 
   const cards = [
     { label: "Confirmed bookings", value: stats.totalBookings },
-    { label: "Estimated commission owed", value: `$${stats.totalCommission.toFixed(2)}` },
+    { label: "Estimated commission owed", value: formatCommission(stats.totalCommission) },
     { label: "Listing views", value: stats.totalViews },
   ];
 

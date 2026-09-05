@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { BookingThread } from "@/components/booking-thread";
 import { adminSetBookingStatusAction } from "@/lib/actions/admin-actions";
+import { formatCommission } from "@/lib/currency";
 
 const statusStyles: Record<string, string> = {
   pending: "bg-marigold-100 text-marigold-800",
@@ -83,7 +84,7 @@ export function BookingRow({
         <div className="text-sm">
           <p className="text-forest-900">{travellerName}</p>
           <p className="text-xs text-forest-800/50">
-            {travellerEmail} · est. commission ${Number(commission).toFixed(2)}
+            {travellerEmail} · est. commission {formatCommission(commission)}
           </p>
         </div>
         <div className="flex flex-wrap gap-1.5">

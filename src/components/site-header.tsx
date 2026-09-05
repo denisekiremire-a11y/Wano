@@ -3,7 +3,13 @@ import { HeaderLogoutButton } from "@/components/header-logout-button";
 import { navItemsFor } from "@/lib/nav-items";
 import type { SessionPayload } from "@/lib/session";
 
-export function SiteHeader({ session }: { session: SessionPayload | null }) {
+export function SiteHeader({
+  session,
+  navBadges = {},
+}: {
+  session: SessionPayload | null;
+  navBadges?: Record<string, number>;
+}) {
   const items = navItemsFor(session?.role ?? "guest");
 
   return (
@@ -23,9 +29,14 @@ export function SiteHeader({ session }: { session: SessionPayload | null }) {
             <Link
               key={item.href}
               href={item.href}
-              className="text-sm font-medium text-forest-800/80 transition hover:text-forest-900"
+              className="relative text-sm font-medium text-forest-800/80 transition hover:text-forest-900"
             >
               {item.label}
+              {navBadges[item.href] > 0 && (
+                <span className="absolute -right-3 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-semibold text-white">
+                  {navBadges[item.href]}
+                </span>
+              )}
             </Link>
           ))}
         </nav>
