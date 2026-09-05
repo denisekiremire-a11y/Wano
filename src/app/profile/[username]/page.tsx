@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { UserIcon } from "@/components/icons";
+import { TrophyIcon, UserIcon } from "@/components/icons";
 import { PassportGrid } from "@/components/passport-grid";
 import { FollowButton } from "@/components/follow-button";
 import { MessageButton } from "@/components/message-button";
@@ -7,7 +7,14 @@ import { ReportBlockMenu } from "@/components/report-block-menu";
 import { AudienceChip, PostContextCard } from "@/components/post-context-card";
 import { getSession } from "@/lib/session";
 import { getPassportProgress, getTravellerProfileByUserId } from "@/lib/data/traveller";
-import { getFollowCounts, getPostsByTraveller, getTravellerByUsername, isFollowing } from "@/lib/data/social";
+import {
+  getEngagementCounts,
+  getFollowCounts,
+  getPostsByTraveller,
+  getTravellerByUsername,
+  isFollowing,
+} from "@/lib/data/social";
+import { isInfluencerByFollowers, isPostMonetizable } from "@/lib/influencer";
 import { resolvePostContexts, type PostContextType } from "@/lib/data/post-context";
 
 export default async function PublicProfilePage({
@@ -31,6 +38,8 @@ export default async function PublicProfilePage({
       .filter((r) => r.post.contextType && r.post.contextId)
       .map((r) => ({ type: r.post.contextType as PostContextType, id: r.post.contextId as string })),
   );
+  const { likeMap } = await getEngagementCounts(postRows.map((r) => r.post.id));
+  const isInfluencer = isInfluencerByFollowers(followCounts.followers);
 
   let viewerFollows = false;
   let isOwnProfile = false;
@@ -49,9 +58,17 @@ export default async function PublicProfilePage({
           <UserIcon className="h-8 w-8" />
         </span>
         <div className="flex-1">
-          <h1 className="font-display text-2xl font-semibold text-forest-900">
-            {traveller.displayName}
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="font-display text-2xl font-semibold text-forest-900">
+              {traveller.displayName}
+            </h1>
+            {isInfluencer && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-marigold-100 px-2 py-0.5 text-[11px] font-semibold text-marigold-800">
+                <TrophyIcon className="h-3 w-3" />
+                Influencer
+              </span>
+            )}
+          </div>
           <p className="text-sm text-forest-800/60">
             @{user.username} · {followCounts.followers} followers · {followCounts.following} following
           </p>
@@ -87,6 +104,8 @@ export default async function PublicProfilePage({
               post.contextType && post.contextId
                 ? (contextMap.get(`${post.contextType}:${post.contextId}`) ?? null)
                 : null;
+            const likeCount = likeMap.get(post.id) ?? 0;
+            const monetizable = isPostMonetizable(followCounts.followers, likeCount);
             return (
               <div key={post.id} className="rounded-xl border border-forest-900/10 bg-white p-4">
                 {audienceClub && (
@@ -96,6 +115,14 @@ export default async function PublicProfilePage({
                 )}
                 <p className="text-sm text-forest-900">{post.content}</p>
                 {context && <PostContextCard context={context} />}
+                <div className="mt-2 flex items-center gap-2">
+                  <p className="text-xs text-forest-800/50">{likeCount} likes</p>
+                  {monetizable && (
+                    <span className="rounded-full bg-marigold-100 px-2 py-0.5 text-[11px] font-semibold text-marigold-800">
+                      💰 Earning eligible
+                    </span>
+                  )}
+                </div>
               </div>
             );
           });

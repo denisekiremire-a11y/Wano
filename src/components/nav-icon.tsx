@@ -13,6 +13,7 @@ import {
   StampIcon,
   TagIcon,
   TicketIcon,
+  TrophyIcon,
   UserIcon,
   UsersIcon,
 } from "@/components/icons";
@@ -35,6 +36,7 @@ const map: Record<NavItem["icon"], (props: { className?: string }) => React.JSX.
   mail: MailIcon,
   user: UserIcon,
   ticket: TicketIcon,
+  trophy: TrophyIcon,
 };
 
 export function NavIcon({ icon, className }: { icon: NavItem["icon"]; className?: string }) {

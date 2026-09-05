@@ -19,7 +19,8 @@ export type NavItem = {
     | "chat"
     | "mail"
     | "user"
-    | "ticket";
+    | "ticket"
+    | "trophy";
 };
 
 export function navItemsFor(role: SessionPayload["role"] | "guest"): NavItem[] {
@@ -52,6 +53,7 @@ export function navItemsFor(role: SessionPayload["role"] | "guest"): NavItem[] {
       { href: "/admin/clubs", label: "Clubs", icon: "chat" },
       { href: "/admin/journal", label: "Journal", icon: "file" },
       { href: "/admin/moderation", label: "Moderation", icon: "flag" },
+      { href: "/admin/influencers", label: "Influencers", icon: "trophy" },
       { href: "/admin/analytics", label: "Analytics", icon: "chart" },
     ];
   }

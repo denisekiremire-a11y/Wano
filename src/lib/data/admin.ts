@@ -1,12 +1,14 @@
-import { count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import {
   accreditationReviews,
   bookings,
   challengeCompletions,
+  follows,
   journeys,
   listingJourneys,
   listings,
+  posts as postsTable,
   promoCodes,
   stamps,
   travellerProfiles,
@@ -14,6 +16,8 @@ import {
   vendorDocuments,
   vendorProfiles,
 } from "@/db/schema";
+import { isInfluencerByFollowers, MONETIZABLE_POST_LIKE_THRESHOLD } from "@/lib/influencer";
+import { getEngagementCounts } from "./social";
 import { getJourneyTagsForListing } from "./journeys";
 import {
   getVendorListingFull,
@@ -213,4 +217,44 @@ export async function getCampaignMetrics() {
 /** Candidates for "club host" — any named, real Wano account. */
 export async function getHostCandidates() {
   return db.select({ id: users.id, name: users.name, role: users.role }).from(users).orderBy(users.name);
+}
+
+/** Every traveller who has crossed the influencer follower threshold,
+ * with whichever of their posts have also crossed the like threshold —
+ * see src/lib/influencer.ts. This is eligibility bookkeeping only, no
+ * payout mechanism exists yet. */
+export async function getInfluencersWithMonetizablePosts() {
+  const followRows = await db.select({ followingId: follows.followingId }).from(follows);
+  const followerCounts = new Map<string, number>();
+  for (const row of followRows) {
+    followerCounts.set(row.followingId, (followerCounts.get(row.followingId) ?? 0) + 1);
+  }
+
+  const influencerIds = [...followerCounts.entries()]
+    .filter(([, followerCount]) => isInfluencerByFollowers(followerCount))
+    .map(([travellerId]) => travellerId);
+  if (influencerIds.length === 0) return [];
+
+  const [travellerRows, influencerPosts] = await Promise.all([
+    db
+      .select({ traveller: travellerProfiles, user: users })
+      .from(travellerProfiles)
+      .innerJoin(users, eq(users.id, travellerProfiles.userId))
+      .where(inArray(travellerProfiles.id, influencerIds)),
+    db
+      .select()
+      .from(postsTable)
+      .where(and(inArray(postsTable.travellerId, influencerIds), eq(postsTable.status, "visible"))),
+  ]);
+
+  const { likeMap } = await getEngagementCounts(influencerPosts.map((p) => p.id));
+
+  return travellerRows.map(({ traveller, user }) => ({
+    traveller,
+    user,
+    followers: followerCounts.get(traveller.id) ?? 0,
+    eligiblePosts: influencerPosts
+      .filter((p) => p.travellerId === traveller.id && (likeMap.get(p.id) ?? 0) >= MONETIZABLE_POST_LIKE_THRESHOLD)
+      .map((p) => ({ id: p.id, content: p.content, likes: likeMap.get(p.id) ?? 0 })),
+  }));
 }
