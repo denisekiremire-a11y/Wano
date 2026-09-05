@@ -4,7 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import { bookings, journeys, listingJourneys, listings } from "@/db/schema";
+import { bookings, listingJourneys, listings } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { logEvent } from "@/lib/analytics";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
@@ -54,10 +54,6 @@ export async function bookListingFormAction(formData: FormData) {
     if (tag) journeyId = requestedJourneyId;
   }
 
-  const journey = journeyId
-    ? (await db.select().from(journeys).where(eq(journeys.id, journeyId)).limit(1))[0]
-    : null;
-
   // Bookings start "pending" — the accredited partner has real, finite
   // capacity, so a Passport stamp and a confirmed booking only happen once
   // they actually confirm from their dashboard. See respondToBookingAction.
@@ -85,9 +81,5 @@ export async function bookListingFormAction(formData: FormData) {
   revalidatePath("/vendor/dashboard/bookings");
   revalidatePath("/vendor/dashboard/referrals");
 
-  const params = new URLSearchParams({
-    booked: booking.bookingRef,
-    journey: journey?.name ?? "",
-  });
-  redirect(`/profile?${params.toString()}`);
+  redirect(`/bookings/${booking.bookingRef}`);
 }

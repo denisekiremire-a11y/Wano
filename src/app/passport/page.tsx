@@ -280,7 +280,10 @@ function BookingGroup({
             <div>
               <p className="font-medium text-forest-900">{listing.title}</p>
               <p className="text-sm text-forest-800/60">
-                {journey ? `${journey.name} · ` : ""}ref {booking.bookingRef}
+                {journey ? `${journey.name} · ` : ""}
+                <Link href={`/bookings/${booking.bookingRef}`} className="hover:underline">
+                  ref {booking.bookingRef}
+                </Link>
               </p>
             </div>
             <span className="rounded-full bg-forest-100 px-3 py-1 text-xs font-medium capitalize text-forest-800">

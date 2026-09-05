@@ -89,6 +89,21 @@ export async function getTravellerBookings(travellerId: string) {
     .orderBy(bookings.createdAt);
 }
 
+/** A single booking by its confirmation code, scoped to the traveller who
+ * made it — used by the post-booking confirmation page. Returns null
+ * rather than someone else's booking if the ref doesn't belong to them. */
+export async function getBookingByRef(bookingRef: string, travellerId: string) {
+  const [row] = await db
+    .select({ booking: bookings, listing: listings, vendor: vendorProfiles, journey: journeys })
+    .from(bookings)
+    .innerJoin(listings, eq(bookings.listingId, listings.id))
+    .innerJoin(vendorProfiles, eq(listings.vendorProfileId, vendorProfiles.id))
+    .leftJoin(journeys, eq(bookings.journeyId, journeys.id))
+    .where(and(eq(bookings.bookingRef, bookingRef), eq(bookings.travellerId, travellerId)))
+    .limit(1);
+  return row ?? null;
+}
+
 export async function getReferralStats(travellerId: string) {
   const [profile] = await db
     .select()

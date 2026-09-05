@@ -241,15 +241,16 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
             <h2 className="font-display text-lg font-semibold text-forest-900">Your bookings here</h2>
             <div className="mt-3 space-y-2">
               {[...myUpcoming, ...myPast].map(({ booking }) => (
-                <div
+                <Link
                   key={booking.id}
-                  className="flex items-center justify-between rounded-xl border border-forest-900/10 p-3"
+                  href={`/bookings/${booking.bookingRef}`}
+                  className="flex items-center justify-between rounded-xl border border-forest-900/10 p-3 transition hover:bg-forest-50/50"
                 >
                   <p className="text-sm text-forest-800/80">ref {booking.bookingRef}</p>
                   <span className="rounded-full bg-forest-100 px-2.5 py-1 text-xs font-medium capitalize text-forest-800">
                     {booking.status}
                   </span>
-                </div>
+                </Link>
               ))}
             </div>
           </section>
