@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { JourneyArt } from "@/components/journey-art";
 import { OfferTeaser } from "@/components/offer-teaser";
+import { VendorPhotoManager } from "@/components/vendor-photo-manager";
 import { formatListingPrice } from "@/lib/currency";
 import { getVendorListingFull, getVendorProfileByUserId } from "@/lib/data/vendor";
+import { getListingImageIdsFor } from "@/lib/data/listing-images";
 import { journeyTheme } from "@/lib/journey-theme";
 import { listingTypeLabels } from "@/lib/listing-type";
 import { getSession } from "@/lib/session";
@@ -31,6 +33,7 @@ export default async function VendorDashboardPage() {
   const status = statusCopy[vendorProfile.accreditationStatus];
   const artSlug = listingRow?.journeyTags[0]?.slug ?? "relax-unwind";
   const theme = journeyTheme(artSlug);
+  const existingImages = listingRow ? await getListingImageIdsFor(listingRow.listing.id) : [];
 
   return (
     <div className="space-y-6">
@@ -117,6 +120,8 @@ export default async function VendorDashboardPage() {
           </p>
         )}
       </section>
+
+      {listingRow && <VendorPhotoManager existingImages={existingImages} />}
     </div>
   );
 }
