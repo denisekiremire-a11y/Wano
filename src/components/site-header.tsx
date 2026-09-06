@@ -25,12 +25,12 @@ export function SiteHeader({
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-6 md:flex">
+        <nav className="hidden items-center gap-5 overflow-x-auto md:flex">
           {items.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className="relative text-sm font-medium text-forest-800/80 transition hover:text-forest-900"
+              className="relative shrink-0 whitespace-nowrap text-sm font-medium text-forest-800/80 transition hover:text-forest-900"
             >
               {item.label}
               {navBadges[item.href] > 0 && (
