@@ -44,49 +44,61 @@ export default async function PassportPage({
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
   if (!travellerProfile) return null;
 
-  const [
-    user,
-    passportProgress,
-    bookingRows,
-    reviewableRows,
-    rewardsSummary,
-    wallet,
-    deals,
-    claimedIds,
-    postRows,
-    blockedList,
-    myClubs,
-  ] = await Promise.all([
-    db.select().from(users).where(eq(users.id, session.userId)).limit(1).then((r) => r[0]),
-    getPassportProgress(travellerProfile.id),
-    getTravellerBookings(travellerProfile.id),
-    getReviewableBookings(travellerProfile.id),
-    getRewardsSummary(travellerProfile.id, travellerProfile.persona, travellerProfile.city),
-    getMyWallet(travellerProfile.id),
-    getAllActiveDeals(),
-    getClaimedDealIds(travellerProfile.id),
-    getPostsByTraveller(travellerProfile.id),
-    getMyBlockedList(travellerProfile.id),
-    getMyClubs(travellerProfile.id),
-  ]);
+  let user, passportProgress, bookingRows, reviewableRows, rewardsSummary, wallet, deals, claimedIds, postRows, blockedList, myClubs;
+  let likeMap, commentMap, likedPostIds, commentsMap, imageIdsMap, contextMap;
+  try {
+    [
+      user,
+      passportProgress,
+      bookingRows,
+      reviewableRows,
+      rewardsSummary,
+      wallet,
+      deals,
+      claimedIds,
+      postRows,
+      blockedList,
+      myClubs,
+    ] = await Promise.all([
+      db.select().from(users).where(eq(users.id, session.userId)).limit(1).then((r) => r[0]),
+      getPassportProgress(travellerProfile.id),
+      getTravellerBookings(travellerProfile.id),
+      getReviewableBookings(travellerProfile.id),
+      getRewardsSummary(travellerProfile.id, travellerProfile.persona, travellerProfile.city),
+      getMyWallet(travellerProfile.id),
+      getAllActiveDeals(),
+      getClaimedDealIds(travellerProfile.id),
+      getPostsByTraveller(travellerProfile.id),
+      getMyBlockedList(travellerProfile.id),
+      getMyClubs(travellerProfile.id),
+    ]);
+
+    const postIds = postRows.map((r) => r.post.id);
+    [{ likeMap, commentMap }, likedPostIds] = await Promise.all([
+      getEngagementCounts(postIds),
+      getLikedPostIds(travellerProfile.id, postIds),
+    ]);
+    const commentsByPost = await Promise.all(
+      postRows.map((r) => getCommentsForPost(r.post.id).then((comments) => [r.post.id, comments] as const)),
+    );
+    commentsMap = new Map(commentsByPost);
+    imageIdsMap = await getPostImageIds(postIds);
+    contextMap = await resolvePostContexts(
+      postRows
+        .filter((r) => r.post.contextType && r.post.contextId)
+        .map((r) => ({ type: r.post.contextType as PostContextType, id: r.post.contextId as string })),
+    );
+  } catch (err) {
+    return (
+      <pre style={{ whiteSpace: "pre-wrap", padding: 24, fontSize: 12 }}>
+        TEMP DEBUG — remove after diagnosis{"\n\n"}
+        {err instanceof Error ? `${err.message}\n\n${err.stack}` : String(err)}
+      </pre>
+    );
+  }
+
   const reviewableBookingIds = new Set(reviewableRows.map((r) => r.booking.id));
   const { progress, stampCount, totalJourneys, grandPrizeQualified } = passportProgress;
-
-  const postIds = postRows.map((r) => r.post.id);
-  const [{ likeMap, commentMap }, likedPostIds] = await Promise.all([
-    getEngagementCounts(postIds),
-    getLikedPostIds(travellerProfile.id, postIds),
-  ]);
-  const commentsByPost = await Promise.all(
-    postRows.map((r) => getCommentsForPost(r.post.id).then((comments) => [r.post.id, comments] as const)),
-  );
-  const commentsMap = new Map(commentsByPost);
-  const imageIdsMap = await getPostImageIds(postIds);
-  const contextMap = await resolvePostContexts(
-    postRows
-      .filter((r) => r.post.contextType && r.post.contextId)
-      .map((r) => ({ type: r.post.contextType as PostContextType, id: r.post.contextId as string })),
-  );
 
   const defaultTab: PassportTabKey = stampCount > 0 ? "stamps" : bookingRows.length > 0 ? "bookings" : "stamps";
   const activeTab: PassportTabKey = PASSPORT_TABS.some((t) => t.key === tab)
