@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Wano</string>
+    <string name="title_activity_main">Wano</string>
+    <string name="package_name">com.panerasolutions.wano</string>
+    <string name="custom_url_scheme">com.panerasolutions.wano</string>
+</resources>
