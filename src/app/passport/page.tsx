@@ -496,37 +496,18 @@ function AccountTab({
 
       <section className="space-y-4 rounded-2xl border border-forest-900/10 bg-white p-5">
         <h3 className="font-display text-lg font-semibold text-forest-900">Profile</h3>
-        <StubRow label="Photo" description="Change your profile photo" />
-        <StubRow label="Bio" description="Tell people a little about yourself" />
-        <div className="border-t border-forest-900/5 pt-4">
-          <BirthdayEditor dateOfBirth={dateOfBirth} />
-        </div>
+        <BirthdayEditor dateOfBirth={dateOfBirth} />
       </section>
 
       <section className="space-y-4 rounded-2xl border border-forest-900/10 bg-white p-5">
         <h3 className="font-display text-lg font-semibold text-forest-900">Preferences</h3>
         <LiteModeToggle />
         <FeedActivityToggle initialValue={showActivityInFeed} />
-        <StubRow label="Notifications" description="Choose what Wano emails and alerts you" />
-        <StubRow label="Language" description="Set your preferred app language" />
-        <StubRow label="Currency" description="Set your preferred display currency" />
-      </section>
-
-      <section className="space-y-4 rounded-2xl border border-forest-900/10 bg-white p-5">
-        <h3 className="font-display text-lg font-semibold text-forest-900">Security</h3>
-        <StubRow label="Change password" description="Update your account password" />
-        <StubRow label="Devices" description="See where you're signed in" />
       </section>
 
       <section className="space-y-4 rounded-2xl border border-forest-900/10 bg-white p-5">
         <h3 className="font-display text-lg font-semibold text-forest-900">Blocked accounts</h3>
         <BlockedAccountsList blockedList={blockedList} />
-      </section>
-
-      <section className="space-y-4 rounded-2xl border border-forest-900/10 bg-white p-5">
-        <h3 className="font-display text-lg font-semibold text-forest-900">Points</h3>
-        <StubRow label="Tiers & expiry" description="How your points level up and expire" />
-        <StubRow label="Redeem with a partner" description="Spend points directly at a Wano business" />
       </section>
 
       <div className="rounded-xl border border-forest-900/10 bg-white p-4 text-sm text-forest-800/70">
@@ -544,20 +525,6 @@ function AccountTab({
       </div>
 
       <LogoutButton />
-    </div>
-  );
-}
-
-function StubRow({ label, description }: { label: string; description: string }) {
-  return (
-    <div className="flex items-center justify-between gap-3 border-t border-forest-900/5 pt-4 first:border-t-0 first:pt-0">
-      <div>
-        <p className="text-sm font-medium text-forest-900">{label}</p>
-        <p className="text-xs text-forest-800/60">{description}</p>
-      </div>
-      <span className="flex-none rounded-full bg-forest-50 px-3 py-1 text-xs font-medium text-forest-800/50">
-        Coming soon
-      </span>
     </div>
   );
 }

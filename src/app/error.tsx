@@ -1,13 +1,29 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
+import { reportClientErrorAction } from "@/lib/actions/error-report";
 
 export default function Error({
+  error,
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    // sessionStorage guard so a render loop on the same crash can't spam
+    // the admin inbox — one email per unique error per browser session.
+    const key = `wano_error_reported_${error.digest ?? error.message}`;
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+    } catch {
+      // Storage can be unavailable (private mode) — fall through and report anyway.
+    }
+    reportClientErrorAction(error.message, error.digest, window.location.pathname).catch(() => {});
+  }, [error]);
+
   return (
     <main className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center gap-4 px-4 text-center">
       <h1 className="font-display text-2xl font-semibold text-forest-900">

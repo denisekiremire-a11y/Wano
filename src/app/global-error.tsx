@@ -1,13 +1,27 @@
 "use client";
 
+import { useEffect } from "react";
+import { reportClientErrorAction } from "@/lib/actions/error-report";
 import "./globals.css";
 
 export default function GlobalError({
+  error,
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    const key = `wano_error_reported_${error.digest ?? error.message}`;
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+    } catch {
+      // Storage can be unavailable (private mode) — fall through and report anyway.
+    }
+    reportClientErrorAction(error.message, error.digest, window.location.pathname).catch(() => {});
+  }, [error]);
+
   return (
     <html lang="en">
       <body className="flex min-h-screen items-center justify-center bg-background text-foreground">

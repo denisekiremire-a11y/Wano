@@ -2,6 +2,7 @@ import { getAllEventsForAdmin, getAllListingsForAdmin } from "@/lib/data/admin";
 import { getAllRewardsForAdmin } from "@/lib/data/rewards";
 import { RewardForm } from "./reward-form";
 import { RewardRow } from "./reward-row";
+import { SeedRewardsButton } from "./seed-rewards-button";
 
 export default async function AdminRewardsPage() {
   const [rewardsList, listingOptions, eventOptions] = await Promise.all([
@@ -20,6 +21,8 @@ export default async function AdminRewardsPage() {
           flows — this catalog is for campaign and manual rewards travellers can claim directly.
         </p>
       </div>
+
+      <SeedRewardsButton />
 
       <RewardForm
         listingOptions={listingOptions.map((l) => ({

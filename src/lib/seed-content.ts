@@ -18,6 +18,7 @@ import {
   offers,
   posts,
   restaurantDetails,
+  rewards,
   travellerProfiles,
   users,
   vendorProfiles,
@@ -965,6 +966,87 @@ export async function seedDemoInfluencer() {
   }
 
   return { accountCreated: created, username: user.username, postsCreated };
+}
+
+/** One-time (safe to re-run) demo bootstrap for the two Match Day prizes
+ * requested for launch: a Fun Zone game-day win (20% off at Le Chateau
+ * Brasserie) and an XP draw grand prize (two nights in Jinja plus a
+ * Bujagali Falls excursion, redeemed at Jinja Riverside Hotel). Matches by
+ * listing title + source, so re-running never creates duplicates. */
+export async function seedDemoRewards() {
+  const results: string[] = [];
+
+  const [restaurant] = await db
+    .select({ id: listings.id })
+    .from(listings)
+    .where(eq(listings.title, "Le Chateau Brasserie"))
+    .limit(1);
+  if (!restaurant) {
+    results.push("Skipped Fun Zone prize — \"Le Chateau Brasserie\" listing not found.");
+  } else {
+    const [existing] = await db
+      .select({ id: rewards.id })
+      .from(rewards)
+      .where(
+        and(
+          eq(rewards.targetType, "listing"),
+          eq(rewards.targetId, restaurant.id),
+          eq(rewards.source, "funzone"),
+        ),
+      )
+      .limit(1);
+    if (existing) {
+      results.push("Fun Zone prize already exists.");
+    } else {
+      await db.insert(rewards).values({
+        title: "20% off at Le Chateau Brasserie",
+        description: "A Fun Zone game-day win.",
+        targetType: "listing",
+        targetId: restaurant.id,
+        discountType: "percent",
+        discountValue: "20",
+        source: "funzone",
+        defaultValidityDays: 30,
+      });
+      results.push("Created Fun Zone prize: 20% off at Le Chateau Brasserie.");
+    }
+  }
+
+  const [hotel] = await db
+    .select({ id: listings.id })
+    .from(listings)
+    .where(eq(listings.title, "Jinja Riverside Hotel — River View Rooms"))
+    .limit(1);
+  if (!hotel) {
+    results.push(
+      "Skipped XP draw prize — \"Jinja Riverside Hotel\" listing not found. Run the demo inventory seed first.",
+    );
+  } else {
+    const [existing] = await db
+      .select({ id: rewards.id })
+      .from(rewards)
+      .where(
+        and(eq(rewards.targetType, "listing"), eq(rewards.targetId, hotel.id), eq(rewards.source, "xp_draw")),
+      )
+      .limit(1);
+    if (existing) {
+      results.push("XP draw prize already exists.");
+    } else {
+      await db.insert(rewards).values({
+        title: "Two nights in Jinja + a Bujagali Falls excursion",
+        description:
+          "Two nights at Jinja Riverside Hotel plus an excursion to Bujagali Falls, on the source of the Nile.",
+        targetType: "listing",
+        targetId: hotel.id,
+        discountType: "freebie",
+        source: "xp_draw",
+        defaultValidityDays: 30,
+      });
+      results.push("Created XP draw prize: Two nights in Jinja + a Bujagali Falls excursion.");
+    }
+  }
+
+  return results;
 }
 
 // Migration content for Milestone J, Phase J1 — turns the 5 read-only

@@ -7,6 +7,7 @@ import {
   backfillEditorialJourneysJ1,
   seedDemoInfluencer,
   seedDemoInventory,
+  seedDemoRewards,
   seedJournalPosts,
   seedLaunchClubs,
 } from "@/lib/seed-content";
@@ -54,5 +55,17 @@ export async function runDemoInfluencerBackfillAction() {
   await requireRole("admin");
   const result = await seedDemoInfluencer();
   revalidatePath("/admin/influencers");
+  return result;
+}
+
+/** One-time (safe to re-run) demo bootstrap for the launch Match Day
+ * prizes: a Fun Zone win at Le Chateau Brasserie, and the XP draw grand
+ * prize at Jinja Riverside Hotel. */
+export async function runDemoRewardsBackfillAction() {
+  await requireRole("admin");
+  const result = await seedDemoRewards();
+  revalidatePath("/admin/rewards");
+  revalidatePath("/admin/funzone");
+  revalidatePath("/admin/match-day");
   return result;
 }
