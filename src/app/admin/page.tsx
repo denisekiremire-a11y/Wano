@@ -102,6 +102,33 @@ export default async function AdminOverviewPage() {
           ))}
         </div>
       </section>
+
+      <section className="rounded-2xl border border-dashed border-forest-900/20 bg-white p-5">
+        <h2 className="font-display text-sm font-semibold text-forest-900">Demo &amp; setup tools</h2>
+        <p className="mt-0.5 text-xs text-forest-800/60">
+          One-off buttons for populating demo content — safe to click more than once.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Link
+            href="/admin/seed-demo-inventory"
+            className="rounded-full border border-forest-800/20 px-4 py-2 text-sm font-semibold text-forest-800"
+          >
+            Seed demo inventory
+          </Link>
+          <Link
+            href="/admin/influencers"
+            className="rounded-full border border-forest-800/20 px-4 py-2 text-sm font-semibold text-forest-800"
+          >
+            Seed demo influencer
+          </Link>
+          <Link
+            href="/admin/seed-journeys-j1"
+            className="rounded-full border border-forest-800/20 px-4 py-2 text-sm font-semibold text-forest-800"
+          >
+            Migrate journeys (J1)
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }
