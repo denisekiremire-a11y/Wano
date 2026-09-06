@@ -1,8 +1,8 @@
-import { getActiveFunzoneRewards } from "@/lib/data/rewards";
+import { getActiveRewardsBySource } from "@/lib/data/rewards";
 import { IssueForm } from "./issue-form";
 
 export default async function AdminFunzonePage() {
-  const rewardsList = await getActiveFunzoneRewards();
+  const rewardsList = await getActiveRewardsBySource("funzone");
 
   return (
     <div className="space-y-6">

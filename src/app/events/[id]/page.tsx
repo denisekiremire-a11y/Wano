@@ -13,8 +13,11 @@ import {
 import { getClaimableRewardsForTarget, getMyClaimedRewardsForTarget } from "@/lib/data/rewards";
 import { getMediaPostsFor } from "@/lib/data/social";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
+import { getMyXpBookingsForMatch, getSeatsRemainingForMatch } from "@/lib/data/xp";
 import { getSession } from "@/lib/session";
+import { MATCH_DAY_CATEGORY } from "@/lib/xp-config";
 import { TargetRewardsSection } from "@/components/target-rewards-section";
+import { XpBookingPanel } from "@/components/xp-booking-panel";
 
 function formatEventWhen(startAt: Date, endAt: Date | null) {
   const start = new Intl.DateTimeFormat("en-GB", {
@@ -42,21 +45,26 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   let followedGoing: { name: string; status: string }[] = [];
   let claimableRewards: Awaited<ReturnType<typeof getClaimableRewardsForTarget>> = [];
   let myClaimedRewards: Awaited<ReturnType<typeof getMyClaimedRewardsForTarget>> = [];
+  let myXpBookings: Awaited<ReturnType<typeof getMyXpBookingsForMatch>> = [];
+  const isMatchDay = event.category === MATCH_DAY_CATEGORY;
   if (session?.role === "traveller") {
     const travellerProfile = await getTravellerProfileByUserId(session.userId);
     if (travellerProfile) {
-      const [mine, followed, claimable, myClaimed] = await Promise.all([
+      const [mine, followed, claimable, myClaimed, xpBookings] = await Promise.all([
         getMyAttendance(event.id, travellerProfile.id),
         getFollowedAttendees(event.id, travellerProfile.id),
         getClaimableRewardsForTarget("event", event.id),
         getMyClaimedRewardsForTarget(travellerProfile.id, "event", event.id),
+        isMatchDay ? getMyXpBookingsForMatch(travellerProfile.id, event.id) : Promise.resolve([]),
       ]);
       myStatus = mine?.status ?? null;
       followedGoing = followed;
       claimableRewards = claimable;
       myClaimedRewards = myClaimed;
+      myXpBookings = xpBookings;
     }
   }
+  const seatsRemaining = isMatchDay ? await getSeatsRemainingForMatch(event.id) : 0;
 
   const [attendees, media] = await Promise.all([getEventAttendees(event.id), getMediaPostsFor({ eventId: event.id })]);
 
@@ -82,18 +90,45 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         {organizer && (
           <p className="mt-2 text-sm text-forest-800/60">Hosted by {organizer.businessName}</p>
         )}
-        <p className="mt-2 font-medium text-nile-700">{event.priceHint ?? "Free to attend"}</p>
+        {!isMatchDay && <p className="mt-2 font-medium text-nile-700">{event.priceHint ?? "Free to attend"}</p>}
+
+        {isMatchDay && (
+          <div className="mt-6">
+            {session?.role === "traveller" ? (
+              <XpBookingPanel
+                matchId={event.id}
+                matchStartAt={event.startAt.toISOString()}
+                seatsRemaining={seatsRemaining}
+                myBookings={myXpBookings}
+              />
+            ) : (
+              <div className="rounded-2xl border border-forest-900/10 bg-white p-5">
+                <p className="text-sm text-forest-800/70">
+                  {seatsRemaining} seat{seatsRemaining === 1 ? "" : "s"} left · {event.priceHint}
+                </p>
+                <Link
+                  href={`/login?next=/events/${event.id}`}
+                  className="mt-3 inline-flex rounded-full bg-forest-800 px-4 py-2 text-sm font-semibold text-white"
+                >
+                  Log in to book
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="mt-6">
           {session?.role === "traveller" ? (
             <AttendanceButtons eventId={event.id} initialStatus={myStatus} />
           ) : (
-            <Link
-              href={`/login?next=/events/${event.id}`}
-              className="inline-flex rounded-full bg-forest-800 px-4 py-2 text-sm font-semibold text-white"
-            >
-              Log in to RSVP
-            </Link>
+            !isMatchDay && (
+              <Link
+                href={`/login?next=/events/${event.id}`}
+                className="inline-flex rounded-full bg-forest-800 px-4 py-2 text-sm font-semibold text-white"
+              >
+                Log in to RSVP
+              </Link>
+            )
           )}
         </div>
 

@@ -260,7 +260,7 @@ const rewardSchema = z.object({
   target: z.string().min(1),
   discountType: z.enum(["percent", "fixed", "freebie"]),
   discountValue: z.string().optional().or(z.literal("")),
-  source: z.enum(["manual", "funzone"]),
+  source: z.enum(["manual", "funzone", "xp_draw"]),
   fundedBy: z.string().optional().or(z.literal("")),
   defaultValidityDays: z.coerce.number().int().min(1).max(365),
 });

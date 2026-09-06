@@ -380,6 +380,7 @@ function RewardsTab({
               expiresAt={userReward.expiresAt.toISOString()}
               targetHref={target?.href}
               targetTitle={target?.title}
+              isXpPrize={reward.source === "xp_draw"}
             />
           ))
         )}

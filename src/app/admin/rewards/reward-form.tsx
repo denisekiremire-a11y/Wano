@@ -18,7 +18,7 @@ export function RewardForm({
 }) {
   const [state, formAction, pending] = useActionState(createRewardAction, initialState);
   const [discountType, setDiscountType] = useState<"percent" | "fixed" | "freebie">("percent");
-  const [source, setSource] = useState<"manual" | "funzone">("manual");
+  const [source, setSource] = useState<"manual" | "funzone" | "xp_draw">("manual");
 
   return (
     <form action={formAction} className="space-y-4 rounded-2xl border border-forest-900/10 bg-white p-5">
@@ -80,7 +80,8 @@ export function RewardForm({
           className="mt-1 w-full rounded-lg border border-forest-900/15 bg-white px-3 py-2 text-sm outline-none focus:border-forest-600"
         >
           <option value="manual">Campaign — travellers claim it on the place/event page</option>
-          <option value="funzone">Fun Zone — staff issue it to a match-day winner</option>
+          <option value="funzone">Fun Zone — staff issue it to a game winner</option>
+          <option value="xp_draw">XP draw — awarded to a match-day draw winner</option>
         </select>
       </div>
 

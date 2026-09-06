@@ -23,6 +23,7 @@ export function VoucherCard({
   expiresAt,
   targetHref,
   targetTitle,
+  isXpPrize,
 }: {
   userRewardId: string;
   title: string;
@@ -31,6 +32,7 @@ export function VoucherCard({
   expiresAt: string;
   targetHref?: string;
   targetTitle?: string;
+  isXpPrize?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
@@ -62,13 +64,22 @@ export function VoucherCard({
   }, [expanded, userRewardId]);
 
   return (
-    <div className="rounded-2xl border border-forest-900/10 bg-white p-4">
+    <div
+      className={`rounded-2xl border p-4 ${
+        isXpPrize ? "border-marigold-400 bg-marigold-50" : "border-forest-900/10 bg-white"
+      }`}
+    >
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
         className="flex w-full items-center justify-between gap-3 text-left"
       >
         <div>
+          {isXpPrize && (
+            <span className="mb-1 inline-block rounded-full bg-marigold-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-forest-950">
+              XP Prize
+            </span>
+          )}
           <p className="text-sm font-semibold text-forest-900">{title}</p>
           <p className="text-xs text-forest-800/60">
             {discountLabel}

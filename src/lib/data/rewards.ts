@@ -156,15 +156,16 @@ export async function getOwningVendorProfileId(targetType: "listing" | "event", 
   return row?.vendorProfileId ?? null;
 }
 
-// The Fun Zone prize pool — active, staff-issuable rewards for the issue
-// screen's dropdown. Each is still tied to one place/event (a 50%-off row
-// at one restaurant, a 20%-off row at another) rather than one universal
-// prize, so staff pick which specific prize a winner gets.
-export async function getActiveFunzoneRewards() {
+// The Fun Zone / XP-draw prize pools — active, staff- or admin-issuable
+// rewards for those flows' pickers. Each is still tied to one place/event
+// (a 50%-off row at one restaurant, a 20%-off row at another) rather than
+// one universal prize, so the operator picks which specific prize a
+// winner gets.
+export async function getActiveRewardsBySource(source: "funzone" | "xp_draw") {
   const catalog = await db
     .select()
     .from(rewards)
-    .where(and(eq(rewards.active, true), eq(rewards.source, "funzone")));
+    .where(and(eq(rewards.active, true), eq(rewards.source, source)));
   const targetMap = await resolveTargets(catalog);
   return catalog.map((reward) => ({
     ...reward,

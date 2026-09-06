@@ -27,6 +27,7 @@ export function TargetRewardsSection({
             discountLabel={formatRewardDiscount(reward.discountType, reward.discountValue)}
             redemptionCode={userReward.redemptionCode}
             expiresAt={userReward.expiresAt.toISOString()}
+            isXpPrize={reward.source === "xp_draw"}
           />
         ))}
         {stillClaimable.map((reward) => (
