@@ -2,7 +2,9 @@ import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import { Fraunces } from "next/font/google";
 import { BottomNav } from "@/components/bottom-nav";
+import { InstallPrompt } from "@/components/install-prompt";
 import { LiteModeInit } from "@/components/lite-mode-init";
+import { ServiceWorkerInit } from "@/components/service-worker-init";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getPendingAccreditationCount } from "@/lib/data/admin";
@@ -27,6 +29,15 @@ export const metadata: Metadata = {
   description:
     "Wano is the social discovery platform for Kampala and Uganda — places, events, experiences, restaurants, communities, and bookings, all in one app. Wano × AFCON 2027 is our launch campaign.",
   manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    // Without this, iOS "Add to Home Screen" still installs the icon, but
+    // reopening it launches inside Safari's browser chrome instead of the
+    // fullscreen standalone view manifest.display: "standalone" already
+    // gives Android — this is the iOS-specific opt-in for the same thing.
+    capable: true,
+    statusBarStyle: "default",
+    title: "Wano",
+  },
 };
 
 export const viewport: Viewport = {
@@ -66,12 +77,14 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         suppressHydrationWarning
       >
         <LiteModeInit />
+        <ServiceWorkerInit />
         <SiteHeader session={session} navBadges={navBadges} />
         <div className="has-bottom-nav flex-1">
           {children}
           <SiteFooter />
         </div>
         <BottomNav session={session} navBadges={navBadges} />
+        <InstallPrompt />
       </body>
     </html>
   );
