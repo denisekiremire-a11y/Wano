@@ -533,6 +533,43 @@ export const stamps = pgTable(
   (table) => [unique().on(table.travellerId, table.journeyId)],
 );
 
+// Admin-curated catalog of things points can be redeemed for. Points
+// themselves are never stored as a balance (see getRewardsSummary in
+// src/lib/data/rewards.ts — computed live from stamps/challenges/reviews/
+// referrals so there's no separate parallel currency to keep in sync);
+// redeeming just records that some of that computed total has been spent,
+// via getSpentPoints subtracting non-cancelled redemptions. Not tied to
+// any one vendor — a flat "spend points, admin fulfils it" model, same
+// trust boundary as the rest of the platform (UTB curates, doesn't
+// operate travel itself).
+export const rewards = pgTable("rewards", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  pointsCost: integer("points_cost").notNull(),
+  // Null = unlimited. Set for a limited-quantity reward.
+  stock: integer("stock"),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const redemptionStatusEnum = pgEnum("redemption_status", ["pending", "fulfilled", "cancelled"]);
+
+export const rewardRedemptions = pgTable("reward_redemptions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  travellerId: uuid("traveller_id")
+    .notNull()
+    .references(() => travellerProfiles.id, { onDelete: "cascade" }),
+  rewardId: uuid("reward_id")
+    .notNull()
+    .references(() => rewards.id, { onDelete: "cascade" }),
+  // Snapshot of the cost at redemption time — rewards.pointsCost can change
+  // later without rewriting history.
+  pointsSpent: integer("points_spent").notNull(),
+  status: redemptionStatusEnum("status").notNull().default("pending"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const challenges = pgTable("challenges", {
   id: uuid("id").primaryKey().defaultRandom(),
   key: text("key").notNull().unique(),

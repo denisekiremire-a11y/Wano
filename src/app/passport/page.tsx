@@ -15,7 +15,8 @@ import { requireRole } from "@/lib/auth";
 import { claimDealFormAction } from "@/lib/actions/deal-actions";
 import { getAllActiveDeals, getClaimedDealIds } from "@/lib/data/deals";
 import { getReviewableBookings } from "@/lib/data/reviews";
-import { getRewardsSummary } from "@/lib/data/rewards";
+import { getActiveRewards, getMyRedemptions, getRewardsSummary } from "@/lib/data/rewards";
+import { RedeemRewardButton } from "@/components/redeem-reward-button";
 import {
   getCommentsForPost,
   getEngagementCounts,
@@ -41,19 +42,33 @@ export default async function PassportPage({
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
   if (!travellerProfile) return null;
 
-  const [user, passportProgress, bookingRows, reviewableRows, rewardsSummary, deals, claimedIds, postRows, blockedList, myClubs] =
-    await Promise.all([
-      db.select().from(users).where(eq(users.id, session.userId)).limit(1).then((r) => r[0]),
-      getPassportProgress(travellerProfile.id),
-      getTravellerBookings(travellerProfile.id),
-      getReviewableBookings(travellerProfile.id),
-      getRewardsSummary(travellerProfile.id, travellerProfile.persona, travellerProfile.city),
-      getAllActiveDeals(),
-      getClaimedDealIds(travellerProfile.id),
-      getPostsByTraveller(travellerProfile.id),
-      getMyBlockedList(travellerProfile.id),
-      getMyClubs(travellerProfile.id),
-    ]);
+  const [
+    user,
+    passportProgress,
+    bookingRows,
+    reviewableRows,
+    rewardsSummary,
+    rewardsCatalog,
+    myRedemptions,
+    deals,
+    claimedIds,
+    postRows,
+    blockedList,
+    myClubs,
+  ] = await Promise.all([
+    db.select().from(users).where(eq(users.id, session.userId)).limit(1).then((r) => r[0]),
+    getPassportProgress(travellerProfile.id),
+    getTravellerBookings(travellerProfile.id),
+    getReviewableBookings(travellerProfile.id),
+    getRewardsSummary(travellerProfile.id, travellerProfile.persona, travellerProfile.city),
+    getActiveRewards(),
+    getMyRedemptions(travellerProfile.id),
+    getAllActiveDeals(),
+    getClaimedDealIds(travellerProfile.id),
+    getPostsByTraveller(travellerProfile.id),
+    getMyBlockedList(travellerProfile.id),
+    getMyClubs(travellerProfile.id),
+  ]);
   const reviewableBookingIds = new Set(reviewableRows.map((r) => r.booking.id));
   const { progress, stampCount, totalJourneys, grandPrizeQualified } = passportProgress;
 
@@ -136,7 +151,13 @@ export default async function PassportPage({
           <BookingsTab bookingRows={bookingRows} reviewableBookingIds={reviewableBookingIds} />
         )}
         {activeTab === "rewards" && (
-          <RewardsTab summary={rewardsSummary} deals={deals} claimedIds={claimedIds} />
+          <RewardsTab
+            summary={rewardsSummary}
+            catalog={rewardsCatalog}
+            myRedemptions={myRedemptions}
+            deals={deals}
+            claimedIds={claimedIds}
+          />
         )}
         {activeTab === "posts" && (
           <PostsTab
@@ -301,10 +322,14 @@ function BookingGroup({
 
 function RewardsTab({
   summary,
+  catalog,
+  myRedemptions,
   deals,
   claimedIds,
 }: {
   summary: Awaited<ReturnType<typeof getRewardsSummary>>;
+  catalog: Awaited<ReturnType<typeof getActiveRewards>>;
+  myRedemptions: Awaited<ReturnType<typeof getMyRedemptions>>;
   deals: Awaited<ReturnType<typeof getAllActiveDeals>>;
   claimedIds: Awaited<ReturnType<typeof getClaimedDealIds>>;
 }) {
@@ -319,7 +344,12 @@ function RewardsTab({
 
       <div className="rounded-2xl bg-gradient-to-br from-forest-800 to-forest-600 p-6 text-white">
         <p className="text-xs font-medium uppercase tracking-wide text-white/70">Your balance</p>
-        <p className="mt-1 font-display text-4xl font-bold">{summary.totalPoints.toLocaleString()} pts</p>
+        <p className="mt-1 font-display text-4xl font-bold">{summary.availablePoints.toLocaleString()} pts</p>
+        {summary.spentPoints > 0 && (
+          <p className="mt-1 text-xs text-white/70">
+            {summary.totalPoints.toLocaleString()} earned · {summary.spentPoints.toLocaleString()} spent
+          </p>
+        )}
       </div>
 
       <section className="space-y-2">
@@ -351,7 +381,67 @@ function RewardsTab({
       )}
 
       <section className="space-y-3">
-        <h3 className="font-display text-lg font-semibold text-forest-900">Redeem</h3>
+        <h3 className="font-display text-lg font-semibold text-forest-900">Spend your points</h3>
+        {catalog.length === 0 ? (
+          <p className="text-sm text-forest-800/60">No rewards to redeem yet — check back soon.</p>
+        ) : (
+          catalog.map((reward) => {
+            const outOfStock = reward.remaining !== null && reward.remaining <= 0;
+            const tooExpensive = summary.availablePoints < reward.pointsCost;
+            return (
+              <div
+                key={reward.id}
+                className="flex items-center justify-between gap-3 rounded-xl border border-forest-900/10 bg-white p-4"
+              >
+                <div>
+                  <p className="text-sm font-medium text-forest-900">{reward.title}</p>
+                  <p className="text-xs text-forest-800/60">{reward.description}</p>
+                  <p className="mt-1 text-xs font-semibold text-forest-800">
+                    {reward.pointsCost.toLocaleString()} pts
+                    {reward.remaining !== null && ` · ${reward.remaining} left`}
+                  </p>
+                </div>
+                <RedeemRewardButton
+                  rewardId={reward.id}
+                  disabled={outOfStock || tooExpensive}
+                  disabledReason={outOfStock ? "Out of stock" : tooExpensive ? "Not enough points" : undefined}
+                />
+              </div>
+            );
+          })
+        )}
+      </section>
+
+      {myRedemptions.length > 0 && (
+        <section className="space-y-2">
+          <h3 className="font-display text-lg font-semibold text-forest-900">Your redemptions</h3>
+          {myRedemptions.map(({ redemption, reward }) => (
+            <div
+              key={redemption.id}
+              className="flex items-center justify-between rounded-xl border border-forest-900/10 bg-white p-3"
+            >
+              <div>
+                <p className="text-sm font-medium text-forest-900">{reward.title}</p>
+                <p className="text-xs text-forest-800/50">{redemption.pointsSpent.toLocaleString()} pts</p>
+              </div>
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  redemption.status === "fulfilled"
+                    ? "bg-forest-800 text-white"
+                    : redemption.status === "cancelled"
+                      ? "bg-red-100 text-red-700"
+                      : "bg-marigold-100 text-marigold-700"
+                }`}
+              >
+                {redemption.status}
+              </span>
+            </div>
+          ))}
+        </section>
+      )}
+
+      <section className="space-y-3">
+        <h3 className="font-display text-lg font-semibold text-forest-900">Free deals</h3>
         {deals.length === 0 ? (
           <p className="text-sm text-forest-800/60">No deals available right now.</p>
         ) : (
