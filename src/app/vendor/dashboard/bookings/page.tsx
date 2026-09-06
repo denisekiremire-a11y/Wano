@@ -57,8 +57,11 @@ export default async function VendorBookingsPage() {
                   journeyName={row.journey?.name ?? null}
                   bookingRef={row.booking.bookingRef}
                   status={row.booking.status}
+                  bookingName={row.booking.bookingName}
                   visitDate={row.booking.visitDate}
+                  visitTime={row.booking.visitTime}
                   partySize={row.booking.partySize}
+                  notes={row.booking.notes}
                   birthdayInfo={birthdayInfoFor(row)}
                 />
               ))}
@@ -77,8 +80,11 @@ export default async function VendorBookingsPage() {
                   journeyName={row.journey?.name ?? null}
                   bookingRef={row.booking.bookingRef}
                   status={row.booking.status}
+                  bookingName={row.booking.bookingName}
                   visitDate={row.booking.visitDate}
+                  visitTime={row.booking.visitTime}
                   partySize={row.booking.partySize}
+                  notes={row.booking.notes}
                   birthdayInfo={birthdayInfoFor(row)}
                 />
               ))}

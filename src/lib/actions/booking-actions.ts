@@ -25,11 +25,18 @@ export async function bookListingFormAction(formData: FormData) {
   // booking that earns no stamp.
   const requestedJourneyId = formData.get("journeyId");
   const rawVisitDate = formData.get("visitDate");
+  const rawVisitTime = formData.get("visitTime");
   const rawPartySize = formData.get("partySize");
+  const rawBookingName = formData.get("bookingName");
+  const rawNotes = formData.get("notes");
   const visitDate =
     typeof rawVisitDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(rawVisitDate) ? rawVisitDate : null;
+  const visitTime =
+    typeof rawVisitTime === "string" && /^\d{2}:\d{2}$/.test(rawVisitTime) ? rawVisitTime : null;
   const partySize =
     typeof rawPartySize === "string" && rawPartySize.trim() ? Number(rawPartySize) : null;
+  const bookingName = typeof rawBookingName === "string" && rawBookingName.trim() ? rawBookingName.trim() : null;
+  const notes = typeof rawNotes === "string" && rawNotes.trim() ? rawNotes.trim() : null;
 
   const session = await requireRole("traveller");
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
@@ -65,7 +72,10 @@ export async function bookListingFormAction(formData: FormData) {
       listingId: listing.id,
       journeyId,
       visitDate,
+      visitTime,
       partySize,
+      bookingName: bookingName ?? travellerProfile.displayName,
+      notes,
       status: "pending",
       bookingRef: generateBookingRef(),
       estimatedCommission: "15.00",

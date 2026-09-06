@@ -18,8 +18,11 @@ export function BookingRow({
   journeyName,
   bookingRef,
   status,
+  bookingName,
   visitDate,
+  visitTime,
   partySize,
+  notes,
   birthdayInfo,
 }: {
   bookingId: string;
@@ -28,8 +31,11 @@ export function BookingRow({
   journeyName: string | null;
   bookingRef: string;
   status: "pending" | "confirmed" | "completed" | "cancelled";
+  bookingName?: string | null;
   visitDate?: string | null;
+  visitTime?: string | null;
   partySize?: number | null;
+  notes?: string | null;
   birthdayInfo?: { perkTitle: string; eligible: boolean; reason: string } | null;
 }) {
   const [pending, startTransition] = useTransition();
@@ -44,13 +50,17 @@ export function BookingRow({
             {journeyName ?? "General booking"} · ref {bookingRef}
           </p>
           <p className="text-xs text-forest-800/45">{travellerEmail}</p>
+          {bookingName && bookingName !== travellerName && (
+            <p className="mt-1 text-xs text-forest-800/60">Reservation under: {bookingName}</p>
+          )}
           {(visitDate || partySize) && (
             <p className="mt-1 text-xs text-forest-800/50">
-              {visitDate ? `Visit date ${visitDate}` : ""}
+              {visitDate ? `${visitDate}${visitTime ? ` at ${visitTime}` : ""}` : ""}
               {visitDate && partySize ? " · " : ""}
               {partySize ? `Party of ${partySize}` : ""}
             </p>
           )}
+          {notes && <p className="mt-1 text-xs italic text-forest-800/50">&quot;{notes}&quot;</p>}
           {birthdayInfo && (
             <p
               className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${

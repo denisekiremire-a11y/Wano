@@ -25,8 +25,11 @@ export function BookingRow({
   status,
   commission,
   createdAt,
+  bookingName,
   visitDate,
+  visitTime,
   partySize,
+  notes,
   birthdayInfo,
 }: {
   bookingId: string;
@@ -39,8 +42,11 @@ export function BookingRow({
   status: Status;
   commission: string;
   createdAt: string;
+  bookingName?: string | null;
   visitDate?: string | null;
+  visitTime?: string | null;
   partySize?: number | null;
+  notes?: string | null;
   birthdayInfo?: { perkTitle: string; eligible: boolean; reason: string } | null;
 }) {
   const [pending, startTransition] = useTransition();
@@ -58,13 +64,17 @@ export function BookingRow({
             {journeyName ?? "General booking"} · ref {bookingRef} ·{" "}
             {new Date(createdAt).toLocaleDateString()}
           </p>
+          {bookingName && bookingName !== travellerName && (
+            <p className="text-xs text-forest-800/50">Reservation under: {bookingName}</p>
+          )}
           {(visitDate || partySize) && (
             <p className="text-xs text-forest-800/50">
-              {visitDate ? `Visit date ${visitDate}` : ""}
+              {visitDate ? `${visitDate}${visitTime ? ` at ${visitTime}` : ""}` : ""}
               {visitDate && partySize ? " · " : ""}
               {partySize ? `Party of ${partySize}` : ""}
             </p>
           )}
+          {notes && <p className="text-xs italic text-forest-800/50">&quot;{notes}&quot;</p>}
           {birthdayInfo && (
             <p
               className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${

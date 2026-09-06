@@ -301,6 +301,13 @@ function BookingGroup({
                   ref {booking.bookingRef}
                 </Link>
               </p>
+              {(booking.visitDate || booking.partySize) && (
+                <p className="text-xs text-forest-800/50">
+                  {booking.visitDate ? `${booking.visitDate}${booking.visitTime ? ` at ${booking.visitTime}` : ""}` : ""}
+                  {booking.visitDate && booking.partySize ? " · " : ""}
+                  {booking.partySize ? `Party of ${booking.partySize}` : ""}
+                </p>
+              )}
             </div>
             <span className="rounded-full bg-forest-100 px-3 py-1 text-xs font-medium capitalize text-forest-800">
               {booking.status}

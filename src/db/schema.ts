@@ -503,7 +503,16 @@ export const bookings = pgTable("bookings", {
   // Optional context a traveller can attach when requesting a booking — used
   // to check eligibility for a listing's birthday perk (see birthdayPerks).
   visitDate: date("visit_date"),
+  // "HH:MM", 24h — kept separate from visitDate (a plain date string) so
+  // the birthday-perk month/day comparison in checkBirthdayEligibility
+  // doesn't need to change.
+  visitTime: text("visit_time"),
   partySize: integer("party_size"),
+  // Who the reservation is under — defaults to the traveller's own name in
+  // the booking form, but editable (booking on behalf of someone else, a
+  // company name, etc).
+  bookingName: text("booking_name"),
+  notes: text("notes"),
   status: bookingStatusEnum("status").notNull().default("pending"),
   bookingRef: text("booking_ref").notNull().unique(),
   estimatedCommission: numeric("estimated_commission", { precision: 10, scale: 2 })

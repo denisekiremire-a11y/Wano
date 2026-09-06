@@ -50,6 +50,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
   });
   let saved = false;
   let hasBirthdaySet = false;
+  let travellerDisplayName = "";
   let myBookings: Awaited<ReturnType<typeof getTravellerBookings>> = [];
   let claimableRewards: Awaited<ReturnType<typeof getClaimableRewardsForTarget>> = [];
   let myClaimedRewards: Awaited<ReturnType<typeof getMyClaimedRewardsForTarget>> = [];
@@ -64,6 +65,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
       ]);
       saved = savedRows.some((s) => s.listing.id === listing.id);
       hasBirthdaySet = travellerProfile.dateOfBirth != null;
+      travellerDisplayName = travellerProfile.displayName;
       myBookings = allBookings.filter((b) => b.listing.id === listing.id);
       claimableRewards = claimable;
       myClaimedRewards = myClaimed;
@@ -197,31 +199,84 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
               Book on {vendor.businessName} →
             </a>
           ) : session?.role === "traveller" ? (
-            <form action={bookListingFormAction} className="space-y-2">
+            <form action={bookListingFormAction} className="max-w-md space-y-3 rounded-2xl border border-forest-900/10 bg-white p-4">
               <input type="hidden" name="listingId" value={listing.id} />
+
+              <div>
+                <label htmlFor="bookingName" className="text-xs font-medium text-forest-900">
+                  Name for the reservation
+                </label>
+                <input
+                  id="bookingName"
+                  type="text"
+                  name="bookingName"
+                  defaultValue={travellerDisplayName}
+                  required
+                  className="mt-1 w-full rounded-md border border-forest-900/15 px-2 py-1.5 text-sm outline-none focus:border-forest-600"
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label htmlFor="visitDate" className="text-xs font-medium text-forest-900">
+                    Date
+                  </label>
+                  <input
+                    id="visitDate"
+                    type="date"
+                    name="visitDate"
+                    required
+                    className="mt-1 w-full rounded-md border border-forest-900/15 px-2 py-1.5 text-sm outline-none focus:border-forest-600"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label htmlFor="visitTime" className="text-xs font-medium text-forest-900">
+                    Time
+                  </label>
+                  <input
+                    id="visitTime"
+                    type="time"
+                    name="visitTime"
+                    required
+                    className="mt-1 w-full rounded-md border border-forest-900/15 px-2 py-1.5 text-sm outline-none focus:border-forest-600"
+                  />
+                </div>
+                <div className="w-24">
+                  <label htmlFor="partySize" className="text-xs font-medium text-forest-900">
+                    Party size
+                  </label>
+                  <input
+                    id="partySize"
+                    type="number"
+                    name="partySize"
+                    min={1}
+                    defaultValue={1}
+                    required
+                    className="mt-1 w-full rounded-md border border-forest-900/15 px-2 py-1.5 text-sm outline-none focus:border-forest-600"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="notes" className="text-xs font-medium text-forest-900">
+                  Special requests (optional)
+                </label>
+                <textarea
+                  id="notes"
+                  name="notes"
+                  rows={2}
+                  placeholder="Allergies, seating preference, occasion…"
+                  className="mt-1 w-full rounded-md border border-forest-900/15 px-2 py-1.5 text-sm outline-none focus:border-forest-600"
+                />
+              </div>
+
               {birthdayPerks.length > 0 && (
-                <div className="space-y-1.5 rounded-lg bg-marigold-50 p-3">
+                <div className="rounded-lg bg-marigold-50 p-3">
                   <p className="text-xs font-medium text-marigold-900">
-                    🎂 {birthdayPerks[0].title} — add these to redeem on your birthday:
+                    🎂 {birthdayPerks[0].title} — booking on your birthday unlocks this automatically.
                   </p>
-                  <div className="flex gap-2">
-                    <input
-                      type="date"
-                      name="visitDate"
-                      aria-label="Visit date"
-                      className="flex-1 rounded-md border border-forest-900/15 px-2 py-1 text-xs outline-none focus:border-forest-600"
-                    />
-                    <input
-                      type="number"
-                      name="partySize"
-                      min={1}
-                      aria-label="Party size"
-                      placeholder="Party size"
-                      className="w-24 rounded-md border border-forest-900/15 px-2 py-1 text-xs outline-none focus:border-forest-600"
-                    />
-                  </div>
                   {!hasBirthdaySet && (
-                    <p className="text-[11px] text-marigold-800/80">
+                    <p className="mt-1 text-[11px] text-marigold-800/80">
                       <Link href="/passport?tab=account" className="underline">
                         Add your birthday to your profile
                       </Link>{" "}
@@ -230,6 +285,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
                   )}
                 </div>
               )}
+
               <button
                 type="submit"
                 className="rounded-full bg-forest-800 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-forest-700"

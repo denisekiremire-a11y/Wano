@@ -60,8 +60,15 @@ export default async function BookingConfirmationPage({ params }: { params: Prom
           {vendor.businessName} · {vendor.location}
         </p>
         <div className="mt-3 space-y-1 text-sm text-forest-800/80">
-          {booking.visitDate && <p>Visit date: {booking.visitDate}</p>}
+          {booking.bookingName && <p>Reservation name: {booking.bookingName}</p>}
+          {booking.visitDate && (
+            <p>
+              Visit date: {booking.visitDate}
+              {booking.visitTime ? ` at ${booking.visitTime}` : ""}
+            </p>
+          )}
           {booking.partySize && <p>Party size: {booking.partySize}</p>}
+          {booking.notes && <p>Notes: {booking.notes}</p>}
           {journey && <p>Part of your {journey.name} journey</p>}
         </div>
       </div>

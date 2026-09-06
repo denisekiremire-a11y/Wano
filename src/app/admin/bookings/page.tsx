@@ -115,8 +115,11 @@ export default async function AdminBookingsPage({
               status={row.booking.status}
               commission={row.booking.estimatedCommission}
               createdAt={row.booking.createdAt.toISOString()}
+              bookingName={row.booking.bookingName}
               visitDate={row.booking.visitDate}
+              visitTime={row.booking.visitTime}
               partySize={row.booking.partySize}
+              notes={row.booking.notes}
               birthdayInfo={birthdayInfoFor(row)}
             />
           ))
