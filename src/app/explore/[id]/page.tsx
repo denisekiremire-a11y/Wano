@@ -151,21 +151,6 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
           </div>
         )}
 
-        {offer && (
-          <div className="mt-4 rounded-xl bg-forest-50 px-4 py-3">
-            <p className="text-sm font-medium text-forest-900">{offer.discountText}</p>
-            {offer.freebieText && <p className="text-sm text-forest-800/70">{offer.freebieText}</p>}
-          </div>
-        )}
-        {promo && (
-          <div className="mt-2 rounded-xl bg-marigold-50 px-4 py-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-marigold-700">Wano Deal</p>
-            <p className="text-sm font-medium text-marigold-900">
-              {promo.code} — {promo.discountText}
-            </p>
-          </div>
-        )}
-
         {/* Type-specific services/menu — applies to every partner type, just
             renders whichever detail table (if any) matches this listing. */}
         {(typeDetails.hotel || typeDetails.restaurant || typeDetails.experience) && (
@@ -282,7 +267,12 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
           </section>
         )}
 
-        <TargetRewardsSection claimable={claimableRewards} claimed={myClaimedRewards} />
+        <TargetRewardsSection
+          claimable={claimableRewards}
+          claimed={myClaimedRewards}
+          offer={offer}
+          promo={promo}
+        />
 
         <section className="mt-8 rounded-2xl border border-forest-900/10 bg-white p-5">
           <h2 className="font-display text-lg font-semibold text-forest-900">About {vendor.businessName}</h2>
