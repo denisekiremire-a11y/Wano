@@ -8,9 +8,11 @@ import {
   listings,
   promoCodes,
   referralCredits,
+  rewards,
   savedListings,
   stamps,
   travellerProfiles,
+  userRewards,
   vendorProfiles,
 } from "@/db/schema";
 import { getPublicListingsForJourney } from "./journeys";
@@ -126,11 +128,19 @@ export async function getMyBookingsForListing(travellerId: string, listingId: st
  * rather than someone else's booking if the ref doesn't belong to them. */
 export async function getBookingByRef(bookingRef: string, travellerId: string) {
   const [row] = await db
-    .select({ booking: bookings, listing: listings, vendor: vendorProfiles, journey: journeys })
+    .select({
+      booking: bookings,
+      listing: listings,
+      vendor: vendorProfiles,
+      journey: journeys,
+      appliedReward: rewards,
+    })
     .from(bookings)
     .innerJoin(listings, eq(bookings.listingId, listings.id))
     .innerJoin(vendorProfiles, eq(listings.vendorProfileId, vendorProfiles.id))
     .leftJoin(journeys, eq(bookings.journeyId, journeys.id))
+    .leftJoin(userRewards, eq(bookings.appliedUserRewardId, userRewards.id))
+    .leftJoin(rewards, eq(userRewards.rewardId, rewards.id))
     .where(and(eq(bookings.bookingRef, bookingRef), eq(bookings.travellerId, travellerId)))
     .limit(1);
   return row ?? null;

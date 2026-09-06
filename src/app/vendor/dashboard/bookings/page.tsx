@@ -62,6 +62,7 @@ export default async function VendorBookingsPage() {
                   visitTime={row.booking.visitTime}
                   partySize={row.booking.partySize}
                   notes={row.booking.notes}
+                  appliedReward={row.appliedReward}
                   birthdayInfo={birthdayInfoFor(row)}
                 />
               ))}
@@ -85,6 +86,7 @@ export default async function VendorBookingsPage() {
                   visitTime={row.booking.visitTime}
                   partySize={row.booking.partySize}
                   notes={row.booking.notes}
+                  appliedReward={row.appliedReward}
                   birthdayInfo={birthdayInfoFor(row)}
                 />
               ))}

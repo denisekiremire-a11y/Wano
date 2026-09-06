@@ -16,6 +16,7 @@ import {
 import { getListingImageIdsFor } from "@/lib/data/listing-images";
 import { getRatingSummary, getReviewsForListing } from "@/lib/data/reviews";
 import { getClaimableRewardsForTarget, getMyClaimedRewardsForTarget } from "@/lib/data/rewards";
+import { formatRewardDiscount } from "@/lib/reward-format";
 import { getMediaPostsFor } from "@/lib/data/social";
 import {
   getSavedListingsForTraveller,
@@ -269,6 +270,30 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
                   className="mt-1 w-full rounded-md border border-forest-900/15 px-2 py-1.5 text-sm outline-none focus:border-forest-600"
                 />
               </div>
+
+              {myClaimedRewards.length > 0 && (
+                <div>
+                  <label htmlFor="userRewardId" className="text-xs font-medium text-forest-900">
+                    Apply a reward (optional)
+                  </label>
+                  <select
+                    id="userRewardId"
+                    name="userRewardId"
+                    defaultValue=""
+                    className="mt-1 w-full rounded-md border border-forest-900/15 bg-white px-2 py-1.5 text-sm outline-none focus:border-forest-600"
+                  >
+                    <option value="">None</option>
+                    {myClaimedRewards.map(({ userReward, reward }) => (
+                      <option key={userReward.id} value={userReward.id}>
+                        {reward.title} — {formatRewardDiscount(reward.discountType, reward.discountValue)}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-[11px] text-forest-800/50">
+                    The venue still confirms it in person via your voucher&apos;s QR or code.
+                  </p>
+                </div>
+              )}
 
               {birthdayPerks.length > 0 && (
                 <div className="rounded-lg bg-marigold-50 p-3">

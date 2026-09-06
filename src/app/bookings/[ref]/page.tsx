@@ -5,6 +5,7 @@ import { CheckCircleIcon } from "@/components/icons";
 import { CopyCodeButton } from "@/components/copy-code-button";
 import { requireRole } from "@/lib/auth";
 import { getBookingByRef, getTravellerProfileByUserId } from "@/lib/data/traveller";
+import { formatRewardDiscount } from "@/lib/reward-format";
 
 const STATUS_COPY: Record<string, { label: string; detail: string }> = {
   pending: {
@@ -33,7 +34,7 @@ export default async function BookingConfirmationPage({ params }: { params: Prom
 
   const row = await getBookingByRef(ref, travellerProfile.id);
   if (!row) notFound();
-  const { booking, listing, vendor, journey } = row;
+  const { booking, listing, vendor, journey, appliedReward } = row;
   const status = STATUS_COPY[booking.status] ?? STATUS_COPY.pending;
 
   return (
@@ -42,7 +43,10 @@ export default async function BookingConfirmationPage({ params }: { params: Prom
         <span className="flex h-14 w-14 items-center justify-center rounded-full bg-forest-100 text-forest-700">
           <CheckCircleIcon className="h-8 w-8" />
         </span>
-        <h1 className="mt-4 font-display text-2xl font-semibold text-forest-900">{status.label}</h1>
+        <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-forest-800 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
+          ✓ Booked
+        </span>
+        <h1 className="mt-3 font-display text-2xl font-semibold text-forest-900">{status.label}</h1>
         <p className="mt-1 max-w-sm text-sm text-forest-800/70">{status.detail}</p>
       </div>
 
@@ -69,12 +73,40 @@ export default async function BookingConfirmationPage({ params }: { params: Prom
           )}
           {booking.partySize && <p>Party size: {booking.partySize}</p>}
           {booking.notes && <p>Notes: {booking.notes}</p>}
+          {appliedReward && (
+            <p>
+              Reward applied: {appliedReward.title} —{" "}
+              {formatRewardDiscount(appliedReward.discountType, appliedReward.discountValue)} (confirmed
+              in person at the venue)
+            </p>
+          )}
           {journey && <p>Part of your {journey.name} journey</p>}
         </div>
       </div>
 
       <div className="mt-4">
         <BookingThread bookingId={booking.id} heading={`Message ${vendor.businessName}`} />
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-marigold-300 bg-marigold-50 p-4 text-sm text-marigold-900">
+        <p className="font-medium">Haven&apos;t heard back?</p>
+        <p className="mt-1 text-marigold-800/90">
+          If you haven&apos;t received a confirmation email, or the vendor or Wano hasn&apos;t messaged
+          you within 5 minutes, call or WhatsApp us on{" "}
+          <a href="tel:0771013268" className="font-semibold underline">
+            0771013268
+          </a>{" "}
+          (
+          <a
+            href="https://wa.me/256771013268"
+            target="_blank"
+            rel="noreferrer"
+            className="font-semibold underline"
+          >
+            WhatsApp
+          </a>
+          ).
+        </p>
       </div>
 
       <div className="mt-6 flex justify-center gap-3">

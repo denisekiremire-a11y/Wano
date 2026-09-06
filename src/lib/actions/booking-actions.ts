@@ -4,7 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import { bookings, listingJourneys, listings } from "@/db/schema";
+import { bookings, listingJourneys, listings, userRewards } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { logEvent } from "@/lib/analytics";
 import { notifyVendorOfNewBooking } from "@/lib/booking-notifications";
@@ -29,6 +29,7 @@ export async function bookListingFormAction(formData: FormData) {
   const rawPartySize = formData.get("partySize");
   const rawBookingName = formData.get("bookingName");
   const rawNotes = formData.get("notes");
+  const rawUserRewardId = formData.get("userRewardId");
   const visitDate =
     typeof rawVisitDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(rawVisitDate) ? rawVisitDate : null;
   const visitTime =
@@ -62,6 +63,27 @@ export async function bookListingFormAction(formData: FormData) {
     if (tag) journeyId = requestedJourneyId;
   }
 
+  // Only attach a voucher the traveller actually owns, that's for this
+  // listing, and hasn't already been used elsewhere — silently ignored
+  // otherwise rather than failing the whole booking over it.
+  let appliedUserRewardId: string | null = null;
+  if (typeof rawUserRewardId === "string" && rawUserRewardId) {
+    const [voucher] = await db
+      .select({ id: userRewards.id })
+      .from(userRewards)
+      .where(
+        and(
+          eq(userRewards.id, rawUserRewardId),
+          eq(userRewards.travellerId, travellerProfile.id),
+          eq(userRewards.targetType, "listing"),
+          eq(userRewards.targetId, listing.id),
+          eq(userRewards.status, "claimed"),
+        ),
+      )
+      .limit(1);
+    if (voucher) appliedUserRewardId = voucher.id;
+  }
+
   // Bookings start "pending" — the accredited partner has real, finite
   // capacity, so a Passport stamp and a confirmed booking only happen once
   // they actually confirm from their dashboard. See respondToBookingAction.
@@ -76,6 +98,7 @@ export async function bookListingFormAction(formData: FormData) {
       partySize,
       bookingName: bookingName ?? travellerProfile.displayName,
       notes,
+      appliedUserRewardId,
       status: "pending",
       bookingRef: generateBookingRef(),
       estimatedCommission: "15.00",

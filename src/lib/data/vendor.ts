@@ -8,7 +8,9 @@ import {
   listings,
   offers,
   restaurantDetails,
+  rewards,
   travellerProfiles,
+  userRewards,
   users,
   vendorDocuments,
   vendorProfiles,
@@ -170,12 +172,15 @@ export async function getVendorBookings(vendorProfileId: string) {
       travellerUser: users,
       journey: journeys,
       listing: listings,
+      appliedReward: rewards,
     })
     .from(bookings)
     .innerJoin(travellerProfiles, eq(bookings.travellerId, travellerProfiles.id))
     .innerJoin(users, eq(travellerProfiles.userId, users.id))
     .innerJoin(listings, eq(bookings.listingId, listings.id))
     .leftJoin(journeys, eq(bookings.journeyId, journeys.id))
+    .leftJoin(userRewards, eq(bookings.appliedUserRewardId, userRewards.id))
+    .leftJoin(rewards, eq(userRewards.rewardId, rewards.id))
     .where(inArray(bookings.listingId, listingIds))
     .orderBy(desc(bookings.createdAt));
 }

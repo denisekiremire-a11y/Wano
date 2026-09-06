@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { BookingThread } from "@/components/booking-thread";
 import { respondToBookingAction } from "@/lib/actions/vendor-booking-actions";
+import { formatRewardDiscount } from "@/lib/reward-format";
 
 const statusStyles: Record<string, string> = {
   pending: "bg-marigold-100 text-marigold-800",
@@ -23,6 +24,7 @@ export function BookingRow({
   visitTime,
   partySize,
   notes,
+  appliedReward,
   birthdayInfo,
 }: {
   bookingId: string;
@@ -36,6 +38,7 @@ export function BookingRow({
   visitTime?: string | null;
   partySize?: number | null;
   notes?: string | null;
+  appliedReward?: { title: string; discountType: "percent" | "fixed" | "freebie"; discountValue: string | null } | null;
   birthdayInfo?: { perkTitle: string; eligible: boolean; reason: string } | null;
 }) {
   const [pending, startTransition] = useTransition();
@@ -61,6 +64,11 @@ export function BookingRow({
             </p>
           )}
           {notes && <p className="mt-1 text-xs italic text-forest-800/50">&quot;{notes}&quot;</p>}
+          {appliedReward && (
+            <p className="mt-1 text-xs font-medium text-marigold-800">
+              🎟️ {appliedReward.title} — {formatRewardDiscount(appliedReward.discountType, appliedReward.discountValue)}
+            </p>
+          )}
           {birthdayInfo && (
             <p
               className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${

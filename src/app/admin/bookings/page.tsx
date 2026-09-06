@@ -120,6 +120,7 @@ export default async function AdminBookingsPage({
               visitTime={row.booking.visitTime}
               partySize={row.booking.partySize}
               notes={row.booking.notes}
+              appliedReward={row.appliedReward}
               birthdayInfo={birthdayInfoFor(row)}
             />
           ))

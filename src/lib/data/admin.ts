@@ -11,8 +11,10 @@ import {
   listings,
   posts as postsTable,
   promoCodes,
+  rewards,
   stamps,
   travellerProfiles,
+  userRewards,
   users,
   vendorDocuments,
   vendorProfiles,
@@ -98,6 +100,7 @@ export async function getAllBookings() {
       listing: listings,
       vendor: vendorProfiles,
       journey: journeys,
+      appliedReward: rewards,
     })
     .from(bookings)
     .innerJoin(travellerProfiles, eq(bookings.travellerId, travellerProfiles.id))
@@ -105,6 +108,8 @@ export async function getAllBookings() {
     .innerJoin(listings, eq(bookings.listingId, listings.id))
     .innerJoin(vendorProfiles, eq(listings.vendorProfileId, vendorProfiles.id))
     .leftJoin(journeys, eq(bookings.journeyId, journeys.id))
+    .leftJoin(userRewards, eq(bookings.appliedUserRewardId, userRewards.id))
+    .leftJoin(rewards, eq(userRewards.rewardId, rewards.id))
     .orderBy(desc(bookings.createdAt));
 }
 

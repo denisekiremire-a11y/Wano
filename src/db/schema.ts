@@ -513,6 +513,12 @@ export const bookings = pgTable("bookings", {
   // company name, etc).
   bookingName: text("booking_name"),
   notes: text("notes"),
+  // A voucher the traveller chose to apply at booking time — attached here
+  // so the vendor sees it coming, but this doesn't consume it: the
+  // discount is only actually taken when the voucher is scanned/entered
+  // and PIN-confirmed at the venue (see markRewardRedeemedAction). There's
+  // no in-app payment to deduct a price from at booking time.
+  appliedUserRewardId: uuid("applied_user_reward_id").references((): AnyPgColumn => userRewards.id),
   status: bookingStatusEnum("status").notNull().default("pending"),
   bookingRef: text("booking_ref").notNull().unique(),
   estimatedCommission: numeric("estimated_commission", { precision: 10, scale: 2 })
