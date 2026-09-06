@@ -24,6 +24,7 @@ import { requireRole } from "@/lib/auth";
 import { generatePlaceAddedItem, generatePlaceAddedItemsForVendor } from "@/lib/feed-generators";
 import { notifyTravellerOfBookingStatus } from "@/lib/booking-notifications";
 import { awardReferralCreditOnFirstBooking } from "@/lib/data/traveller";
+import { notifyUser } from "@/lib/notify";
 import type { ActionState } from "@/lib/validation";
 
 const MAX_LISTING_IMAGE_BYTES = 8 * 1024 * 1024;
@@ -52,6 +53,25 @@ export async function setAccreditationStatusAction(
   // place_added feed item (the generator no-ops until accreditation
   // clears) — backfill them now that it has.
   if (status === "trusted") await generatePlaceAddedItemsForVendor(vendorProfileId);
+
+  if (status === "trusted" || status === "rejected") {
+    const [vendorRow] = await db
+      .select({ businessName: vendorProfiles.businessName, email: users.email })
+      .from(vendorProfiles)
+      .innerJoin(users, eq(users.id, vendorProfiles.userId))
+      .where(eq(vendorProfiles.id, vendorProfileId))
+      .limit(1);
+    if (vendorRow) {
+      const message =
+        status === "trusted"
+          ? "You're Wano-verified — your listing is now live for travellers to find and book."
+          : "Your accreditation was not approved this time.";
+      await notifyUser(vendorRow.email, status === "trusted" ? "You're verified on Wano" : "Accreditation update", [
+        `<strong>${vendorRow.businessName}</strong>: ${message}`,
+        ...(notes ? [`Notes: ${notes}`] : []),
+      ]);
+    }
+  }
 
   revalidatePath("/admin");
   revalidatePath("/admin/vendors");

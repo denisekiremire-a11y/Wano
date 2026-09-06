@@ -85,6 +85,12 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
     name: user.name,
   });
 
+  // Skip notifying on the admin's own logins — the point is visibility into
+  // other people using the app, not emailing yourself every time you do.
+  if (user.role !== "admin") {
+    await notifyAdmin("User login", [`<strong>${user.name}</strong> (${user.email}) logged in — ${user.role}.`]);
+  }
+
   const next = formData.get("next");
   if (typeof next === "string" && next.startsWith("/") && !next.startsWith("//")) {
     redirect(next);

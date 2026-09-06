@@ -9,6 +9,7 @@ import { requireRole } from "@/lib/auth";
 import { mintUserReward } from "@/lib/actions/reward-actions";
 import { getMatchById } from "@/lib/data/xp";
 import { getTravellerProfileById, getTravellerProfileByUserId } from "@/lib/data/traveller";
+import { notifyAdmin, notifyUser } from "@/lib/notify";
 import { MATCH_DAY_CATEGORY, WANO_XP_PRICE_PER_SEAT_UGX, WANO_XP_REFUND_CUTOFF_HOURS, WANO_XP_SEAT_CAP } from "@/lib/xp-config";
 import type { ActionState } from "@/lib/validation";
 
@@ -71,6 +72,15 @@ export async function createXpBookingAction(_prev: ActionState, formData: FormDa
   });
 
   if (result.error) return result;
+
+  const amountUgx = parsed.data.seats * WANO_XP_PRICE_PER_SEAT_UGX;
+  await notifyUser(session.email, "Wano XP seats booked", [
+    `You booked ${parsed.data.seats} seat(s) for <strong>${match.title}</strong> — UGX ${amountUgx.toLocaleString()}.`,
+    "Every confirmed seat is an entry in the match-day prize draw.",
+  ]);
+  await notifyAdmin("Wano XP booking", [
+    `<strong>${travellerProfile.displayName}</strong> booked ${parsed.data.seats} seat(s) for <strong>${match.title}</strong> — UGX ${amountUgx.toLocaleString()}.`,
+  ]);
 
   revalidateXpPaths(parsed.data.matchId);
   return {};

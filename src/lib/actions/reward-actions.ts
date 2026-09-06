@@ -12,6 +12,7 @@ import { generateShortCode } from "@/lib/codes";
 import { getOwningVendorProfileId, getUserRewardById } from "@/lib/data/rewards";
 import { getTravellerProfileById, getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { getVendorProfileByUserId } from "@/lib/data/vendor";
+import { notifyRewardClaimed, notifyRewardRedeemed } from "@/lib/reward-notifications";
 import { signRewardToken, verifyRewardToken } from "@/lib/reward-token";
 import type { ActionState } from "@/lib/validation";
 
@@ -70,6 +71,8 @@ export async function mintUserReward(travellerId: string, rewardId: string) {
       expiresAt,
     })
     .returning();
+
+  await notifyRewardClaimed(created.id);
 
   return created;
 }
@@ -227,6 +230,8 @@ export async function markRewardRedeemedAction(
     .update(userRewards)
     .set({ status: "redeemed", redeemedAt: new Date(), redeemedByVendorProfileId: vendorProfile.id })
     .where(eq(userRewards.id, userRewardId));
+
+  await notifyRewardRedeemed(userRewardId);
 
   revalidateRewardPaths();
 

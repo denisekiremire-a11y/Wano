@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { bookings, listings, travellerProfiles, users, vendorProfiles } from "@/db/schema";
-import { notifyUser } from "@/lib/notify";
+import { notifyAdmin, notifyUser } from "@/lib/notify";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
@@ -63,5 +63,39 @@ export async function notifyVendorOfNewBooking(bookingId: string) {
     `<strong>${row.travellerName}</strong> requested to book <strong>${row.listingTitle}</strong>.`,
     `Confirmation code: ${row.booking.bookingRef}`,
     `<a href="${APP_URL}/vendor/dashboard/bookings">Respond in your dashboard</a>.`,
+  ]);
+}
+
+/** Confirms to the traveller that their booking request went through —
+ * separate from notifyTravellerOfBookingStatus, which only fires once the
+ * vendor actually responds. */
+export async function notifyTravellerOfNewBooking(bookingId: string) {
+  const [row] = await db
+    .select({
+      booking: bookings,
+      listingTitle: listings.title,
+      vendorBusinessName: vendorProfiles.businessName,
+      travellerName: travellerProfiles.displayName,
+      travellerEmail: users.email,
+    })
+    .from(bookings)
+    .innerJoin(listings, eq(listings.id, bookings.listingId))
+    .innerJoin(vendorProfiles, eq(vendorProfiles.id, listings.vendorProfileId))
+    .innerJoin(travellerProfiles, eq(travellerProfiles.id, bookings.travellerId))
+    .innerJoin(users, eq(users.id, travellerProfiles.userId))
+    .where(eq(bookings.id, bookingId))
+    .limit(1);
+  if (!row) return;
+
+  await notifyUser(row.travellerEmail, "Booking request sent", [
+    `Your request to book <strong>${row.listingTitle}</strong> with <strong>${row.vendorBusinessName}</strong> is in.`,
+    `Confirmation code: ${row.booking.bookingRef}`,
+    `<a href="${APP_URL}/bookings/${row.booking.bookingRef}">View your booking</a>.`,
+  ]);
+
+  await notifyAdmin("New booking", [
+    `<strong>${row.travellerName}</strong> booked <strong>${row.listingTitle}</strong> (${row.vendorBusinessName}).`,
+    `Confirmation code: ${row.booking.bookingRef}`,
+    `<a href="${APP_URL}/admin/bookings">View in admin</a>.`,
   ]);
 }

@@ -7,7 +7,7 @@ import { db } from "@/db";
 import { bookings, listingJourneys, listings, userRewards } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { logEvent } from "@/lib/analytics";
-import { notifyVendorOfNewBooking } from "@/lib/booking-notifications";
+import { notifyTravellerOfNewBooking, notifyVendorOfNewBooking } from "@/lib/booking-notifications";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 
 function generateBookingRef() {
@@ -111,6 +111,7 @@ export async function bookListingFormAction(formData: FormData) {
     metadata: { listingId, bookingRef: booking.bookingRef },
   });
   await notifyVendorOfNewBooking(booking.id);
+  await notifyTravellerOfNewBooking(booking.id);
 
   revalidatePath("/passport");
   revalidatePath("/vendor/dashboard/bookings");
