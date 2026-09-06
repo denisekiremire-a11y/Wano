@@ -260,6 +260,7 @@ const rewardSchema = z.object({
   target: z.string().min(1),
   discountType: z.enum(["percent", "fixed", "freebie"]),
   discountValue: z.string().optional().or(z.literal("")),
+  source: z.enum(["manual", "funzone"]),
   fundedBy: z.string().optional().or(z.literal("")),
   defaultValidityDays: z.coerce.number().int().min(1).max(365),
 });
@@ -273,6 +274,7 @@ export async function createRewardAction(_prev: ActionState, formData: FormData)
     target: formData.get("target"),
     discountType: formData.get("discountType"),
     discountValue: formData.get("discountValue") ?? "",
+    source: formData.get("source") || "manual",
     fundedBy: formData.get("fundedBy") ?? "",
     defaultValidityDays: formData.get("defaultValidityDays") || "30",
   });
@@ -297,7 +299,7 @@ export async function createRewardAction(_prev: ActionState, formData: FormData)
     targetId: id,
     discountType: parsed.data.discountType,
     discountValue: parsed.data.discountType === "freebie" ? null : parsed.data.discountValue || null,
-    source: "manual",
+    source: parsed.data.source,
     fundedBy: parsed.data.fundedBy || null,
     defaultValidityDays: parsed.data.defaultValidityDays,
   });

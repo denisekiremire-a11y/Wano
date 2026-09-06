@@ -14,6 +14,7 @@ import {
 } from "@/db/schema";
 import { hashPassword, verifyPassword } from "@/lib/auth";
 import { logEvent } from "@/lib/analytics";
+import { finalizeFunzoneClaim } from "@/lib/actions/funzone-actions";
 import { notifyAdmin } from "@/lib/notify";
 import { generateReferralCode } from "@/lib/referral";
 import { clearSessionCookie, createSessionCookie } from "@/lib/session";
@@ -97,6 +98,7 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
 export async function signupAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const role = formData.get("role");
   const referredByCode = formData.get("ref");
+  const claimCode = formData.get("claim");
 
   const raw =
     role === "vendor"
@@ -162,6 +164,10 @@ export async function signupAction(_prev: ActionState, formData: FormData): Prom
         referredAt: referrer ? new Date() : null,
       })
       .returning();
+
+    if (typeof claimCode === "string" && claimCode.trim()) {
+      await finalizeFunzoneClaim(claimCode.trim(), newProfile.id);
+    }
 
     if (referrer) {
       // The 150-point referral bonus doesn't land yet — see

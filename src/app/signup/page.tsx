@@ -6,9 +6,9 @@ import { SignupForm } from "./signup-form";
 export default async function SignupPage({
   searchParams,
 }: {
-  searchParams: Promise<{ ref?: string }>;
+  searchParams: Promise<{ ref?: string; claim?: string }>;
 }) {
-  const { ref: refParam } = await searchParams;
+  const { ref: refParam, claim } = await searchParams;
   const cookieStore = await cookies();
   // The query param (from a fresh /join?ref= link) wins; the cookie is the
   // fallback for a visit that dropped the param along the way.
@@ -30,7 +30,7 @@ export default async function SignupPage({
         </p>
       )}
       <div className="mt-6 rounded-2xl border border-forest-900/10 bg-white p-6">
-        <SignupForm referralCode={ref} />
+        <SignupForm referralCode={ref} claimCode={claim} />
       </div>
     </main>
   );

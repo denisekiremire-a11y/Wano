@@ -37,6 +37,7 @@ export function navItemsFor(role: SessionPayload["role"] | "guest"): NavItem[] {
     return [
       { href: "/vendor/dashboard", label: "Listing", icon: "grid" },
       { href: "/vendor/dashboard/bookings", label: "Bookings", icon: "ticket" },
+      { href: "/vendor/dashboard/redeem", label: "Redeem", icon: "tag" },
       { href: "/vendor/dashboard/offer", label: "Offer", icon: "megaphone" },
       { href: "/vendor/dashboard/referrals", label: "Referrals", icon: "chart" },
       { href: "/vendor/dashboard/documents", label: "Documents", icon: "file" },
@@ -51,6 +52,8 @@ export function navItemsFor(role: SessionPayload["role"] | "guest"): NavItem[] {
       { href: "/admin/travellers", label: "Members", icon: "grid" },
       { href: "/admin/promotions", label: "Deals", icon: "tag" },
       { href: "/admin/rewards", label: "Rewards", icon: "ticket" },
+      { href: "/admin/funzone", label: "Fun Zone", icon: "megaphone" },
+      { href: "/admin/match-day", label: "Match Day", icon: "calendar" },
       { href: "/admin/clubs", label: "Clubs", icon: "chat" },
       { href: "/admin/journal", label: "Journal", icon: "file" },
       { href: "/admin/moderation", label: "Moderation", icon: "flag" },

@@ -8,7 +8,7 @@ import type { ActionState } from "@/lib/validation";
 
 const initialState: ActionState = {};
 
-export function SignupForm({ referralCode }: { referralCode?: string }) {
+export function SignupForm({ referralCode, claimCode }: { referralCode?: string; claimCode?: string }) {
   const [state, formAction, pending] = useActionState(signupAction, initialState);
   const [role, setRole] = useState<"traveller" | "vendor">("traveller");
   const [manualCode, setManualCode] = useState("");
@@ -29,6 +29,7 @@ export function SignupForm({ referralCode }: { referralCode?: string }) {
 
   return (
     <form action={formAction} className="space-y-4">
+      {claimCode && <input type="hidden" name="claim" value={claimCode} />}
       {locked ? (
         <input type="hidden" name="ref" value={referralCode} />
       ) : (

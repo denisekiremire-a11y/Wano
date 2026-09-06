@@ -18,6 +18,7 @@ export function RewardForm({
 }) {
   const [state, formAction, pending] = useActionState(createRewardAction, initialState);
   const [discountType, setDiscountType] = useState<"percent" | "fixed" | "freebie">("percent");
+  const [source, setSource] = useState<"manual" | "funzone">("manual");
 
   return (
     <form action={formAction} className="space-y-4 rounded-2xl border border-forest-900/10 bg-white p-5">
@@ -67,6 +68,19 @@ export function RewardForm({
               </option>
             ))}
           </optgroup>
+        </select>
+      </div>
+
+      <div>
+        <label className="text-sm font-medium text-forest-900">Source</label>
+        <select
+          name="source"
+          value={source}
+          onChange={(e) => setSource(e.target.value as typeof source)}
+          className="mt-1 w-full rounded-lg border border-forest-900/15 bg-white px-3 py-2 text-sm outline-none focus:border-forest-600"
+        >
+          <option value="manual">Campaign — travellers claim it on the place/event page</option>
+          <option value="funzone">Fun Zone — staff issue it to a match-day winner</option>
         </select>
       </div>
 

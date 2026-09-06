@@ -156,6 +156,22 @@ export async function getOwningVendorProfileId(targetType: "listing" | "event", 
   return row?.vendorProfileId ?? null;
 }
 
+// The Fun Zone prize pool — active, staff-issuable rewards for the issue
+// screen's dropdown. Each is still tied to one place/event (a 50%-off row
+// at one restaurant, a 20%-off row at another) rather than one universal
+// prize, so staff pick which specific prize a winner gets.
+export async function getActiveFunzoneRewards() {
+  const catalog = await db
+    .select()
+    .from(rewards)
+    .where(and(eq(rewards.active, true), eq(rewards.source, "funzone")));
+  const targetMap = await resolveTargets(catalog);
+  return catalog.map((reward) => ({
+    ...reward,
+    target: targetMap.get(targetKey(reward.targetType, reward.targetId)) ?? null,
+  }));
+}
+
 export async function getAllRewardsForAdmin() {
   const catalog = await db.select().from(rewards).orderBy(desc(rewards.createdAt));
   const targetMap = await resolveTargets(catalog);
