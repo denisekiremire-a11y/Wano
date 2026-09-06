@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import Link from "next/link";
 import { signupAction } from "@/lib/actions/auth-actions";
+import { validateReferralCodeAction } from "@/lib/actions/referral-actions";
 import type { ActionState } from "@/lib/validation";
 
 const initialState: ActionState = {};
@@ -10,10 +11,55 @@ const initialState: ActionState = {};
 export function SignupForm({ referralCode }: { referralCode?: string }) {
   const [state, formAction, pending] = useActionState(signupAction, initialState);
   const [role, setRole] = useState<"traveller" | "vendor">("traveller");
+  const [manualCode, setManualCode] = useState("");
+  const [manualCheck, setManualCheck] = useState<{ checked: boolean; referrerName: string | null }>({
+    checked: false,
+    referrerName: null,
+  });
+  const locked = Boolean(referralCode);
+
+  async function handleManualBlur() {
+    if (!manualCode.trim()) {
+      setManualCheck({ checked: false, referrerName: null });
+      return;
+    }
+    const result = await validateReferralCodeAction(manualCode);
+    setManualCheck({ checked: true, referrerName: result.referrerName });
+  }
 
   return (
     <form action={formAction} className="space-y-4">
-      {referralCode && <input type="hidden" name="ref" value={referralCode} />}
+      {locked ? (
+        <input type="hidden" name="ref" value={referralCode} />
+      ) : (
+        <div>
+          <label htmlFor="ref" className="text-sm font-medium text-forest-900">
+            Referral code (optional)
+          </label>
+          <input
+            id="ref"
+            name="ref"
+            value={manualCode}
+            onChange={(e) => {
+              setManualCode(e.target.value);
+              setManualCheck({ checked: false, referrerName: null });
+            }}
+            onBlur={handleManualBlur}
+            placeholder="e.g. AB2CD3F"
+            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm uppercase outline-none focus:border-forest-600"
+          />
+          {manualCheck.checked &&
+            (manualCheck.referrerName ? (
+              <p className="mt-1 text-xs text-forest-700">
+                Referred by <span className="font-semibold">{manualCheck.referrerName}</span>
+              </p>
+            ) : (
+              <p className="mt-1 text-xs text-forest-800/50">
+                We don&apos;t recognise that code — you can still sign up.
+              </p>
+            ))}
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-2 rounded-full bg-forest-50 p-1">
         {(["traveller", "vendor"] as const).map((r) => (
           <button

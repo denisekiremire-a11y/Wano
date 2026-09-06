@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
 import {
   bookings,
@@ -7,6 +7,7 @@ import {
   journeys,
   listings,
   promoCodes,
+  referralCredits,
   savedListings,
   stamps,
   travellerProfiles,
@@ -21,6 +22,27 @@ export async function getTravellerProfileByUserId(userId: string) {
     .where(eq(travellerProfiles.userId, userId))
     .limit(1);
   return profile ?? null;
+}
+
+export async function getTravellerProfileById(travellerId: string) {
+  const [profile] = await db
+    .select()
+    .from(travellerProfiles)
+    .where(eq(travellerProfiles.id, travellerId))
+    .limit(1);
+  return profile ?? null;
+}
+
+/** Looks up who a referral code belongs to — used for the signup form's
+ * "Referred by {name}" confirmation. Returns null for an unknown code
+ * without throwing, since an invalid code must never block sign-up. */
+export async function getReferrerNameByCode(code: string) {
+  const [profile] = await db
+    .select({ displayName: travellerProfiles.displayName })
+    .from(travellerProfiles)
+    .where(eq(travellerProfiles.referralCode, code.trim().toUpperCase()))
+    .limit(1);
+  return profile?.displayName ?? null;
 }
 
 export async function getPassportProgress(travellerId: string) {
@@ -89,6 +111,16 @@ export async function getTravellerBookings(travellerId: string) {
     .orderBy(bookings.createdAt);
 }
 
+/** This traveller's bookings for one specific listing — what a listing
+ * page's "Your bookings and rewards" section shows under Bookings. */
+export async function getMyBookingsForListing(travellerId: string, listingId: string) {
+  return db
+    .select({ booking: bookings })
+    .from(bookings)
+    .where(and(eq(bookings.travellerId, travellerId), eq(bookings.listingId, listingId)))
+    .orderBy(desc(bookings.createdAt));
+}
+
 /** A single booking by its confirmation code, scoped to the traveller who
  * made it — used by the post-booking confirmation page. Returns null
  * rather than someone else's booking if the ref doesn't belong to them. */
@@ -116,7 +148,50 @@ export async function getReferralStats(travellerId: string) {
     .from(travellerProfiles)
     .where(eq(travellerProfiles.referredByTravellerId, travellerId));
 
-  return { referralCode: profile?.referralCode ?? null, referredCount: referred.length };
+  const credits = await db
+    .select({ status: referralCredits.status, points: referralCredits.points })
+    .from(referralCredits)
+    .where(eq(referralCredits.referrerId, travellerId));
+
+  const awarded = credits.filter((c) => c.status === "awarded");
+  const pending = credits.filter((c) => c.status === "pending");
+
+  return {
+    referralCode: profile?.referralCode ?? null,
+    referredCount: referred.length,
+    awardedCount: awarded.length,
+    awardedPoints: awarded.reduce((sum, c) => sum + c.points, 0),
+    pendingCount: pending.length,
+  };
+}
+
+// Flips a referee's pending referral_credits row to "awarded" the moment
+// their first-ever booking is confirmed — called from both the vendor and
+// admin booking-confirmation actions. A no-op if there's no pending credit,
+// or if this isn't actually their first confirmed/completed booking.
+export async function awardReferralCreditOnFirstBooking(travellerId: string) {
+  const [pendingCredit] = await db
+    .select()
+    .from(referralCredits)
+    .where(and(eq(referralCredits.refereeId, travellerId), eq(referralCredits.status, "pending")))
+    .limit(1);
+  if (!pendingCredit) return;
+
+  const priorConfirmed = await db
+    .select({ id: bookings.id })
+    .from(bookings)
+    .where(
+      and(
+        eq(bookings.travellerId, travellerId),
+        or(eq(bookings.status, "confirmed"), eq(bookings.status, "completed")),
+      ),
+    );
+  if (priorConfirmed.length > 1) return;
+
+  await db
+    .update(referralCredits)
+    .set({ status: "awarded", awardedAt: new Date() })
+    .where(eq(referralCredits.id, pendingCredit.id));
 }
 
 export async function getSavedListingsForTraveller(travellerId: string) {

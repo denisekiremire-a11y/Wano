@@ -23,6 +23,7 @@ import {
 import { requireRole } from "@/lib/auth";
 import { generatePlaceAddedItem, generatePlaceAddedItemsForVendor } from "@/lib/feed-generators";
 import { notifyTravellerOfBookingStatus } from "@/lib/booking-notifications";
+import { awardReferralCreditOnFirstBooking } from "@/lib/data/traveller";
 import type { ActionState } from "@/lib/validation";
 
 const MAX_LISTING_IMAGE_BYTES = 8 * 1024 * 1024;
@@ -323,6 +324,10 @@ export async function adminSetBookingStatusAction(
         bookingId: booking.id,
       });
     }
+  }
+
+  if (status === "confirmed") {
+    await awardReferralCreditOnFirstBooking(booking.travellerId);
   }
 
   if (status !== booking.status) await notifyTravellerOfBookingStatus(bookingId, status);

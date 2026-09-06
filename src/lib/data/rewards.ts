@@ -1,7 +1,8 @@
-import { and, desc, eq, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { reviews, rewardRedemptions, rewards, travellerInterests, travellerProfiles } from "@/db/schema";
+import { events, listings, reviews, rewards, travellerInterests, userRewards, vendorProfiles } from "@/db/schema";
 import { getChallengesWithStatus, getPassportProgress, getReferralStats } from "./traveller";
+import { resolvePostContexts } from "./post-context";
 
 // Points weighting — extends the existing stamps/challenges/reviews/referral
 // mechanics into one balance rather than building a separate parallel
@@ -31,69 +32,183 @@ export async function getRewardsSummary(travellerId: string, persona: string | n
     { label: "Challenges completed", count: completedChallenges, points: completedChallenges * POINTS.perChallenge },
     { label: "Reviews written", count: myReviews.length, points: myReviews.length * POINTS.perReview },
     {
+      // Counted from referralCredits with status="awarded" (see
+      // getReferralStats) — a referral only pays out once the referee's
+      // first booking is confirmed, not at signup.
       label: "Friends referred",
-      count: referralStats.referredCount,
-      points: referralStats.referredCount * POINTS.perReferral,
+      count: referralStats.awardedCount,
+      points: referralStats.awardedPoints,
     },
     { label: "Profile complete", count: profileComplete ? 1 : 0, points: profileComplete ? POINTS.profileComplete : 0 },
   ];
 
   const totalPoints = breakdown.reduce((sum, b) => sum + b.points, 0);
-  const spentPoints = await getSpentPoints(travellerId);
 
   return {
     totalPoints,
-    spentPoints,
-    availablePoints: totalPoints - spentPoints,
     breakdown,
     referralCode: referralStats.referralCode,
+    pendingReferrals: referralStats.pendingCount,
   };
 }
 
-// Sum of points spent on redemptions that weren't cancelled — a cancelled
-// redemption refunds the points by simply not counting toward this sum.
-export async function getSpentPoints(travellerId: string) {
-  const rows = await db
-    .select({ pointsSpent: rewardRedemptions.pointsSpent })
-    .from(rewardRedemptions)
-    .where(and(eq(rewardRedemptions.travellerId, travellerId), ne(rewardRedemptions.status, "cancelled")));
-  return rows.reduce((sum, r) => sum + r.pointsSpent, 0);
+export type RewardTarget = { targetType: "listing" | "event"; targetId: string };
+
+async function resolveTargets(refs: RewardTarget[]) {
+  return resolvePostContexts(refs.map((r) => ({ type: r.targetType, id: r.targetId })));
 }
 
-export async function getActiveRewards() {
-  const catalog = await db.select().from(rewards).where(eq(rewards.active, true)).orderBy(rewards.pointsCost);
-
-  const redeemedCounts = await db
-    .select({ rewardId: rewardRedemptions.rewardId, count: sql<number>`count(*)::int` })
-    .from(rewardRedemptions)
-    .where(ne(rewardRedemptions.status, "cancelled"))
-    .groupBy(rewardRedemptions.rewardId);
-  const redeemedMap = new Map(redeemedCounts.map((r) => [r.rewardId, r.count]));
-
-  return catalog.map((reward) => ({
-    ...reward,
-    remaining: reward.stock === null ? null : Math.max(0, reward.stock - (redeemedMap.get(reward.id) ?? 0)),
-  }));
+function targetKey(targetType: string, targetId: string) {
+  return `${targetType}:${targetId}`;
 }
 
-export async function getMyRedemptions(travellerId: string) {
+// Self-claimable rewards visible on a target's page — only "campaign" and
+// "manual" sourced rewards are claimable this way; funzone/xp_draw/referral
+// vouchers are only ever minted through their own issuance flows.
+export async function getClaimableRewardsForTarget(targetType: "listing" | "event", targetId: string) {
   return db
-    .select({ redemption: rewardRedemptions, reward: rewards })
-    .from(rewardRedemptions)
-    .innerJoin(rewards, eq(rewardRedemptions.rewardId, rewards.id))
-    .where(eq(rewardRedemptions.travellerId, travellerId))
-    .orderBy(desc(rewardRedemptions.createdAt));
+    .select()
+    .from(rewards)
+    .where(
+      and(
+        eq(rewards.targetType, targetType),
+        eq(rewards.targetId, targetId),
+        eq(rewards.active, true),
+        inArray(rewards.source, ["campaign", "manual"]),
+      ),
+    );
+}
+
+// This user's active (claimed) vouchers for one target — what a listing or
+// event page shows under "Rewards". Redeemed/expired ones don't show here;
+// the Passport wallet is where full history lives.
+export async function getMyClaimedRewardsForTarget(
+  travellerId: string,
+  targetType: "listing" | "event",
+  targetId: string,
+) {
+  const rows = await db
+    .select({ userReward: userRewards, reward: rewards })
+    .from(userRewards)
+    .innerJoin(rewards, eq(userRewards.rewardId, rewards.id))
+    .where(
+      and(
+        eq(userRewards.travellerId, travellerId),
+        eq(userRewards.targetType, targetType),
+        eq(userRewards.targetId, targetId),
+        eq(userRewards.status, "claimed"),
+      ),
+    )
+    .orderBy(desc(userRewards.claimedAt));
+  return rows;
+}
+
+// A traveller's full voucher wallet, across every target, grouped by
+// status and sorted soonest-expiry-first within each group.
+export async function getMyWallet(travellerId: string) {
+  const rows = await db
+    .select({ userReward: userRewards, reward: rewards })
+    .from(userRewards)
+    .innerJoin(rewards, eq(userRewards.rewardId, rewards.id))
+    .where(eq(userRewards.travellerId, travellerId))
+    .orderBy(asc(userRewards.expiresAt));
+
+  const targetMap = await resolveTargets(rows.map((r) => r.userReward));
+
+  const withTarget = rows.map((r) => ({
+    ...r,
+    target: targetMap.get(targetKey(r.userReward.targetType, r.userReward.targetId)) ?? null,
+  }));
+
+  return {
+    active: withTarget.filter((r) => r.userReward.status === "claimed"),
+    used: withTarget.filter((r) => r.userReward.status === "redeemed"),
+    expired: withTarget.filter((r) => r.userReward.status === "expired" || r.userReward.status === "void"),
+  };
+}
+
+export async function getUserRewardById(userRewardId: string) {
+  const [row] = await db
+    .select({ userReward: userRewards, reward: rewards })
+    .from(userRewards)
+    .innerJoin(rewards, eq(userRewards.rewardId, rewards.id))
+    .where(eq(userRewards.id, userRewardId))
+    .limit(1);
+  return row ?? null;
+}
+
+// The vendorProfile that owns a reward's target, if any — the "wrong venue"
+// check for redemption (see markRewardRedeemedAction).
+export async function getOwningVendorProfileId(targetType: "listing" | "event", targetId: string) {
+  if (targetType === "listing") {
+    const [row] = await db
+      .select({ vendorProfileId: listings.vendorProfileId })
+      .from(listings)
+      .where(eq(listings.id, targetId))
+      .limit(1);
+    return row?.vendorProfileId ?? null;
+  }
+  const [row] = await db
+    .select({ vendorProfileId: events.organizerVendorProfileId })
+    .from(events)
+    .where(eq(events.id, targetId))
+    .limit(1);
+  return row?.vendorProfileId ?? null;
 }
 
 export async function getAllRewardsForAdmin() {
-  return db.select().from(rewards).orderBy(desc(rewards.createdAt));
+  const catalog = await db.select().from(rewards).orderBy(desc(rewards.createdAt));
+  const targetMap = await resolveTargets(catalog);
+  return catalog.map((reward) => ({
+    ...reward,
+    target: targetMap.get(targetKey(reward.targetType, reward.targetId)) ?? null,
+  }));
 }
 
-export async function getRedemptionQueueForAdmin() {
-  return db
-    .select({ redemption: rewardRedemptions, reward: rewards, traveller: travellerProfiles })
-    .from(rewardRedemptions)
-    .innerJoin(rewards, eq(rewardRedemptions.rewardId, rewards.id))
-    .innerJoin(travellerProfiles, eq(rewardRedemptions.travellerId, travellerProfiles.id))
-    .orderBy(desc(rewardRedemptions.createdAt));
+export async function getVendorRedemptionsToday(vendorProfileId: string) {
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const rows = await db
+    .select({ userReward: userRewards, reward: rewards })
+    .from(userRewards)
+    .innerJoin(rewards, eq(userRewards.rewardId, rewards.id))
+    .where(eq(userRewards.redeemedByVendorProfileId, vendorProfileId))
+    .orderBy(desc(userRewards.redeemedAt));
+
+  return rows.filter((r) => r.userReward.redeemedAt && r.userReward.redeemedAt >= startOfDay);
+}
+
+// Active reward campaigns targeting this vendor's own listing or events —
+// what "active campaigns for that venue" means on the vendor dashboard.
+export async function getVendorActiveCampaigns(vendorProfileId: string) {
+  const [ownListing] = await db
+    .select({ id: listings.id })
+    .from(listings)
+    .where(eq(listings.vendorProfileId, vendorProfileId))
+    .limit(1);
+  const ownEvents = await db
+    .select({ id: events.id })
+    .from(events)
+    .where(eq(events.organizerVendorProfileId, vendorProfileId));
+
+  const eventIds = ownEvents.map((e) => e.id);
+  const targets: RewardTarget[] = [
+    ...(ownListing ? [{ targetType: "listing" as const, targetId: ownListing.id }] : []),
+    ...eventIds.map((id) => ({ targetType: "event" as const, targetId: id })),
+  ];
+  if (targets.length === 0) return [];
+
+  const all = await db.select().from(rewards).where(eq(rewards.active, true));
+  return all.filter((r) => targets.some((t) => t.targetType === r.targetType && t.targetId === r.targetId));
+}
+
+export async function getVendorProfileForListing(listingId: string) {
+  const [row] = await db
+    .select({ vendor: vendorProfiles })
+    .from(listings)
+    .innerJoin(vendorProfiles, eq(vendorProfiles.id, listings.vendorProfileId))
+    .where(eq(listings.id, listingId))
+    .limit(1);
+  return row?.vendor ?? null;
 }

@@ -7,6 +7,7 @@ import {
   challengeCompletions,
   challenges,
   loginAttempts,
+  referralCredits,
   travellerProfiles,
   users,
   vendorProfiles,
@@ -151,14 +152,27 @@ export async function signupAction(_prev: ActionState, formData: FormData): Prom
       referrer = row ?? null;
     }
 
-    await db.insert(travellerProfiles).values({
-      userId: user.id,
-      displayName: parsed.data.name,
-      referralCode: await uniqueReferralCode(),
-      referredByTravellerId: referrer?.id ?? null,
-    });
+    const [newProfile] = await db
+      .insert(travellerProfiles)
+      .values({
+        userId: user.id,
+        displayName: parsed.data.name,
+        referralCode: await uniqueReferralCode(),
+        referredByTravellerId: referrer?.id ?? null,
+        referredAt: referrer ? new Date() : null,
+      })
+      .returning();
 
     if (referrer) {
+      // The 150-point referral bonus doesn't land yet — see
+      // awardReferralCreditOnFirstBooking, called once this referee's
+      // first booking is confirmed. Until then it just sits here as
+      // "pending" so the referrer can see it's on its way.
+      await db.insert(referralCredits).values({
+        referrerId: referrer.id,
+        refereeId: newProfile.id,
+      });
+
       const [referChallenge] = await db
         .select()
         .from(challenges)

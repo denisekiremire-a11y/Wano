@@ -121,35 +121,43 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const travellerProfiles = pgTable("traveller_profiles", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id")
-    .notNull()
-    .unique()
-    .references(() => users.id, { onDelete: "cascade" }),
-  displayName: text("display_name").notNull(),
-  // Month/day is what matters for birthday perks; year is optional context.
-  dateOfBirth: date("date_of_birth"),
-  // Set during onboarding (see /onboarding) — drives Home feed personalization.
-  persona: travellerPersonaEnum("persona"),
-  city: text("city"),
-  grandPrizeEntered: boolean("grand_prize_entered").notNull().default(false),
-  // Settings > "Show my activity in the public feed" — suppresses this
-  // traveller's review_posted / RSVP-derived feed items when off. Never
-  // affects bookings, redemptions, saves, or search — those are never
-  // surfaced regardless of this setting.
-  showActivityInFeed: boolean("show_activity_in_feed").notNull().default(true),
-  referralCode: text("referral_code").notNull().unique(),
-  referredByTravellerId: uuid("referred_by_traveller_id").references(
-    (): AnyPgColumn => travellerProfiles.id,
-  ),
-  // Admin-settable manual boost added on top of the real follows-table
-  // count everywhere followers are shown (see getFollowCounts) — lets
-  // admin demo/test influencer status without needing thousands of real
-  // follow rows. Zero for every real account.
-  bonusFollowers: integer("bonus_followers").notNull().default(0),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const travellerProfiles = pgTable(
+  "traveller_profiles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .unique()
+      .references(() => users.id, { onDelete: "cascade" }),
+    displayName: text("display_name").notNull(),
+    // Month/day is what matters for birthday perks; year is optional context.
+    dateOfBirth: date("date_of_birth"),
+    // Set during onboarding (see /onboarding) — drives Home feed personalization.
+    persona: travellerPersonaEnum("persona"),
+    city: text("city"),
+    // Used for Fun Zone voucher issuance/lookup (see funzoneClaims) — not
+    // collected at signup, only when a traveller supplies it themselves.
+    phone: text("phone"),
+    grandPrizeEntered: boolean("grand_prize_entered").notNull().default(false),
+    // Settings > "Show my activity in the public feed" — suppresses this
+    // traveller's review_posted / RSVP-derived feed items when off. Never
+    // affects bookings, redemptions, saves, or search — those are never
+    // surfaced regardless of this setting.
+    showActivityInFeed: boolean("show_activity_in_feed").notNull().default(true),
+    referralCode: text("referral_code").notNull().unique(),
+    referredByTravellerId: uuid("referred_by_traveller_id").references(
+      (): AnyPgColumn => travellerProfiles.id,
+    ),
+    referredAt: timestamp("referred_at", { withTimezone: true }),
+    // Admin-settable manual boost added on top of the real follows-table
+    // count everywhere followers are shown (see getFollowCounts) — lets
+    // admin demo/test influencer status without needing thousands of real
+    // follow rows. Zero for every real account.
+    bonusFollowers: integer("bonus_followers").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("traveller_profiles_referred_by_idx").on(table.referredByTravellerId)],
+);
 
 // A journey is the atomic shareable/bookable unit — an ordered trip, not a
 // single listing (see journeyStops). editorial ones are Wano's own 5
@@ -276,6 +284,12 @@ export const vendorProfiles = pgTable("vendor_profiles", {
   facebookUrl: text("facebook_url"),
   tiktokUrl: text("tiktok_url"),
   websiteUrl: text("website_url"),
+  // A vendor's listing(s) double as its "venue" for reward redemption — no
+  // separate venues table. The PIN gates the redeem action at the counter
+  // so staff never need the vendor's login password; hashed, never stored
+  // in plain text.
+  staffPinHash: text("staff_pin_hash"),
+  pinRotatedAt: timestamp("pin_rotated_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -533,41 +547,169 @@ export const stamps = pgTable(
   (table) => [unique().on(table.travellerId, table.journeyId)],
 );
 
-// Admin-curated catalog of things points can be redeemed for. Points
-// themselves are never stored as a balance (see getRewardsSummary in
-// src/lib/data/rewards.ts — computed live from stamps/challenges/reviews/
-// referrals so there's no separate parallel currency to keep in sync);
-// redeeming just records that some of that computed total has been spent,
-// via getSpentPoints subtracting non-cancelled redemptions. Not tied to
-// any one vendor — a flat "spend points, admin fulfils it" model, same
-// trust boundary as the rest of the platform (UTB curates, doesn't
-// operate travel itself).
+// Points earned from stamps/challenges/reviews/referrals are computed live
+// (see getRewardsSummary in src/lib/data/rewards.ts) — never a stored
+// balance. Rewards are a separate concept: discount vouchers attached to a
+// specific bookable thing (a listing or an event), sourced from Fun Zone
+// wins, XP draws, referral bonuses, or a manual admin campaign, redeemed
+// in person via a QR code the venue scans. Polymorphic target — same
+// pattern as reports.targetType/targetId — so one table covers both
+// listings and events without two near-identical tables (and without the
+// "rewards only join against listings" bug this replaces).
+export const rewardTargetTypeEnum = pgEnum("reward_target_type", ["listing", "event"]);
+export const rewardDiscountTypeEnum = pgEnum("reward_discount_type", ["percent", "fixed", "freebie"]);
+export const rewardSourceEnum = pgEnum("reward_source", [
+  "funzone",
+  "xp_draw",
+  "referral",
+  "campaign",
+  "manual",
+]);
+
 export const rewards = pgTable("rewards", {
   id: uuid("id").primaryKey().defaultRandom(),
   title: text("title").notNull(),
-  description: text("description").notNull(),
-  pointsCost: integer("points_cost").notNull(),
-  // Null = unlimited. Set for a limited-quantity reward.
-  stock: integer("stock"),
+  description: text("description"),
+  targetType: rewardTargetTypeEnum("target_type").notNull(),
+  targetId: uuid("target_id").notNull(),
+  discountType: rewardDiscountTypeEnum("discount_type").notNull(),
+  // 27 for 27%, an amount in UGX for "fixed", null for "freebie".
+  discountValue: numeric("discount_value", { precision: 10, scale: 2 }),
+  source: rewardSourceEnum("source").notNull().default("manual"),
+  // wano | venue | split — an unresolved commercial decision. Left
+  // nullable and unenforced everywhere; nothing should assume a value.
+  fundedBy: text("funded_by"),
+  defaultValidityDays: integer("default_validity_days").notNull().default(30),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const redemptionStatusEnum = pgEnum("redemption_status", ["pending", "fulfilled", "cancelled"]);
+export const userRewardStatusEnum = pgEnum("user_reward_status", [
+  "claimed",
+  "redeemed",
+  "expired",
+  "void",
+]);
 
-export const rewardRedemptions = pgTable("reward_redemptions", {
+// A traveller's claimed voucher. targetType/targetId are denormalised from
+// rewards at claim time so a target's page can query "what do I have here"
+// without joining through rewards first.
+export const userRewards = pgTable(
+  "user_rewards",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    travellerId: uuid("traveller_id")
+      .notNull()
+      .references(() => travellerProfiles.id, { onDelete: "cascade" }),
+    rewardId: uuid("reward_id")
+      .notNull()
+      .references(() => rewards.id, { onDelete: "cascade" }),
+    targetType: rewardTargetTypeEnum("target_type").notNull(),
+    targetId: uuid("target_id").notNull(),
+    // Short, human-readable fallback for when a scan fails — manual entry
+    // still requires the venue PIN (see redeemUserRewardAction).
+    redemptionCode: text("redemption_code").notNull().unique(),
+    status: userRewardStatusEnum("status").notNull().default("claimed"),
+    claimedAt: timestamp("claimed_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    redeemedAt: timestamp("redeemed_at", { withTimezone: true }),
+    redeemedByVendorProfileId: uuid("redeemed_by_vendor_profile_id").references(
+      () => vendorProfiles.id,
+    ),
+  },
+  (table) => [
+    index("user_rewards_traveller_status_idx").on(table.travellerId, table.status),
+    index("user_rewards_target_idx").on(table.targetType, table.targetId, table.travellerId),
+  ],
+);
+
+export const referralCreditStatusEnum = pgEnum("referral_credit_status", [
+  "pending",
+  "awarded",
+  "void",
+]);
+
+// One row per successful referral signup. Stays "pending" — visible to the
+// referrer, but not counted in their live points total (see
+// getReferralStats) — until the referee's first booking is confirmed,
+// at which point it flips to "awarded". This is the source of truth for
+// referral points; travellerProfiles.referredByTravellerId is just the
+// signup-time link.
+export const referralCredits = pgTable("referral_credits", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  referrerId: uuid("referrer_id")
+    .notNull()
+    .references(() => travellerProfiles.id, { onDelete: "cascade" }),
+  refereeId: uuid("referee_id")
+    .notNull()
+    .unique()
+    .references(() => travellerProfiles.id, { onDelete: "cascade" }),
+  points: integer("points").notNull().default(150),
+  status: referralCreditStatusEnum("status").notNull().default("pending"),
+  awardedAt: timestamp("awarded_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Fun Zone: a staff-operated, in-person win, issued to a phone number
+// rather than a logged-in session. No SMS/WhatsApp gateway is integrated,
+// so staff share the generated claim link directly; claiming still
+// requires signing in or up (see /claim/[code]) before the voucher mints,
+// which is what keeps this an acquisition loop rather than a giveaway.
+export const funzoneClaimStatusEnum = pgEnum("funzone_claim_status", ["pending", "claimed", "void"]);
+
+export const funzoneClaims = pgTable("funzone_claims", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  phone: text("phone").notNull(),
+  rewardId: uuid("reward_id")
+    .notNull()
+    .references(() => rewards.id, { onDelete: "cascade" }),
+  claimCode: text("claim_code").notNull().unique(),
+  status: funzoneClaimStatusEnum("status").notNull().default("pending"),
+  travellerId: uuid("traveller_id").references(() => travellerProfiles.id, { onDelete: "set null" }),
+  issuedByUserId: uuid("issued_by_user_id")
+    .notNull()
+    .references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  claimedAt: timestamp("claimed_at", { withTimezone: true }),
+});
+
+// Wano XP: paid match-day seats. Deliberately its own table rather than
+// reusing bookings (which requires a listingId) or eventAttendance (which
+// has no seats/payment) — a match-day seat is neither.
+export const xpBookingStatusEnum = pgEnum("xp_booking_status", [
+  "pending",
+  "confirmed",
+  "cancelled",
+  "refunded",
+]);
+
+export const xpBookings = pgTable("xp_bookings", {
   id: uuid("id").primaryKey().defaultRandom(),
   travellerId: uuid("traveller_id")
     .notNull()
     .references(() => travellerProfiles.id, { onDelete: "cascade" }),
-  rewardId: uuid("reward_id")
+  matchId: uuid("match_id")
     .notNull()
-    .references(() => rewards.id, { onDelete: "cascade" }),
-  // Snapshot of the cost at redemption time — rewards.pointsCost can change
-  // later without rewriting history.
-  pointsSpent: integer("points_spent").notNull(),
-  status: redemptionStatusEnum("status").notNull().default("pending"),
+    .references(() => events.id, { onDelete: "cascade" }),
+  seats: integer("seats").notNull().default(1),
+  amountUgx: integer("amount_ugx").notNull(),
+  // Flutterwave reference — unused for now (payment is stubbed; see
+  // confirmXpBookingAction), kept so wiring in real payment later doesn't
+  // need a schema change.
+  paymentRef: text("payment_ref"),
+  status: xpBookingStatusEnum("status").notNull().default("pending"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const xpDraws = pgTable("xp_draws", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  matchId: uuid("match_id")
+    .notNull()
+    .unique()
+    .references(() => events.id, { onDelete: "cascade" }),
+  prizeTitle: text("prize_title").notNull(),
+  drawnAt: timestamp("drawn_at", { withTimezone: true }),
+  winnerTravellerId: uuid("winner_traveller_id").references(() => travellerProfiles.id),
 });
 
 export const challenges = pgTable("challenges", {

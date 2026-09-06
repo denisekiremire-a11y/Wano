@@ -15,6 +15,7 @@ import {
 } from "@/lib/data/journeys";
 import { getListingImageIdsFor } from "@/lib/data/listing-images";
 import { getRatingSummary, getReviewsForListing } from "@/lib/data/reviews";
+import { getClaimableRewardsForTarget, getMyClaimedRewardsForTarget } from "@/lib/data/rewards";
 import { getMediaPostsFor } from "@/lib/data/social";
 import {
   getSavedListingsForTraveller,
@@ -25,6 +26,7 @@ import { listingTypeGradient, listingTypeLabels, type ListingType } from "@/lib/
 import { getSession } from "@/lib/session";
 import { logEvent } from "@/lib/analytics";
 import { bookListingFormAction } from "@/lib/actions/booking-actions";
+import { TargetRewardsSection } from "@/components/target-rewards-section";
 
 const socialLinks = [
   { key: "instagramUrl", label: "Instagram" },
@@ -49,16 +51,22 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
   let saved = false;
   let hasBirthdaySet = false;
   let myBookings: Awaited<ReturnType<typeof getTravellerBookings>> = [];
+  let claimableRewards: Awaited<ReturnType<typeof getClaimableRewardsForTarget>> = [];
+  let myClaimedRewards: Awaited<ReturnType<typeof getMyClaimedRewardsForTarget>> = [];
   if (session?.role === "traveller") {
     const travellerProfile = await getTravellerProfileByUserId(session.userId);
     if (travellerProfile) {
-      const [savedRows, allBookings] = await Promise.all([
+      const [savedRows, allBookings, claimable, myClaimed] = await Promise.all([
         getSavedListingsForTraveller(travellerProfile.id),
         getTravellerBookings(travellerProfile.id),
+        getClaimableRewardsForTarget("listing", listing.id),
+        getMyClaimedRewardsForTarget(travellerProfile.id, "listing", listing.id),
       ]);
       saved = savedRows.some((s) => s.listing.id === listing.id);
       hasBirthdaySet = travellerProfile.dateOfBirth != null;
       myBookings = allBookings.filter((b) => b.listing.id === listing.id);
+      claimableRewards = claimable;
+      myClaimedRewards = myClaimed;
     }
   }
 
@@ -273,6 +281,8 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
             </div>
           </section>
         )}
+
+        <TargetRewardsSection claimable={claimableRewards} claimed={myClaimedRewards} />
 
         <section className="mt-8 rounded-2xl border border-forest-900/10 bg-white p-5">
           <h2 className="font-display text-lg font-semibold text-forest-900">About {vendor.businessName}</h2>

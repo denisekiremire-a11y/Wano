@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { bookings, listings, stamps } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { notifyTravellerOfBookingStatus } from "@/lib/booking-notifications";
+import { awardReferralCreditOnFirstBooking } from "@/lib/data/traveller";
 import { getVendorProfileByUserId } from "@/lib/data/vendor";
 
 export async function respondToBookingAction(
@@ -51,6 +52,10 @@ export async function respondToBookingAction(
         bookingId: row.booking.id,
       });
     }
+  }
+
+  if (decision === "confirmed") {
+    await awardReferralCreditOnFirstBooking(row.booking.travellerId);
   }
 
   await notifyTravellerOfBookingStatus(bookingId, decision);

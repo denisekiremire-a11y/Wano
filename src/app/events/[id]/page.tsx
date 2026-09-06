@@ -10,9 +10,11 @@ import {
   getFollowedAttendees,
   getMyAttendance,
 } from "@/lib/data/events";
+import { getClaimableRewardsForTarget, getMyClaimedRewardsForTarget } from "@/lib/data/rewards";
 import { getMediaPostsFor } from "@/lib/data/social";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { getSession } from "@/lib/session";
+import { TargetRewardsSection } from "@/components/target-rewards-section";
 
 function formatEventWhen(startAt: Date, endAt: Date | null) {
   const start = new Intl.DateTimeFormat("en-GB", {
@@ -38,15 +40,21 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
 
   let myStatus = null;
   let followedGoing: { name: string; status: string }[] = [];
+  let claimableRewards: Awaited<ReturnType<typeof getClaimableRewardsForTarget>> = [];
+  let myClaimedRewards: Awaited<ReturnType<typeof getMyClaimedRewardsForTarget>> = [];
   if (session?.role === "traveller") {
     const travellerProfile = await getTravellerProfileByUserId(session.userId);
     if (travellerProfile) {
-      const [mine, followed] = await Promise.all([
+      const [mine, followed, claimable, myClaimed] = await Promise.all([
         getMyAttendance(event.id, travellerProfile.id),
         getFollowedAttendees(event.id, travellerProfile.id),
+        getClaimableRewardsForTarget("event", event.id),
+        getMyClaimedRewardsForTarget(travellerProfile.id, "event", event.id),
       ]);
       myStatus = mine?.status ?? null;
       followedGoing = followed;
+      claimableRewards = claimable;
+      myClaimedRewards = myClaimed;
     }
   }
 
@@ -113,6 +121,8 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
             </ul>
           )}
         </div>
+
+        <TargetRewardsSection claimable={claimableRewards} claimed={myClaimedRewards} />
 
         <section className="mt-8">
           <h2 className="font-display text-lg font-semibold text-forest-900">What people are saying</h2>

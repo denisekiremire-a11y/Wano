@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/feed",
       "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/reward-expiry",
+      "schedule": "0 6 * * *"
     }
   ]
 }

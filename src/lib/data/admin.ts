@@ -4,6 +4,7 @@ import {
   accreditationReviews,
   bookings,
   challengeCompletions,
+  events,
   follows,
   journeys,
   listingJourneys,
@@ -157,6 +158,11 @@ export async function getAllListingsForAdmin() {
     .from(listings)
     .innerJoin(vendorProfiles, eq(listings.vendorProfileId, vendorProfiles.id))
     .orderBy(vendorProfiles.businessName);
+}
+
+/** All active events for the admin reward-target picker. */
+export async function getAllEventsForAdmin() {
+  return db.select().from(events).where(eq(events.active, true)).orderBy(events.startAt);
 }
 
 export async function getAllVendorProfilesForAdmin() {
