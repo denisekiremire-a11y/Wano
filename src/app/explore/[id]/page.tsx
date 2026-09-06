@@ -17,7 +17,14 @@ import { getListingImageIdsFor } from "@/lib/data/listing-images";
 import { getRatingSummary, getReviewsForListing } from "@/lib/data/reviews";
 import { getClaimableRewardsForTarget, getMyClaimedRewardsForTarget } from "@/lib/data/rewards";
 import { formatRewardDiscount } from "@/lib/reward-format";
-import { getMediaPostsFor } from "@/lib/data/social";
+import {
+  getCommentsForPost,
+  getEngagementCounts,
+  getLikedPostIds,
+  getMediaPostsFor,
+  getPostImageIds,
+} from "@/lib/data/social";
+import { PostCard } from "@/components/post-card";
 import {
   getSavedListingsForTraveller,
   getTravellerBookings,
@@ -52,6 +59,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
   let saved = false;
   let hasBirthdaySet = false;
   let travellerDisplayName = "";
+  let viewerTravellerId: string | null = null;
   let myBookings: Awaited<ReturnType<typeof getTravellerBookings>> = [];
   let claimableRewards: Awaited<ReturnType<typeof getClaimableRewardsForTarget>> = [];
   let myClaimedRewards: Awaited<ReturnType<typeof getMyClaimedRewardsForTarget>> = [];
@@ -67,6 +75,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
       saved = savedRows.some((s) => s.listing.id === listing.id);
       hasBirthdaySet = travellerProfile.dateOfBirth != null;
       travellerDisplayName = travellerProfile.displayName;
+      viewerTravellerId = travellerProfile.id;
       myBookings = allBookings.filter((b) => b.listing.id === listing.id);
       claimableRewards = claimable;
       myClaimedRewards = myClaimed;
@@ -83,6 +92,15 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
     getListingTypeDetails(listing.id),
     getListingImageIdsFor(listing.id),
   ]);
+
+  const mediaPostIds = media.map((m) => m.post.id);
+  const [mediaImageIdsMap, mediaEngagement, mediaLikedIds, mediaCommentsRows] = await Promise.all([
+    getPostImageIds(mediaPostIds),
+    getEngagementCounts(mediaPostIds),
+    viewerTravellerId ? getLikedPostIds(viewerTravellerId, mediaPostIds) : Promise.resolve(new Set<string>()),
+    Promise.all(mediaPostIds.map((id) => getCommentsForPost(id).then((c) => [id, c] as const))),
+  ]);
+  const mediaCommentsMap = new Map(mediaCommentsRows);
 
   const activeSocials = socialLinks.filter((s) => vendor[s.key]);
   const myUpcoming = myBookings.filter((b) => b.booking.status === "pending" || b.booking.status === "confirmed");
@@ -425,7 +443,9 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
 
         <section className="mt-8">
           <h2 className="font-display text-lg font-semibold text-forest-900">What people are saying</h2>
-          <p className="mt-1 text-sm text-forest-800/60">Posts and moments shared by travellers about this place.</p>
+          <p className="mt-1 text-sm text-forest-800/60">
+            Posts and moments about this place — from travellers and from {vendor.businessName}.
+          </p>
           {session?.role === "traveller" && (
             <div className="mt-3">
               <PostComposer
@@ -434,25 +454,29 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
               />
             </div>
           )}
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="mt-4 space-y-3">
             {media.length === 0 ? (
-              <p className="col-span-full rounded-xl border border-forest-900/10 bg-white p-6 text-center text-sm text-forest-800/60">
-                No media yet.
+              <p className="rounded-xl border border-forest-900/10 bg-white p-6 text-center text-sm text-forest-800/60">
+                Nothing posted yet.
               </p>
             ) : (
-              media.map(({ post, authorUser, author }) => (
-                <div key={post.id} className="overflow-hidden rounded-xl border border-forest-900/10 bg-white">
-                  {post.imageUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={post.imageUrl} alt="" className="h-40 w-full object-cover" />
-                  )}
-                  <div className="p-3">
-                    <p className="text-sm text-forest-800/90">{post.content}</p>
-                    <p className="mt-1 text-xs text-forest-800/50">
-                      {author.displayName} · @{authorUser.username}
-                    </p>
-                  </div>
-                </div>
+              media.map(({ post, authorTravellerId, authorName, authorUsername }) => (
+                <PostCard
+                  key={post.id}
+                  postId={post.id}
+                  authorTravellerId={authorTravellerId ?? undefined}
+                  authorName={authorName}
+                  authorUsername={authorUsername}
+                  content={post.content}
+                  imageUrl={post.imageUrl}
+                  imageIds={mediaImageIdsMap.get(post.id) ?? []}
+                  createdAt={new Date(post.createdAt)}
+                  likeCount={mediaEngagement.likeMap.get(post.id) ?? 0}
+                  commentCount={mediaEngagement.commentMap.get(post.id) ?? 0}
+                  liked={mediaLikedIds.has(post.id)}
+                  canInteract={session?.role === "traveller"}
+                  comments={mediaCommentsMap.get(post.id) ?? []}
+                />
               ))
             )}
           </div>

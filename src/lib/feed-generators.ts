@@ -149,6 +149,20 @@ export async function generateUserPostItem(
   });
 }
 
+/** Same feed_item type as a traveller's post — the feed renders both
+ * through the same "user_post" hydration path (getRankedFeed resolves the
+ * live post row either way), just with no subjectTravellerId since a
+ * vendor's own posts aren't subject to the "hide my own activity" /
+ * following-affinity logic that's specific to traveller authorship. */
+export async function generateVendorPostItem(postId: string, authorName: string) {
+  await insertFeedItem({
+    type: "user_post",
+    dedupeKey: `user_post:${postId}`,
+    postId,
+    payload: { kind: "user_post", postId, authorName },
+  });
+}
+
 export async function generateJournalPublishedItem(journalPostId: string) {
   const [post] = await db.select().from(journalPosts).where(eq(journalPosts.id, journalPostId)).limit(1);
   if (!post || post.status !== "published") return;

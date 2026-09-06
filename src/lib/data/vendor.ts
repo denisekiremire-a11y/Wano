@@ -65,6 +65,39 @@ export async function getVendorListingFull(vendorProfileId: string) {
   return { ...row, journeyTags, hotel: hotel ?? null, restaurant: restaurant ?? null, experience: experience ?? null };
 }
 
+/** Every listing this vendor owns, newest first — the vendor dashboard's
+ * Listings page (a vendor can run more than one place/experience). */
+export async function getVendorListings(vendorProfileId: string) {
+  return db
+    .select({ listing: listings, offer: offers })
+    .from(listings)
+    .leftJoin(offers, eq(offers.listingId, listings.id))
+    .where(eq(listings.vendorProfileId, vendorProfileId))
+    .orderBy(desc(listings.createdAt));
+}
+
+/** One of the vendor's own listings, with its full detail rows — used for
+ * the vendor's own edit form. Returns null if the listing doesn't exist or
+ * isn't theirs, so the caller can 404/redirect without a separate check. */
+export async function getVendorOwnListingFull(vendorProfileId: string, listingId: string) {
+  const [row] = await db
+    .select({ listing: listings, offer: offers })
+    .from(listings)
+    .leftJoin(offers, eq(offers.listingId, listings.id))
+    .where(and(eq(listings.id, listingId), eq(listings.vendorProfileId, vendorProfileId)))
+    .limit(1);
+  if (!row) return null;
+
+  const [journeyTags, [hotel], [restaurant], [experience]] = await Promise.all([
+    getJourneyTagsForListing(row.listing.id),
+    db.select().from(hotelDetails).where(eq(hotelDetails.listingId, row.listing.id)).limit(1),
+    db.select().from(restaurantDetails).where(eq(restaurantDetails.listingId, row.listing.id)).limit(1),
+    db.select().from(experienceDetails).where(eq(experienceDetails.listingId, row.listing.id)).limit(1),
+  ]);
+
+  return { ...row, journeyTags, hotel: hotel ?? null, restaurant: restaurant ?? null, experience: experience ?? null };
+}
+
 // Columns for list/review views — excludes fileData (bytea) so rendering a
 // list of documents doesn't pull every file's bytes into the query result.
 export const vendorDocumentListColumns = {

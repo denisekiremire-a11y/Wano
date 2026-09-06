@@ -11,6 +11,7 @@ import {
   travellerInterests,
   travellerProfiles,
   users,
+  vendorProfiles,
 } from "@/db/schema";
 import {
   NEUTRAL_AFFINITY,
@@ -52,7 +53,7 @@ export type FeedEntry =
       createdAt: Date;
       post: { id: string; content: string; imageUrl: string | null; createdAt: Date };
       imageIds: string[];
-      authorTravellerId: string;
+      authorTravellerId: string | null;
       authorName: string;
       authorUsername: string | null;
       likeCount: number;
@@ -119,7 +120,7 @@ export async function getRankedFeed(viewerTravellerId: string | null, limit = 30
     string,
     {
       post: typeof posts.$inferSelect;
-      authorTravellerId: string;
+      authorTravellerId: string | null;
       authorName: string;
       authorUsername: string | null;
     }
@@ -132,10 +133,11 @@ export async function getRankedFeed(viewerTravellerId: string | null, limit = 30
 
   if (postIds.length > 0) {
     const rows = await db
-      .select({ post: posts, author: travellerProfiles, authorUser: users })
+      .select({ post: posts, traveller: travellerProfiles, travellerUser: users, vendor: vendorProfiles })
       .from(posts)
-      .innerJoin(travellerProfiles, eq(travellerProfiles.id, posts.travellerId))
-      .innerJoin(users, eq(users.id, travellerProfiles.userId))
+      .leftJoin(travellerProfiles, eq(travellerProfiles.id, posts.travellerId))
+      .leftJoin(users, eq(users.id, travellerProfiles.userId))
+      .leftJoin(vendorProfiles, eq(vendorProfiles.id, posts.vendorProfileId))
       // Only ever hydrate visible, public posts — hidden/removed/
       // pending_review posts and posts addressed to a club (never the
       // global feed) simply drop out here (their feed_items row can still
@@ -146,9 +148,9 @@ export async function getRankedFeed(viewerTravellerId: string | null, limit = 30
         r.post.id,
         {
           post: r.post,
-          authorTravellerId: r.author.id,
-          authorName: r.author.displayName,
-          authorUsername: r.authorUser.username,
+          authorTravellerId: r.traveller?.id ?? null,
+          authorName: r.vendor?.businessName ?? r.traveller?.displayName ?? "Wano member",
+          authorUsername: r.travellerUser?.username ?? null,
         },
       ]),
     );

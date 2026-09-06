@@ -6,7 +6,13 @@ import type { ActionState } from "@/lib/validation";
 
 const initialState: ActionState = {};
 
-export function VendorPhotoManager({ existingImages }: { existingImages: string[] }) {
+export function VendorPhotoManager({
+  listingId,
+  existingImages,
+}: {
+  listingId: string;
+  existingImages: string[];
+}) {
   const [state, formAction, pending] = useActionState(uploadListingPhotosAction, initialState);
   const [isDeleting, startDeleteTransition] = useTransition();
 
@@ -42,6 +48,7 @@ export function VendorPhotoManager({ existingImages }: { existingImages: string[
       )}
 
       <form action={formAction} className="mt-3 flex flex-wrap items-center gap-2">
+        <input type="hidden" name="listingId" value={listingId} />
         <input
           name="images"
           type="file"

@@ -6,12 +6,14 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
-import { events, rewards, userRewards, vendorProfiles } from "@/db/schema";
+import { events, rewards, userRewards, vendorProfiles, vendorSubmissions } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { generateShortCode } from "@/lib/codes";
 import { getOwningVendorProfileId, getUserRewardById } from "@/lib/data/rewards";
+import { getPendingEditSubmission } from "@/lib/data/submissions";
 import { getTravellerProfileById, getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { getVendorProfileByUserId } from "@/lib/data/vendor";
+import { notifyAdmin } from "@/lib/notify";
 import { notifyRewardClaimed, notifyRewardRedeemed } from "@/lib/reward-notifications";
 import { signRewardToken, verifyRewardToken } from "@/lib/reward-token";
 import type { ActionState } from "@/lib/validation";
@@ -312,6 +314,121 @@ export async function createRewardAction(_prev: ActionState, formData: FormData)
   revalidateRewardPaths();
 
   return {};
+}
+
+// The vendor-facing subset of reward fields — no source/fundedBy, those are
+// ops-level knobs (which flow issues it, who funds it commercially) that
+// stay admin-only. Shared by the vendor's submit action and the admin
+// approval flow that applies it, so both stay in sync.
+export const vendorRewardContentSchema = z.object({
+  title: z.string().min(2).max(120),
+  description: z.string().max(500).optional().or(z.literal("")),
+  listingId: z.string().uuid(),
+  discountType: z.enum(["percent", "fixed", "freebie"]),
+  discountValue: z.string().optional().or(z.literal("")),
+  defaultValidityDays: z.coerce.number().int().min(1).max(365),
+});
+
+export type VendorRewardContent = z.infer<typeof vendorRewardContentSchema>;
+
+/** Creates or updates a reward from vendor-submitted (admin-approved)
+ * content. Vendor rewards always source "manual" (self-claim) — Fun Zone
+ * and XP-draw prizes stay an admin-only concept, picked from the catalog
+ * separately, not something a vendor submission can set. */
+export async function applyVendorRewardContent(rewardId: string | null, d: VendorRewardContent): Promise<string> {
+  const values = {
+    title: d.title,
+    description: d.description || null,
+    targetType: "listing" as const,
+    targetId: d.listingId,
+    discountType: d.discountType,
+    discountValue: d.discountType === "freebie" ? null : d.discountValue || null,
+    defaultValidityDays: d.defaultValidityDays,
+  };
+
+  if (rewardId) {
+    await db.update(rewards).set(values).where(eq(rewards.id, rewardId));
+    return rewardId;
+  }
+  const [created] = await db.insert(rewards).values({ ...values, source: "manual" }).returning();
+  return created.id;
+}
+
+function parseVendorRewardFromFormData(formData: FormData) {
+  return vendorRewardContentSchema.safeParse({
+    title: formData.get("title"),
+    description: formData.get("description") ?? "",
+    listingId: formData.get("listingId"),
+    discountType: formData.get("discountType"),
+    discountValue: formData.get("discountValue") ?? "",
+    defaultValidityDays: formData.get("defaultValidityDays") || "30",
+  });
+}
+
+/** Creates a new reward proposal, or an edit to one of the vendor's own
+ * existing rewards, as a pending vendorSubmission for admin review — same
+ * shadow-draft pattern as vendor listing submissions. */
+export async function submitRewardAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const session = await requireRole("vendor");
+  const vendorProfile = await getVendorProfileByUserId(session.userId);
+  if (!vendorProfile) return { error: "Vendor profile not found." };
+
+  const parsed = parseVendorRewardFromFormData(formData);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Please check the reward fields." };
+  if (parsed.data.discountType !== "freebie" && !parsed.data.discountValue) {
+    return { error: "Enter a discount value." };
+  }
+
+  const owner = await getOwningVendorProfileId("listing", parsed.data.listingId);
+  if (owner !== vendorProfile.id) return { error: "You can only create rewards for your own listings." };
+
+  const rewardId = String(formData.get("rewardId") ?? "") || null;
+  if (rewardId) {
+    const [existingReward] = await db.select().from(rewards).where(eq(rewards.id, rewardId)).limit(1);
+    if (!existingReward) return { error: "Reward not found." };
+    const existingOwner = await getOwningVendorProfileId(existingReward.targetType, existingReward.targetId);
+    if (existingOwner !== vendorProfile.id) return { error: "You can only edit your own rewards." };
+  }
+
+  const payload = parsed.data as unknown as Record<string, unknown>;
+  if (rewardId) {
+    const existing = await getPendingEditSubmission(vendorProfile.id, "reward", rewardId);
+    if (existing) {
+      await db
+        .update(vendorSubmissions)
+        .set({ payload, status: "pending", reviewNotes: null, updatedAt: new Date() })
+        .where(eq(vendorSubmissions.id, existing.id));
+    } else {
+      await db
+        .insert(vendorSubmissions)
+        .values({ vendorProfileId: vendorProfile.id, entityType: "reward", entityId: rewardId, payload });
+    }
+  } else {
+    await db
+      .insert(vendorSubmissions)
+      .values({ vendorProfileId: vendorProfile.id, entityType: "reward", entityId: null, payload });
+  }
+
+  await notifyAdmin("New vendor reward submission", [
+    `<strong>${vendorProfile.businessName}</strong> submitted ${rewardId ? "an edit to" : "a new reward:"} "${parsed.data.title}" for review.`,
+  ]);
+
+  revalidatePath("/vendor/dashboard/rewards");
+  revalidatePath("/admin/submissions");
+  return {};
+}
+
+export async function withdrawRewardSubmissionAction(submissionId: string) {
+  const session = await requireRole("vendor");
+  const vendorProfile = await getVendorProfileByUserId(session.userId);
+  if (!vendorProfile) throw new Error("Vendor profile not found.");
+
+  const [row] = await db.select().from(vendorSubmissions).where(eq(vendorSubmissions.id, submissionId)).limit(1);
+  if (!row || row.vendorProfileId !== vendorProfile.id || row.status !== "pending") {
+    throw new Error("Submission not found.");
+  }
+  await db.delete(vendorSubmissions).where(eq(vendorSubmissions.id, submissionId));
+  revalidatePath("/vendor/dashboard/rewards");
 }
 
 export async function toggleRewardActiveAction(rewardId: string, active: boolean) {

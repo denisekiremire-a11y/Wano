@@ -35,10 +35,12 @@ export function navItemsFor(role: SessionPayload["role"] | "guest"): NavItem[] {
   }
   if (role === "vendor") {
     return [
-      { href: "/vendor/dashboard", label: "Listing", icon: "grid" },
+      { href: "/vendor/dashboard", label: "Overview", icon: "gauge" },
+      { href: "/vendor/dashboard/listings", label: "Listings", icon: "grid" },
       { href: "/vendor/dashboard/bookings", label: "Bookings", icon: "ticket" },
+      { href: "/vendor/dashboard/rewards", label: "Rewards", icon: "megaphone" },
       { href: "/vendor/dashboard/redeem", label: "Redeem", icon: "tag" },
-      { href: "/vendor/dashboard/offer", label: "Offer", icon: "megaphone" },
+      { href: "/vendor/dashboard/posts", label: "Posts", icon: "chat" },
       { href: "/vendor/dashboard/referrals", label: "Referrals", icon: "chart" },
       { href: "/vendor/dashboard/documents", label: "Documents", icon: "file" },
       { href: "/vendor/dashboard/clubs", label: "Clubs", icon: "users" },
@@ -48,6 +50,7 @@ export function navItemsFor(role: SessionPayload["role"] | "guest"): NavItem[] {
     return [
       { href: "/admin", label: "Overview", icon: "gauge" },
       { href: "/admin/vendors", label: "Vendors", icon: "users" },
+      { href: "/admin/submissions", label: "Submissions", icon: "mail" },
       { href: "/admin/bookings", label: "Bookings", icon: "ticket" },
       { href: "/admin/travellers", label: "Members", icon: "grid" },
       { href: "/admin/promotions", label: "Deals", icon: "tag" },

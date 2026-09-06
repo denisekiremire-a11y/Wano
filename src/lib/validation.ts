@@ -28,10 +28,3 @@ export const signupSchema = z.discriminatedUnion("role", [
   travellerSignupSchema,
   vendorSignupSchema,
 ]);
-
-export const offerEditSchema = z.object({
-  listingId: z.string().uuid(),
-  discountText: z.string().min(3).max(200),
-  freebieText: z.string().max(200).optional().or(z.literal("")),
-  active: z.coerce.boolean(),
-});

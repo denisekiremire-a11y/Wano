@@ -1,6 +1,15 @@
 import { count, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { blocks, moderationActions, postComments, posts, reports, travellerProfiles, users } from "@/db/schema";
+import {
+  blocks,
+  moderationActions,
+  postComments,
+  posts,
+  reports,
+  travellerProfiles,
+  users,
+  vendorProfiles,
+} from "@/db/schema";
 
 export async function getOpenReportsCount() {
   const [row] = await db.select({ total: count() }).from(reports).where(eq(reports.status, "open"));
@@ -39,12 +48,14 @@ export async function getModerationLog(limit = 50) {
  * admin queue. */
 export async function getPostForModeration(postId: string) {
   const [row] = await db
-    .select({ post: posts, author: travellerProfiles })
+    .select({ post: posts, traveller: travellerProfiles, vendor: vendorProfiles })
     .from(posts)
-    .innerJoin(travellerProfiles, eq(travellerProfiles.id, posts.travellerId))
+    .leftJoin(travellerProfiles, eq(travellerProfiles.id, posts.travellerId))
+    .leftJoin(vendorProfiles, eq(vendorProfiles.id, posts.vendorProfileId))
     .where(eq(posts.id, postId))
     .limit(1);
-  return row ?? null;
+  if (!row) return null;
+  return { post: row.post, authorName: row.vendor?.businessName ?? row.traveller?.displayName ?? "Wano member" };
 }
 
 export async function getCommentForModeration(commentId: string) {

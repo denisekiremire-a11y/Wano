@@ -9,6 +9,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getPendingAccreditationCount } from "@/lib/data/admin";
 import { getOpenReportsCount } from "@/lib/data/moderation";
+import { getPendingSubmissionsCount } from "@/lib/data/submissions";
 import { getVendorPendingBookingsCount, getVendorProfileByUserId } from "@/lib/data/vendor";
 import { getSession } from "@/lib/session";
 import "./globals.css";
@@ -59,12 +60,14 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       if (pending > 0) navBadges["/vendor/dashboard/bookings"] = pending;
     }
   } else if (session?.role === "admin") {
-    const [pendingVendors, openReports] = await Promise.all([
+    const [pendingVendors, openReports, pendingSubmissions] = await Promise.all([
       getPendingAccreditationCount(),
       getOpenReportsCount(),
+      getPendingSubmissionsCount(),
     ]);
     if (pendingVendors > 0) navBadges["/admin/vendors"] = pendingVendors;
     if (openReports > 0) navBadges["/admin/moderation"] = openReports;
+    if (pendingSubmissions > 0) navBadges["/admin/submissions"] = pendingSubmissions;
   }
 
   return (

@@ -21,7 +21,7 @@ export default async function AdminModerationPage() {
       let preview = "(content unavailable)";
       if (report.targetType === "post") {
         const row = await getPostForModeration(report.targetId);
-        preview = row ? `${row.author.displayName}: "${row.post.content.slice(0, 140)}"` : preview;
+        preview = row ? `${row.authorName}: "${row.post.content.slice(0, 140)}"` : preview;
       } else if (report.targetType === "comment") {
         const row = await getCommentForModeration(report.targetId);
         preview = row ? `${row.author.displayName}: "${row.comment.content.slice(0, 140)}"` : preview;

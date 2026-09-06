@@ -72,6 +72,9 @@ export const postContextTypeEnum = pgEnum("post_context_type", [
   "perk",
   "journal_post",
 ]);
+export const postAuthorTypeEnum = pgEnum("post_author_type", ["traveller", "vendor"]);
+export const submissionEntityTypeEnum = pgEnum("submission_entity_type", ["listing", "reward"]);
+export const submissionStatusEnum = pgEnum("submission_status", ["pending", "approved", "rejected"]);
 export const reportTargetTypeEnum = pgEnum("report_target_type", ["post", "comment", "user", "review"]);
 export const reportReasonEnum = pgEnum("report_reason", [
   "spam",
@@ -892,9 +895,13 @@ export const posts = pgTable(
   "posts",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    travellerId: uuid("traveller_id")
-      .notNull()
-      .references(() => travellerProfiles.id, { onDelete: "cascade" }),
+    // Exactly one of travellerId/vendorProfileId is set, per authorType — a
+    // vendor's own event/update posts (unlike their listings and rewards)
+    // publish immediately with no approval step, so this is the one piece
+    // of vendor content that goes straight from vendorProfileId to public.
+    authorType: postAuthorTypeEnum("author_type").notNull().default("traveller"),
+    travellerId: uuid("traveller_id").references(() => travellerProfiles.id, { onDelete: "cascade" }),
+    vendorProfileId: uuid("vendor_profile_id").references(() => vendorProfiles.id, { onDelete: "cascade" }),
     content: text("content").notNull(),
     // Legacy — posts created before the real-upload composer stored an
     // externally-hosted URL here. New posts use postImages (bytea) instead.
@@ -1140,9 +1147,39 @@ export const followsRelations = relations(follows, ({ one }) => ({
 
 export const postsRelations = relations(posts, ({ one, many }) => ({
   traveller: one(travellerProfiles, { fields: [posts.travellerId], references: [travellerProfiles.id] }),
+  vendor: one(vendorProfiles, { fields: [posts.vendorProfileId], references: [vendorProfiles.id] }),
   audienceClub: one(clubs, { fields: [posts.audienceClubId], references: [clubs.id] }),
   likes: many(postLikes),
   comments: many(postComments),
+}));
+
+// A vendor-proposed listing or reward, created or edited, waiting for admin
+// review before it takes effect. entityId is null for a brand-new
+// listing/reward being proposed; set for an edit to an existing one — in
+// the edit case the live row keeps showing its last-approved content
+// publicly until this submission is approved (approving it applies payload
+// onto the live row; nothing changes if rejected). payload mirrors the
+// same form-field shape the admin's own direct-edit form uses, so both
+// paths can share one "apply" function.
+export const vendorSubmissions = pgTable("vendor_submissions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  vendorProfileId: uuid("vendor_profile_id")
+    .notNull()
+    .references(() => vendorProfiles.id, { onDelete: "cascade" }),
+  entityType: submissionEntityTypeEnum("entity_type").notNull(),
+  entityId: uuid("entity_id"),
+  payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+  status: submissionStatusEnum("status").notNull().default("pending"),
+  reviewNotes: text("review_notes"),
+  reviewedByUserId: uuid("reviewed_by_user_id").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const vendorSubmissionsRelations = relations(vendorSubmissions, ({ one }) => ({
+  vendor: one(vendorProfiles, { fields: [vendorSubmissions.vendorProfileId], references: [vendorProfiles.id] }),
+  reviewedBy: one(users, { fields: [vendorSubmissions.reviewedByUserId], references: [users.id] }),
 }));
 
 export const postLikesRelations = relations(postLikes, ({ one }) => ({

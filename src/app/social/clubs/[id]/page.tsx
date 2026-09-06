@@ -145,7 +145,7 @@ export default async function ClubDetailPage({ params }: { params: Promise<{ id:
               No media yet.
             </p>
           ) : (
-            media.map(({ post, authorUser, author }) => (
+            media.map(({ post, authorName, authorUsername }) => (
               <div key={post.id} className="overflow-hidden rounded-xl border border-forest-900/10 bg-white">
                 {post.imageUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -154,7 +154,8 @@ export default async function ClubDetailPage({ params }: { params: Promise<{ id:
                 <div className="p-3">
                   <p className="text-sm text-forest-800/90">{post.content}</p>
                   <p className="mt-1 text-xs text-forest-800/50">
-                    {author.displayName} · @{authorUser.username}
+                    {authorName}
+                    {authorUsername ? ` · @${authorUsername}` : ""}
                   </p>
                 </div>
               </div>

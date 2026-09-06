@@ -164,7 +164,7 @@ export async function reviewPendingPostAction(postId: string, decision: "approve
     .set({ status: decision === "approve" ? "visible" : "removed" })
     .where(eq(posts.id, postId));
 
-  if (decision === "approve") {
+  if (decision === "approve" && post.travellerId) {
     const { travellerProfiles } = await import("@/db/schema");
     const [traveller] = await db.select().from(travellerProfiles).where(eq(travellerProfiles.id, post.travellerId)).limit(1);
     if (traveller) await generateUserPostItem(post.id, traveller.id, traveller.displayName);

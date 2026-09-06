@@ -156,6 +156,25 @@ export async function getOwningVendorProfileId(targetType: "listing" | "event", 
   return row?.vendorProfileId ?? null;
 }
 
+/** Every reward targeting one of this vendor's own listings — rewards have
+ * no direct vendorProfileId column (targetType/targetId is polymorphic,
+ * listing or event), so ownership is resolved via the vendor's listing
+ * ids. Vendor-created rewards only ever target their own listings today. */
+export async function getVendorRewards(vendorProfileId: string) {
+  const vendorListings = await db
+    .select({ id: listings.id })
+    .from(listings)
+    .where(eq(listings.vendorProfileId, vendorProfileId));
+  const listingIds = vendorListings.map((l) => l.id);
+  if (listingIds.length === 0) return [];
+
+  return db
+    .select()
+    .from(rewards)
+    .where(and(eq(rewards.targetType, "listing"), inArray(rewards.targetId, listingIds)))
+    .orderBy(desc(rewards.createdAt));
+}
+
 // The Fun Zone / XP-draw prize pools — active, staff- or admin-issuable
 // rewards for those flows' pickers. Each is still tied to one place/event
 // (a 50%-off row at one restaurant, a 20%-off row at another) rather than

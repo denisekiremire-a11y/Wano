@@ -142,7 +142,7 @@ export default async function SocialPage({
               <PostCard
                 key={entry.id}
                 postId={entry.post.id}
-                authorTravellerId={entry.authorTravellerId}
+                authorTravellerId={entry.authorTravellerId ?? undefined}
                 authorName={entry.authorName}
                 authorUsername={entry.authorUsername}
                 content={entry.post.content}

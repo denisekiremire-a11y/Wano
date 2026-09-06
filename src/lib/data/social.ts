@@ -26,8 +26,19 @@ export async function getPostsByTraveller(travellerId: string) {
     .orderBy(desc(posts.createdAt));
 }
 
+export async function getPostsByVendor(vendorProfileId: string) {
+  return db
+    .select({ post: posts })
+    .from(posts)
+    .where(eq(posts.vendorProfileId, vendorProfileId))
+    .orderBy(desc(posts.createdAt));
+}
+
 /** Media feed for a listing/event detail page ("What people are saying"),
- * or a club's own page (posts addressed to it) — newest first, visible only. */
+ * or a club's own page (posts addressed to it) — newest first, visible only.
+ * A post's author is either a traveller or the vendor whose page it's on
+ * (their own event/update posts), so the author fields are resolved here
+ * rather than leaving callers to join two different profile tables. */
 export async function getMediaPostsFor(target: { listingId?: string; clubId?: string; eventId?: string }) {
   const condition = target.listingId
     ? and(eq(posts.contextType, "listing"), eq(posts.contextId, target.listingId))
@@ -38,13 +49,21 @@ export async function getMediaPostsFor(target: { listingId?: string; clubId?: st
         : undefined;
   if (!condition) return [];
 
-  return db
-    .select({ post: posts, author: travellerProfiles, authorUser: users })
+  const rows = await db
+    .select({ post: posts, traveller: travellerProfiles, travellerUser: users, vendor: vendorProfiles })
     .from(posts)
-    .innerJoin(travellerProfiles, eq(travellerProfiles.id, posts.travellerId))
-    .innerJoin(users, eq(users.id, travellerProfiles.userId))
+    .leftJoin(travellerProfiles, eq(travellerProfiles.id, posts.travellerId))
+    .leftJoin(users, eq(users.id, travellerProfiles.userId))
+    .leftJoin(vendorProfiles, eq(vendorProfiles.id, posts.vendorProfileId))
     .where(and(condition, eq(posts.status, "visible")))
     .orderBy(desc(posts.createdAt));
+
+  return rows.map((r) => ({
+    post: r.post,
+    authorTravellerId: r.traveller?.id ?? null,
+    authorName: r.vendor?.businessName ?? r.traveller?.displayName ?? "Wano member",
+    authorUsername: r.travellerUser?.username ?? null,
+  }));
 }
 
 export async function getEngagementCounts(postIds: string[]) {

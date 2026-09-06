@@ -7,13 +7,8 @@ import { db } from "@/db";
 import {
   accreditationReviews,
   bookings,
-  experienceDetails,
-  hotelDetails,
   listingImages,
-  listingJourneys,
   listings,
-  offers,
-  restaurantDetails,
   stamps,
   travellerProfiles,
   users,
@@ -21,7 +16,8 @@ import {
   vendorProfiles,
 } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
-import { generatePlaceAddedItem, generatePlaceAddedItemsForVendor } from "@/lib/feed-generators";
+import { generatePlaceAddedItemsForVendor } from "@/lib/feed-generators";
+import { applyListingContent, applyVendorSocialLinks, listingContentSchema } from "@/lib/actions/listing-shared";
 import { notifyTravellerOfBookingStatus } from "@/lib/booking-notifications";
 import { awardReferralCreditOnFirstBooking } from "@/lib/data/traveller";
 import { notifyUser } from "@/lib/notify";
@@ -93,37 +89,10 @@ export async function reviewVendorDocumentAction(
   revalidatePath("/admin/vendors");
 }
 
-const listingSchema = z.object({
+const adminListingSchema = listingContentSchema.extend({
   vendorProfileId: z.string().uuid(),
   listingId: z.string().uuid().optional().or(z.literal("")),
-  type: z.enum(["hotel", "restaurant", "experience", "transport", "spa_salon"]),
-  title: z.string().min(2).max(150),
-  description: z.string().min(10).max(1000),
-  priceLabel: z.string().max(30).optional().or(z.literal("")),
-  priceMinor: z.coerce.number().int().min(0),
-  currency: z.string().min(1).max(10).optional().or(z.literal("")),
-  priceUnit: z.string().max(20).optional().or(z.literal("")),
   isPublished: z.boolean(),
-  externalBookingUrl: z.string().url().max(300).optional().or(z.literal("")),
-  latitude: z.coerce.number().min(-90).max(90).optional().or(z.literal("")),
-  longitude: z.coerce.number().min(-180).max(180).optional().or(z.literal("")),
-  journeyIds: z.array(z.string().uuid()).default([]),
-  discountText: z.string().min(1).max(200),
-  freebieText: z.string().max(200).optional().or(z.literal("")),
-  hotelRoomTypes: z.string().max(300).optional().or(z.literal("")),
-  hotelAmenities: z.string().max(300).optional().or(z.literal("")),
-  hotelCheckIn: z.string().max(20).optional().or(z.literal("")),
-  hotelCheckOut: z.string().max(20).optional().or(z.literal("")),
-  restaurantCuisine: z.string().max(100).optional().or(z.literal("")),
-  restaurantPriceRange: z.string().max(20).optional().or(z.literal("")),
-  restaurantHours: z.string().max(100).optional().or(z.literal("")),
-  experienceDuration: z.string().max(60).optional().or(z.literal("")),
-  experienceGroupSize: z.string().max(60).optional().or(z.literal("")),
-  experienceIncluded: z.string().max(300).optional().or(z.literal("")),
-  instagramUrl: z.string().url().max(300).optional().or(z.literal("")),
-  facebookUrl: z.string().url().max(300).optional().or(z.literal("")),
-  tiktokUrl: z.string().url().max(300).optional().or(z.literal("")),
-  websiteUrl: z.string().url().max(300).optional().or(z.literal("")),
 });
 
 export async function upsertVendorListingAction(
@@ -132,7 +101,7 @@ export async function upsertVendorListingAction(
 ): Promise<ActionState> {
   await requireRole("admin");
 
-  const parsed = listingSchema.safeParse({
+  const parsed = adminListingSchema.safeParse({
     vendorProfileId: formData.get("vendorProfileId"),
     listingId: formData.get("listingId") ?? "",
     type: formData.get("type"),
@@ -176,110 +145,9 @@ export async function upsertVendorListingAction(
     if (!ALLOWED_LISTING_IMAGE_TYPES.has(file.type)) return { error: "Photos must be JPG, PNG, or WebP." };
   }
 
-  await db
-    .update(vendorProfiles)
-    .set({
-      instagramUrl: d.instagramUrl || null,
-      facebookUrl: d.facebookUrl || null,
-      tiktokUrl: d.tiktokUrl || null,
-      websiteUrl: d.websiteUrl || null,
-    })
-    .where(eq(vendorProfiles.id, d.vendorProfileId));
-
-  const listingValues = {
-    vendorProfileId: d.vendorProfileId,
-    type: d.type,
-    title: d.title,
-    description: d.description,
-    priceLabel: d.priceLabel || "From",
-    priceMinor: d.priceMinor,
-    currency: d.currency || "UGX",
-    priceUnit: d.priceUnit || null,
-    isPublished: d.isPublished,
-    externalBookingUrl: d.externalBookingUrl || null,
-    latitude: d.latitude === "" || d.latitude === undefined ? null : String(d.latitude),
-    longitude: d.longitude === "" || d.longitude === undefined ? null : String(d.longitude),
-  };
-
-  let listingId = d.listingId || "";
-  if (listingId) {
-    await db.update(listings).set(listingValues).where(eq(listings.id, listingId));
-  } else {
-    const [created] = await db.insert(listings).values(listingValues).returning();
-    listingId = created.id;
-    // No-ops if the vendor isn't trusted yet — setAccreditationStatusAction
-    // backfills this listing once they are.
-    await generatePlaceAddedItem(listingId);
-  }
-
-  await db.delete(listingJourneys).where(eq(listingJourneys.listingId, listingId));
-  if (d.journeyIds.length > 0) {
-    await db
-      .insert(listingJourneys)
-      .values(d.journeyIds.map((journeyId) => ({ listingId, journeyId })));
-  }
-
-  const [existingOffer] = await db
-    .select()
-    .from(offers)
-    .where(eq(offers.listingId, listingId))
-    .limit(1);
-  if (existingOffer) {
-    await db
-      .update(offers)
-      .set({ discountText: d.discountText, freebieText: d.freebieText || null, updatedAt: new Date() })
-      .where(eq(offers.listingId, listingId));
-  } else {
-    await db.insert(offers).values({
-      listingId,
-      discountText: d.discountText,
-      freebieText: d.freebieText || null,
-    });
-  }
-
-  if (d.type === "hotel") {
-    const values = {
-      roomTypes: d.hotelRoomTypes || null,
-      amenities: d.hotelAmenities || null,
-      checkInTime: d.hotelCheckIn || null,
-      checkOutTime: d.hotelCheckOut || null,
-    };
-    const [existing] = await db
-      .select()
-      .from(hotelDetails)
-      .where(eq(hotelDetails.listingId, listingId))
-      .limit(1);
-    if (existing) await db.update(hotelDetails).set(values).where(eq(hotelDetails.listingId, listingId));
-    else await db.insert(hotelDetails).values({ listingId, ...values });
-  } else if (d.type === "restaurant") {
-    const values = {
-      cuisine: d.restaurantCuisine || null,
-      priceRange: d.restaurantPriceRange || null,
-      hours: d.restaurantHours || null,
-    };
-    const [existing] = await db
-      .select()
-      .from(restaurantDetails)
-      .where(eq(restaurantDetails.listingId, listingId))
-      .limit(1);
-    if (existing)
-      await db.update(restaurantDetails).set(values).where(eq(restaurantDetails.listingId, listingId));
-    else await db.insert(restaurantDetails).values({ listingId, ...values });
-  } else if (d.type === "experience") {
-    const values = {
-      durationText: d.experienceDuration || null,
-      groupSizeText: d.experienceGroupSize || null,
-      whatsIncluded: d.experienceIncluded || null,
-    };
-    const [existing] = await db
-      .select()
-      .from(experienceDetails)
-      .where(eq(experienceDetails.listingId, listingId))
-      .limit(1);
-    if (existing)
-      await db.update(experienceDetails).set(values).where(eq(experienceDetails.listingId, listingId));
-    else await db.insert(experienceDetails).values({ listingId, ...values });
-  }
+  await applyVendorSocialLinks(d.vendorProfileId, d);
+  const listingId = await applyListingContent(d.listingId || null, d.vendorProfileId, d);
+  await db.update(listings).set({ isPublished: d.isPublished }).where(eq(listings.id, listingId));
 
   if (images.length > 0) {
     const existing = await db
