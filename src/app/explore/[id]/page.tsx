@@ -43,8 +43,15 @@ const socialLinks = [
   { key: "websiteUrl", label: "Website" },
 ] as const;
 
-export default async function ListingDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ListingDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ journeyId?: string }>;
+}) {
   const { id } = await params;
+  const { journeyId: requestedJourneyId } = await searchParams;
   const row = await getListingById(id);
   if (!row) notFound();
   const { listing, offer, vendor, promo } = row;
@@ -101,6 +108,8 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
     Promise.all(mediaPostIds.map((id) => getCommentsForPost(id).then((c) => [id, c] as const))),
   ]);
   const mediaCommentsMap = new Map(mediaCommentsRows);
+
+  const bookingJourneyId = tags.some((j) => j.id === requestedJourneyId) ? requestedJourneyId : null;
 
   const activeSocials = socialLinks.filter((s) => vendor[s.key]);
   const myUpcoming = myBookings.filter((b) => b.booking.status === "pending" || b.booking.status === "confirmed");
@@ -207,7 +216,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
           </div>
         )}
 
-        <div className="mt-6">
+        <div id="book" className="mt-6 scroll-mt-20">
           {listing.externalBookingUrl ? (
             <a
               href={listing.externalBookingUrl}
@@ -220,6 +229,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
           ) : session?.role === "traveller" ? (
             <form action={bookListingFormAction} className="max-w-md space-y-3 rounded-2xl border border-forest-900/10 bg-white p-4">
               <input type="hidden" name="listingId" value={listing.id} />
+              {bookingJourneyId && <input type="hidden" name="journeyId" value={bookingJourneyId} />}
 
               <div>
                 <label htmlFor="bookingName" className="text-xs font-medium text-forest-900">

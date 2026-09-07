@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { bookListingFormAction } from "@/lib/actions/booking-actions";
 import { JourneyArt } from "@/components/journey-art";
 import { OfferTeaser } from "@/components/offer-teaser";
 import { getJourneyBySlug, getJourneyStops, getPublicListingsForJourney, journeyHasCostRange } from "@/lib/data/journeys";
@@ -186,16 +185,12 @@ export default async function JourneyDetailPage({
                     Book on {vendor.businessName} →
                   </a>
                 ) : session?.role === "traveller" ? (
-                  <form action={bookListingFormAction}>
-                    <input type="hidden" name="listingId" value={listing.id} />
-                    <input type="hidden" name="journeyId" value={journey.id} />
-                    <button
-                      type="submit"
-                      className="w-full rounded-full bg-forest-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-forest-700"
-                    >
-                      Book this journey
-                    </button>
-                  </form>
+                  <Link
+                    href={`/explore/${listing.id}?journeyId=${journey.id}#book`}
+                    className="block w-full rounded-full bg-forest-800 px-4 py-2 text-center text-sm font-semibold text-white transition hover:bg-forest-700"
+                  >
+                    Book this journey
+                  </Link>
                 ) : (
                   <Link
                     href={session ? "/" : `/login?next=/journeys/${journey.slug}`}
