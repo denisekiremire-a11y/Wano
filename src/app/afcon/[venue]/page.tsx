@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { PartnerCard } from "@/components/partner-card";
 import { EventCard } from "@/components/event-card";
 import { VenueAnchorButton } from "@/components/afcon/venue-anchor-button";
-import { STADIUM_ANCHORS, type StadiumAnchorId } from "@/lib/afcon/anchors";
+import { STADIUM_ANCHORS, isStadiumAnchorId } from "@/lib/afcon/anchors";
 import { estimateDistance, formatKm } from "@/lib/afcon/distance";
 import { getAttendanceCounts, getUpcomingEvents } from "@/lib/data/events";
 import { getJourneyTagsForListings, searchListings } from "@/lib/data/journeys";
@@ -11,10 +11,6 @@ import { getListingImageIds } from "@/lib/data/listing-images";
 import { AFCON_CLUB_ENABLED } from "@/lib/feature-flags";
 import { getSession } from "@/lib/session";
 import type { ListingType } from "@/lib/listing-type";
-
-function isVenueId(value: string): value is StadiumAnchorId {
-  return value === "namboole" || value === "hoima";
-}
 
 const CATEGORIES: { type: ListingType; title: string; emptyMessage: string }[] = [
   { type: "hotel", title: "Where to stay", emptyMessage: "No accommodation listed near here yet." },
@@ -26,7 +22,7 @@ const CATEGORIES: { type: ListingType; title: string; emptyMessage: string }[] =
 export default async function AfconVenuePage({ params }: { params: Promise<{ venue: string }> }) {
   if (!AFCON_CLUB_ENABLED) notFound();
   const { venue: venueParam } = await params;
-  if (!isVenueId(venueParam)) notFound();
+  if (!isStadiumAnchorId(venueParam)) notFound();
 
   const stadium = STADIUM_ANCHORS[venueParam];
   const session = await getSession();

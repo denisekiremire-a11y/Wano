@@ -11,8 +11,8 @@ export function SeedVenueVendorsButton() {
     <div className="rounded-2xl border border-dashed border-forest-900/20 bg-white p-4">
       <p className="text-sm text-forest-800/70">
         One-click demo vendors for the AFCON venue pages — a hotel, restaurant, activity, and
-        transport partner near both Namboole and Hoima, with real coordinates so the distance
-        sorting on /afcon/namboole and /afcon/hoima has something to show.
+        transport partner near each of Namboole, Hoima, and Lira, with real coordinates so the
+        distance sorting on /afcon/namboole, /afcon/hoima, and /afcon/lira has something to show.
       </p>
       <button
         type="button"

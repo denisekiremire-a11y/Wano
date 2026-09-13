@@ -64,6 +64,7 @@ export function MatchForm() {
           <option value="">Not an AFCON venue match</option>
           <option value="namboole">Mandela National Stadium (Namboole)</option>
           <option value="hoima">Hoima City Stadium</option>
+          <option value="lira">Akii Bua Stadium (Lira)</option>
         </select>
         <p className="mt-1 text-xs text-forest-800/50">
           Set this to list the match on that stadium&apos;s /afcon timetable.
