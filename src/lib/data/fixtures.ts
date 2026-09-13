@@ -3,7 +3,7 @@ import { db } from "@/db";
 import { fixtures } from "@/db/schema";
 import type { FixtureLite } from "@/lib/season/season";
 import type { StadiumAnchorId } from "@/lib/afcon/anchors";
-import { STADIUM_ANCHORS, isStadiumAnchorId } from "@/lib/afcon/anchors";
+import { STADIUM_ANCHORS } from "@/lib/afcon/anchors";
 
 // CAF has not made the AFCON 2027 draw yet, so the fixtures table is empty
 // in practice — these are clearly-labelled placeholders, never presented as
@@ -28,16 +28,11 @@ const PLACEHOLDER_FIXTURES: FixtureLite[] = [
     venue: STADIUM_ANCHORS.hoima.label,
     stage: "Group Stage — draw not yet made",
   },
-  {
-    id: "placeholder-lira",
-    home: "Fixture to be announced",
-    away: "Fixture to be announced",
-    kickoff: new Date("2027-06-21T15:00:00Z"),
-    venueId: "lira",
-    venue: STADIUM_ANCHORS.lira.label,
-    stage: "Group Stage — draw not yet made",
-  },
 ];
+
+function isStadiumAnchorId(value: string): value is StadiumAnchorId {
+  return value === "namboole" || value === "hoima";
+}
 
 export async function getFixtures(): Promise<FixtureLite[]> {
   const rows = await db.select().from(fixtures).orderBy(asc(fixtures.kickoff));

@@ -113,7 +113,7 @@ const matchSchema = z.object({
   title: z.string().min(3).max(150),
   description: z.string().min(5).max(1000),
   location: z.string().min(2).max(200),
-  venueId: z.enum(["namboole", "hoima", "lira"]).optional().or(z.literal("")),
+  venueId: z.enum(["namboole", "hoima"]).optional().or(z.literal("")),
   startAt: z.string().min(1),
   durationHours: z.coerce.number().min(1).max(6).default(2),
 });

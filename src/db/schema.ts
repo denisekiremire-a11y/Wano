@@ -486,11 +486,10 @@ export const events = pgTable("events", {
   // standalone event — clubs are not a parallel system, a meetup is just an
   // event with this set.
   clubId: uuid("club_id").references((): AnyPgColumn => clubs.id, { onDelete: "set null" }),
-  // Set for a Wano XP match (category "match") at one of Uganda's three
-  // AFCON venues — app-typed as StadiumAnchorId ("namboole" | "hoima" |
-  // "lira"), same reasoning as fixtures.venueId: only ever those values,
-  // not worth a DB enum. Null for every non-match event and any event
-  // elsewhere.
+  // Set for a Wano XP match (category "match") at one of Uganda's two AFCON
+  // venues — app-typed as StadiumAnchorId ("namboole" | "hoima"), same
+  // reasoning as fixtures.venueId: only ever those two values, not worth a
+  // DB enum. Null for every non-match event and any event elsewhere.
   venueId: text("venue_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -1563,9 +1562,9 @@ export const messages = pgTable("messages", {
 // the draw yet, so this stays empty in practice for now; the app falls back
 // to clearly-labelled placeholder fixtures (see src/lib/data/fixtures.ts)
 // until real rows land here, at which point no component changes.
-// venueId is app-typed as StadiumAnchorId ("namboole" | "hoima" | "lira")
-// rather than a DB enum — only fixtures at Uganda's own three venues are
-// ever relevant here, so there's nothing to gain from a stricter column type.
+// venueId is app-typed as StadiumAnchorId ("namboole" | "hoima") rather than
+// a DB enum — only fixtures at Uganda's own two venues are ever relevant
+// here, so there's nothing to gain from a stricter column type.
 export const fixtures = pgTable("fixtures", {
   id: uuid("id").primaryKey().defaultRandom(),
   home: text("home").notNull(),

@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { STADIUM_ANCHORS, isStadiumAnchorId, type AnchorId, type Coordinates, type ResolvedAnchor, type StadiumAnchorId } from "@/lib/afcon/anchors";
+import { STADIUM_ANCHORS, type AnchorId, type Coordinates, type ResolvedAnchor, type StadiumAnchorId } from "@/lib/afcon/anchors";
 import { fetchMatrixDistances, type DistanceResult } from "@/lib/afcon/distance";
 
 const STORAGE_KEY = "wano_afcon_anchor";
@@ -14,7 +14,7 @@ function readStoredAnchor(): StoredAnchor | null {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as StoredAnchor;
-    if (isStadiumAnchorId(parsed.id)) {
+    if (parsed.id === "namboole" || parsed.id === "hoima") {
       return { id: parsed.id, coordinates: STADIUM_ANCHORS[parsed.id].coordinates };
     }
     if (parsed.id === "gps" && parsed.coordinates) return parsed;

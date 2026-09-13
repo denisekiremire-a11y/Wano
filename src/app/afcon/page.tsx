@@ -62,7 +62,7 @@ export default async function AfconHubPage() {
             Match timetable, where to stay, where to eat, activities, and transport — narrowed down
             to whichever stadium your trip is built around.
           </p>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
             {Object.values(STADIUM_ANCHORS).map((stadium) => (
               <Link
                 key={stadium.id}

@@ -1134,38 +1134,6 @@ const AFCON_VENUE_DEMO_LISTINGS: {
     description: "Transfers between central Hoima and Hoima City Stadium, with onward Murchison Falls transfers available.",
     priceMinor: 20000, priceUnit: "/person", latitude: "1.437000", longitude: "31.396000",
   },
-  // Akii Bua Stadium — Northern Uganda circuit
-  {
-    type: "hotel", businessName: "Akii Bua Heights Hotel", location: "Lira",
-    vendorDescription: "A modern hotel in Lira City, close to the new Akii Bua Stadium.",
-    title: "Akii Bua Heights Hotel — Matchday Rooms",
-    description: "A short drive from Akii Bua Stadium, with a shuttle laid on for match days.",
-    priceMinor: 220000, priceUnit: "/night", latitude: "2.246000", longitude: "32.897000",
-    hotel: { roomTypes: "Standard, Deluxe, Family", amenities: "Free Wi-Fi, match-day shuttle, generator backup", checkInTime: "2:00 PM", checkOutTime: "11:00 AM" },
-  },
-  {
-    type: "restaurant", businessName: "Lira Lango Kitchen", location: "Lira",
-    vendorDescription: "A Lango-cuisine restaurant in central Lira.",
-    title: "Lira Lango Kitchen",
-    description: "Malakwang, millet bread, and grilled fish — Lango home cooking near the stadium.",
-    priceMinor: 28000, priceUnit: "/person", latitude: "2.243000", longitude: "32.903000",
-    restaurant: { cuisine: "Lango / Ugandan", priceRange: "Budget", hours: "8am–10pm daily" },
-  },
-  {
-    type: "experience", businessName: "Lango Heritage Walks", location: "Lira",
-    vendorDescription: "Guided walks around Lira town and Lango cultural sites for fans with time before kickoff.",
-    title: "Lango Heritage & Craft Walk",
-    description: "A guided walk through Lira town's markets and Lango cultural sites — a good way to fill the hours before a match.",
-    priceMinor: 40000, priceUnit: "/person", latitude: "2.253000", longitude: "32.893000",
-    experience: { durationText: "2 hours", groupSizeText: "2–12 people", whatsIncluded: "Guide, bottled water" },
-  },
-  {
-    type: "transport", businessName: "Lira Express Transfers", location: "Lira",
-    vendorDescription: "Match-day transfers between central Lira and Akii Bua Stadium.",
-    title: "Lira Express Transfers — Match-Day Shuttle",
-    description: "Fixed-route shuttle between Lira town centre and the stadium on match days.",
-    priceMinor: 12000, priceUnit: "/person", latitude: "2.248000", longitude: "32.899000",
-  },
 ];
 
 export async function seedAfconVenueVendors() {

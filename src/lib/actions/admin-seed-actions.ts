@@ -72,16 +72,15 @@ export async function runDemoRewardsBackfillAction() {
 }
 
 /** One-off (safe to re-run) demo vendors for the AFCON venue pages — one
- * hotel/restaurant/experience/transport listing near each of Namboole,
- * Hoima, and Lira, with real coordinates so the /afcon/[venue] distance
- * sort has something to show. */
+ * hotel/restaurant/experience/transport listing near each of Namboole and
+ * Hoima, with real coordinates so the /afcon/[venue] distance sort has
+ * something to show. */
 export async function runAfconVenueVendorsSeedAction() {
   await requireRole("admin");
   const result = await seedAfconVenueVendors();
   revalidatePath("/afcon");
   revalidatePath("/afcon/namboole");
   revalidatePath("/afcon/hoima");
-  revalidatePath("/afcon/lira");
   revalidatePath("/explore");
   return result;
 }
