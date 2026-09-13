@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AfconPromoCard } from "@/components/afcon/afcon-promo-card";
 import { FeedItemCard } from "@/components/feed-item-card";
 import { FollowButton } from "@/components/follow-button";
 import { TrophyIcon } from "@/components/icons";
@@ -6,6 +7,7 @@ import { PostCard } from "@/components/post-card";
 import { PostComposer } from "@/components/post-composer";
 import { MatchCard } from "@/components/season/match-card";
 import { UserSearch } from "@/components/user-search";
+import { AFCON_CLUB_ENABLED } from "@/lib/feature-flags";
 import { getSession } from "@/lib/session";
 import { getRankedFeed } from "@/lib/data/feed";
 import { getBlockedTravellerIds } from "@/lib/data/moderation";
@@ -133,6 +135,7 @@ export default async function SocialPage({
           </div>
         )}
 
+        {AFCON_CLUB_ENABLED && <AfconPromoCard />}
         <MatchCard />
 
         {feed.length === 0 ? (
