@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { vendorSubmissions } from "@/db/schema";
 import { applyListingContent, applyVendorSocialLinks, listingContentSchema } from "@/lib/actions/listing-shared";
-import { applyVendorRewardContent, vendorRewardContentSchema } from "@/lib/actions/reward-actions";
+import { applyVendorRewardContent, vendorRewardContentSchema } from "@/lib/actions/reward-shared";
 import { requireRole } from "@/lib/auth";
 import { getSubmissionById, getVendorUserEmail } from "@/lib/data/submissions";
 import { notifyUser } from "@/lib/notify";

@@ -10,6 +10,7 @@ import { events, rewards, userRewards, vendorProfiles, vendorSubmissions } from 
 import { requireRole } from "@/lib/auth";
 import { generateShortCode } from "@/lib/codes";
 import { getOwningVendorProfileId, getUserRewardById } from "@/lib/data/rewards";
+import { vendorRewardContentSchema } from "@/lib/actions/reward-shared";
 import { getPendingEditSubmission } from "@/lib/data/submissions";
 import { getTravellerProfileById, getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { getVendorProfileByUserId } from "@/lib/data/vendor";
@@ -314,44 +315,6 @@ export async function createRewardAction(_prev: ActionState, formData: FormData)
   revalidateRewardPaths();
 
   return {};
-}
-
-// The vendor-facing subset of reward fields — no source/fundedBy, those are
-// ops-level knobs (which flow issues it, who funds it commercially) that
-// stay admin-only. Shared by the vendor's submit action and the admin
-// approval flow that applies it, so both stay in sync.
-export const vendorRewardContentSchema = z.object({
-  title: z.string().min(2).max(120),
-  description: z.string().max(500).optional().or(z.literal("")),
-  listingId: z.string().uuid(),
-  discountType: z.enum(["percent", "fixed", "freebie"]),
-  discountValue: z.string().optional().or(z.literal("")),
-  defaultValidityDays: z.coerce.number().int().min(1).max(365),
-});
-
-export type VendorRewardContent = z.infer<typeof vendorRewardContentSchema>;
-
-/** Creates or updates a reward from vendor-submitted (admin-approved)
- * content. Vendor rewards always source "manual" (self-claim) — Fun Zone
- * and XP-draw prizes stay an admin-only concept, picked from the catalog
- * separately, not something a vendor submission can set. */
-export async function applyVendorRewardContent(rewardId: string | null, d: VendorRewardContent): Promise<string> {
-  const values = {
-    title: d.title,
-    description: d.description || null,
-    targetType: "listing" as const,
-    targetId: d.listingId,
-    discountType: d.discountType,
-    discountValue: d.discountType === "freebie" ? null : d.discountValue || null,
-    defaultValidityDays: d.defaultValidityDays,
-  };
-
-  if (rewardId) {
-    await db.update(rewards).set(values).where(eq(rewards.id, rewardId));
-    return rewardId;
-  }
-  const [created] = await db.insert(rewards).values({ ...values, source: "manual" }).returning();
-  return created.id;
 }
 
 function parseVendorRewardFromFormData(formData: FormData) {
