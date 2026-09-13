@@ -1,12 +1,21 @@
 import Link from "next/link";
+import { AnchorSortedList, type AnchorSortableItem } from "@/components/afcon/anchor-sorted-list";
+import { DistanceBadge } from "@/components/afcon/distance-badge";
 import { JourneyArt } from "@/components/journey-art";
 import { OfferTeaser } from "@/components/offer-teaser";
+import type { Coordinates } from "@/lib/afcon/anchors";
 import { formatListingPrice } from "@/lib/currency";
 import type { getAllPublicListings } from "@/lib/data/journeys";
 import { journeyTheme } from "@/lib/journey-theme";
 import type { SessionPayload } from "@/lib/session";
 
 type JourneysWithPartners = Awaited<ReturnType<typeof getAllPublicListings>>;
+
+function partnerCoordinates(partner: { listing: { latitude: string | null; longitude: string | null } }): Coordinates | null {
+  const lat = partner.listing.latitude != null ? Number(partner.listing.latitude) : NaN;
+  const lng = partner.listing.longitude != null ? Number(partner.listing.longitude) : NaN;
+  return Number.isFinite(lat) && Number.isFinite(lng) ? { latitude: lat, longitude: lng } : null;
+}
 
 export function ByJourneyView({
   journeysWithPartners,
@@ -18,13 +27,16 @@ export function ByJourneyView({
   session: SessionPayload | null;
 }) {
   return (
-    <div className="space-y-4">
-      {journeysWithPartners.map(({ journey, partners }) => {
+    <AnchorSortedList
+      className="space-y-4"
+      items={journeysWithPartners.map(({ journey, partners }): AnchorSortableItem => {
         const theme = journeyTheme(journey.slug);
         const unlocked = unlockedJourneyIds.has(journey.id);
-        return (
+        return {
+          id: journey.id,
+          coordinates: partners.map(partnerCoordinates).filter((c): c is Coordinates => c !== null),
+          node: (
           <details
-            key={journey.id}
             className="group overflow-hidden rounded-2xl border border-forest-900/10 bg-white open:shadow-md"
           >
             <summary className="flex cursor-pointer list-none items-center gap-4 p-5">
@@ -62,6 +74,9 @@ export function ByJourneyView({
                       <p className="font-medium text-forest-900">{listing.title}</p>
                       <p className="text-sm text-forest-800/70">{vendor.businessName}</p>
                       <p className="mt-1 text-xs text-forest-800/50">{formatListingPrice(listing)}</p>
+                      <div className="mt-1">
+                        <DistanceBadge id={listing.id} latitude={listing.latitude} longitude={listing.longitude} />
+                      </div>
                     </div>
                     <div className="mt-3 space-y-2 sm:mt-0 sm:w-56">
                       {offer && (
@@ -88,8 +103,9 @@ export function ByJourneyView({
               </div>
             </div>
           </details>
-        );
+          ),
+        };
       })}
-    </div>
+    />
   );
 }

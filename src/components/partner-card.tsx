@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DistanceBadge } from "@/components/afcon/distance-badge";
 import { ListingTypeIcon } from "@/components/listing-type-icon";
 import { OfferTeaser } from "@/components/offer-teaser";
 import { RatingBadge } from "@/components/rating-badge";
@@ -72,6 +73,9 @@ export function PartnerCard({
         </Link>
         <p className="text-sm text-forest-800/70">{vendor.businessName}</p>
         <p className="text-xs text-forest-800/50">{vendor.location}</p>
+        <div className="mt-1">
+          <DistanceBadge id={listing.id} latitude={listing.latitude} longitude={listing.longitude} />
+        </div>
         {rating && (
           <div className="mt-1">
             <RatingBadge average={rating.average} count={rating.count} />

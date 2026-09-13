@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { AfconHero } from "@/components/afcon/afcon-hero";
 import { EventCard } from "@/components/event-card";
 import { JourneyArt } from "@/components/journey-art";
 import { getAttendanceCounts, getUpcomingEvents } from "@/lib/data/events";
 import { getJourneys } from "@/lib/data/journeys";
+import { AFCON_CLUB_ENABLED } from "@/lib/feature-flags";
 import { journeyTheme } from "@/lib/journey-theme";
 
 export default async function AfconHubPage() {
@@ -11,42 +13,46 @@ export default async function AfconHubPage() {
 
   return (
     <main>
-      <section className="relative overflow-hidden bg-forest-950">
-        <div
-          className="absolute inset-0 opacity-40"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 15% 20%, rgba(224,161,28,0.25), transparent 45%), radial-gradient(circle at 85% 0%, rgba(42,148,189,0.35), transparent 40%)",
-          }}
-        />
-        <div className="relative mx-auto max-w-5xl px-4 py-20 md:px-6">
-          <p className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium uppercase tracking-wide text-marigold-300">
-            Wano × AFCON 2027 — launch campaign
-          </p>
-          <h1 className="max-w-2xl font-display text-4xl font-semibold leading-tight text-white md:text-5xl">
-            Uganda&apos;s home for AFCON 2027 — and everything after it.
-          </h1>
-          <p className="mt-5 max-w-xl text-lg text-forest-100">
-            19 Jun – 17 Jul 2027 · Co-hosted by Uganda, Kenya &amp; Tanzania. Discover fan zones,
-            watch parties, and five curated Wano Journeys built for the tournament — then keep
-            using Wano to discover Kampala long after the final whistle.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              href="/explore"
-              className="rounded-full bg-marigold-500 px-6 py-3 text-sm font-semibold text-forest-950 shadow-lg shadow-marigold-500/20 transition hover:bg-marigold-400"
-            >
-              Explore Wano Journeys
-            </Link>
-            <Link
-              href="/events?category=afcon"
-              className="rounded-full border border-white/25 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
-            >
-              Fan zone events
-            </Link>
+      {AFCON_CLUB_ENABLED ? (
+        <AfconHero />
+      ) : (
+        <section className="relative overflow-hidden bg-forest-950">
+          <div
+            className="absolute inset-0 opacity-40"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle at 15% 20%, rgba(224,161,28,0.25), transparent 45%), radial-gradient(circle at 85% 0%, rgba(42,148,189,0.35), transparent 40%)",
+            }}
+          />
+          <div className="relative mx-auto max-w-5xl px-4 py-20 md:px-6">
+            <p className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium uppercase tracking-wide text-marigold-300">
+              Wano × AFCON 2027 — launch campaign
+            </p>
+            <h1 className="max-w-2xl font-display text-4xl font-semibold leading-tight text-white md:text-5xl">
+              Uganda&apos;s home for AFCON 2027 — and everything after it.
+            </h1>
+            <p className="mt-5 max-w-xl text-lg text-forest-100">
+              19 Jun – 17 Jul 2027 · Co-hosted by Uganda, Kenya &amp; Tanzania. Discover fan zones,
+              watch parties, and five curated Wano Journeys built for the tournament — then keep
+              using Wano to discover Kampala long after the final whistle.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link
+                href="/explore"
+                className="rounded-full bg-marigold-500 px-6 py-3 text-sm font-semibold text-forest-950 shadow-lg shadow-marigold-500/20 transition hover:bg-marigold-400"
+              >
+                Explore Wano Journeys
+              </Link>
+              <Link
+                href="/events?category=afcon"
+                className="rounded-full border border-white/25 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+              >
+                Fan zone events
+              </Link>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       <section className="mx-auto max-w-5xl px-4 py-12 md:px-6">
         <h2 className="font-display text-2xl font-semibold text-forest-900">

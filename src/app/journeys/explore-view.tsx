@@ -1,7 +1,14 @@
+import { AnchorSortedList, type AnchorSortableItem } from "@/components/afcon/anchor-sorted-list";
 import { PartnerCard } from "@/components/partner-card";
 import { PartnerSearchForm } from "@/components/partner-search-form";
 import type { searchListings } from "@/lib/data/journeys";
 import type { SessionPayload } from "@/lib/session";
+
+function coordinatesFor(item: { listing: { latitude: string | null; longitude: string | null } }) {
+  const lat = item.listing.latitude != null ? Number(item.listing.latitude) : NaN;
+  const lng = item.listing.longitude != null ? Number(item.listing.longitude) : NaN;
+  return Number.isFinite(lat) && Number.isFinite(lng) ? { latitude: lat, longitude: lng } : null;
+}
 
 type Journey = { id: string; slug: string; name: string };
 type Results = Awaited<ReturnType<typeof searchListings>>;
@@ -31,28 +38,33 @@ export function ExploreView({
         {results.length} verified {results.length === 1 ? "place" : "places"} found
       </p>
 
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        {results.map((item) => {
-          const tags = journeyTagsByListing.get(item.listing.id) ?? [];
-          const unlocked =
-            session != null && (tags.length === 0 || tags.some((t) => unlockedJourneyIds.has(t.id)));
-          return (
-            <PartnerCard
-              key={item.listing.id}
-              item={item}
-              tags={tags}
-              unlocked={unlocked}
-              session={session}
-              coverImageId={imagesByListing?.get(item.listing.id)?.[0]}
-            />
-          );
-        })}
-        {results.length === 0 && (
-          <p className="col-span-2 rounded-xl border border-forest-900/10 bg-white p-6 text-center text-sm text-forest-800/60">
-            No places match those filters yet.
-          </p>
-        )}
-      </div>
+      {results.length === 0 ? (
+        <p className="mt-4 rounded-xl border border-forest-900/10 bg-white p-6 text-center text-sm text-forest-800/60">
+          No places match those filters yet.
+        </p>
+      ) : (
+        <AnchorSortedList
+          className="mt-4 grid gap-4 sm:grid-cols-2"
+          items={results.map((item): AnchorSortableItem => {
+            const tags = journeyTagsByListing.get(item.listing.id) ?? [];
+            const unlocked =
+              session != null && (tags.length === 0 || tags.some((t) => unlockedJourneyIds.has(t.id)));
+            return {
+              id: item.listing.id,
+              coordinates: coordinatesFor(item),
+              node: (
+                <PartnerCard
+                  item={item}
+                  tags={tags}
+                  unlocked={unlocked}
+                  session={session}
+                  coverImageId={imagesByListing?.get(item.listing.id)?.[0]}
+                />
+              ),
+            };
+          })}
+        />
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import { Fraunces } from "next/font/google";
+import { AnchorProvider } from "@/components/afcon/anchor-provider";
 import { BottomNav } from "@/components/bottom-nav";
 import { InstallPrompt } from "@/components/install-prompt";
 import { LiteModeInit } from "@/components/lite-mode-init";
@@ -81,12 +82,14 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       >
         <LiteModeInit />
         <ServiceWorkerInit />
-        <SiteHeader session={session} navBadges={navBadges} />
-        <div className="has-bottom-nav flex-1">
-          {children}
-          <SiteFooter />
-        </div>
-        <BottomNav session={session} navBadges={navBadges} />
+        <AnchorProvider>
+          <SiteHeader session={session} navBadges={navBadges} />
+          <div className="has-bottom-nav flex-1">
+            {children}
+            <SiteFooter />
+          </div>
+          <BottomNav session={session} navBadges={navBadges} />
+        </AnchorProvider>
         <InstallPrompt />
       </body>
     </html>

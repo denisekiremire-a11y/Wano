@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ByJourneyView } from "./by-journey-view";
 import { ExploreView } from "./explore-view";
+import { AnchorBar } from "@/components/afcon/anchor-bar";
 import {
   getAllPublicListings,
   getDistinctListingLocations,
@@ -8,6 +9,7 @@ import {
   searchListings,
 } from "@/lib/data/journeys";
 import { getListingImageIds } from "@/lib/data/listing-images";
+import { AFCON_CLUB_ENABLED } from "@/lib/feature-flags";
 import { getPassportProgress, getTravellerProfileByUserId } from "@/lib/data/traveller";
 import type { ListingType } from "@/lib/listing-type";
 import { getSession } from "@/lib/session";
@@ -64,6 +66,12 @@ export default async function JourneysPage({
           All places
         </Link>
       </div>
+
+      {AFCON_CLUB_ENABLED && (
+        <div className="mt-6">
+          <AnchorBar />
+        </div>
+      )}
 
       <div className="mt-6">
         {isExplore ? (
