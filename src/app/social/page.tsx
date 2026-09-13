@@ -4,6 +4,7 @@ import { FollowButton } from "@/components/follow-button";
 import { TrophyIcon } from "@/components/icons";
 import { PostCard } from "@/components/post-card";
 import { PostComposer } from "@/components/post-composer";
+import { MatchCard } from "@/components/season/match-card";
 import { UserSearch } from "@/components/user-search";
 import { getSession } from "@/lib/session";
 import { getRankedFeed } from "@/lib/data/feed";
@@ -131,6 +132,8 @@ export default async function SocialPage({
             </div>
           </div>
         )}
+
+        <MatchCard />
 
         {feed.length === 0 ? (
           <p className="rounded-xl border border-forest-900/10 bg-white p-6 text-center text-sm text-forest-800/60">

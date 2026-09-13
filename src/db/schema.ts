@@ -1553,6 +1553,24 @@ export const messages = pgTable("messages", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// AFCON 2027 season skin — one row per tournament fixture. CAF hasn't made
+// the draw yet, so this stays empty in practice for now; the app falls back
+// to clearly-labelled placeholder fixtures (see src/lib/data/fixtures.ts)
+// until real rows land here, at which point no component changes.
+// venueId is app-typed as StadiumAnchorId ("namboole" | "hoima") rather than
+// a DB enum — only fixtures at Uganda's own two venues are ever relevant
+// here, so there's nothing to gain from a stricter column type.
+export const fixtures = pgTable("fixtures", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  home: text("home").notNull(),
+  away: text("away").notNull(),
+  kickoff: timestamp("kickoff", { withTimezone: true }).notNull(),
+  venueId: text("venue_id").notNull(),
+  venue: text("venue").notNull(),
+  stage: text("stage").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Append-only audit log of every moderation decision.
 export const moderationActions = pgTable("moderation_actions", {
   id: uuid("id").primaryKey().defaultRandom(),

@@ -5,13 +5,18 @@ import { AnchorProvider } from "@/components/afcon/anchor-provider";
 import { BottomNav } from "@/components/bottom-nav";
 import { InstallPrompt } from "@/components/install-prompt";
 import { LiteModeInit } from "@/components/lite-mode-init";
+import { SeasonDemoSwitch } from "@/components/season/season-demo-switch";
+import { SeasonProvider } from "@/components/season/season-provider";
+import { SeasonRibbon } from "@/components/season/season-ribbon";
 import { ServiceWorkerInit } from "@/components/service-worker-init";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getPendingAccreditationCount } from "@/lib/data/admin";
+import { getFixtures } from "@/lib/data/fixtures";
 import { getOpenReportsCount } from "@/lib/data/moderation";
 import { getPendingSubmissionsCount } from "@/lib/data/submissions";
 import { getVendorPendingBookingsCount, getVendorProfileByUserId } from "@/lib/data/vendor";
+import { AFCON_CLUB_ENABLED } from "@/lib/feature-flags";
 import { getSession } from "@/lib/session";
 import "./globals.css";
 
@@ -51,7 +56,11 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const session = await getSession();
+  const [session, fixtures] = await Promise.all([getSession(), getFixtures()]);
+  // Never ships to regular users regardless of environment — only visible
+  // locally (next dev) or to an admin, so it can be demoed on the deployed
+  // site itself without ever reaching a real visitor. See SeasonDemoSwitch.
+  const showSeasonDemoSwitch = process.env.NODE_ENV !== "production" || session?.role === "admin";
 
   const navBadges: Record<string, number> = {};
   if (session?.role === "vendor") {
@@ -82,14 +91,18 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       >
         <LiteModeInit />
         <ServiceWorkerInit />
-        <AnchorProvider>
-          <SiteHeader session={session} navBadges={navBadges} />
-          <div className="has-bottom-nav flex-1">
-            {children}
-            <SiteFooter />
-          </div>
-          <BottomNav session={session} navBadges={navBadges} />
-        </AnchorProvider>
+        <SeasonProvider enabled={AFCON_CLUB_ENABLED} fixtures={fixtures}>
+          <AnchorProvider>
+            <SiteHeader session={session} navBadges={navBadges} />
+            <SeasonRibbon />
+            <div className="has-bottom-nav flex-1">
+              {children}
+              <SiteFooter />
+            </div>
+            <BottomNav session={session} navBadges={navBadges} />
+          </AnchorProvider>
+          {showSeasonDemoSwitch && <SeasonDemoSwitch />}
+        </SeasonProvider>
         <InstallPrompt />
       </body>
     </html>
