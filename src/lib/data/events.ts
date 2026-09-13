@@ -21,13 +21,15 @@ export async function searchEvents(query: string, limit = 10) {
     .limit(limit);
 }
 
-export async function getUpcomingEvents(filters: { category?: string } = {}) {
+export async function getUpcomingEvents(filters: { category?: string; venueId?: string } = {}) {
   const conditions = [eq(events.active, true), gte(events.startAt, new Date())];
+  if (filters.category) conditions.push(eq(events.category, filters.category));
+  if (filters.venueId) conditions.push(eq(events.venueId, filters.venueId));
   const rows = await db
     .select({ event: events, organizer: vendorProfiles })
     .from(events)
     .leftJoin(vendorProfiles, eq(events.organizerVendorProfileId, vendorProfiles.id))
-    .where(filters.category ? and(...conditions, eq(events.category, filters.category)) : and(...conditions))
+    .where(and(...conditions))
     .orderBy(asc(events.startAt));
   return rows;
 }

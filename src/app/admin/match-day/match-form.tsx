@@ -55,6 +55,22 @@ export function MatchForm() {
       </div>
 
       <div>
+        <label className="text-sm font-medium text-forest-900">AFCON venue page (optional)</label>
+        <select
+          name="venueId"
+          defaultValue=""
+          className="mt-1 w-full rounded-lg border border-forest-900/15 bg-white px-3 py-2 text-sm outline-none focus:border-forest-600"
+        >
+          <option value="">Not an AFCON venue match</option>
+          <option value="namboole">Mandela National Stadium (Namboole)</option>
+          <option value="hoima">Hoima City Stadium</option>
+        </select>
+        <p className="mt-1 text-xs text-forest-800/50">
+          Set this to list the match on that stadium&apos;s /afcon timetable.
+        </p>
+      </div>
+
+      <div>
         <label className="text-sm font-medium text-forest-900">Match length (hours)</label>
         <input
           name="durationHours"

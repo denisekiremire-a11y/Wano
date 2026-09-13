@@ -2,6 +2,7 @@ import { getMatchesForAdmin } from "@/lib/data/xp";
 import { getActiveRewardsBySource } from "@/lib/data/rewards";
 import { MatchForm } from "./match-form";
 import { MatchRow } from "./match-row";
+import { SeedVenueVendorsButton } from "./seed-venue-vendors-button";
 
 export default async function AdminMatchDayPage() {
   const [matches, prizePool] = await Promise.all([getMatchesForAdmin(), getActiveRewardsBySource("xp_draw")]);
@@ -23,6 +24,8 @@ export default async function AdminMatchDayPage() {
       </div>
 
       <MatchForm />
+
+      <SeedVenueVendorsButton />
 
       <section className="space-y-3">
         <h2 className="font-display text-lg font-semibold text-forest-900">Matches</h2>

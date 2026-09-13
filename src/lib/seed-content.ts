@@ -1049,6 +1049,159 @@ export async function seedDemoRewards() {
   return results;
 }
 
+// One vendor per category per AFCON venue, with real coordinates a short
+// drive from that stadium — the whole point of the /afcon/[venue] hub
+// pages is showing distance-sorted "where to stay/eat/do/get around" near
+// wherever a traveller's match is, and the existing demo listings (see
+// DEMO_LISTINGS above) don't carry coordinates at all. Matches by listing
+// title, so re-running never creates duplicates.
+const AFCON_VENUE_DEMO_LISTINGS: {
+  type: "hotel" | "restaurant" | "experience" | "transport";
+  businessName: string;
+  location: string;
+  vendorDescription: string;
+  title: string;
+  description: string;
+  priceMinor: number;
+  priceUnit: string | null;
+  latitude: string;
+  longitude: string;
+  hotel?: { roomTypes: string; amenities: string; checkInTime: string; checkOutTime: string };
+  restaurant?: { cuisine: string; priceRange: string; hours: string };
+  experience?: { durationText: string; groupSizeText: string; whatsIncluded: string };
+}[] = [
+  // Namboole (Mandela National Stadium) — Kira/Wakiso, Jinja & Nile circuit
+  {
+    type: "hotel", businessName: "Namboole Heights Hotel", location: "Kira",
+    vendorDescription: "A stadium-adjacent hotel built for match-day crowds.",
+    title: "Namboole Heights Hotel — Matchday Rooms",
+    description: "Ten minutes' walk from Mandela National Stadium, with a shuttle on match days.",
+    priceMinor: 260000, priceUnit: "/night", latitude: "0.351000", longitude: "32.654000",
+    hotel: { roomTypes: "Standard, Deluxe, Family", amenities: "Free Wi-Fi, match-day shuttle, generator backup", checkInTime: "2:00 PM", checkOutTime: "11:00 AM" },
+  },
+  {
+    type: "restaurant", businessName: "Bweyogerere Grill House", location: "Kira",
+    vendorDescription: "A Ugandan grill spot a short walk from the stadium gates.",
+    title: "Bweyogerere Grill House",
+    description: "Nyama choma, chips, and cold drinks — fills up fast before kickoff.",
+    priceMinor: 35000, priceUnit: "/person", latitude: "0.346500", longitude: "32.661000",
+    restaurant: { cuisine: "Ugandan grill", priceRange: "Budget", hours: "11am–11pm daily" },
+  },
+  {
+    type: "experience", businessName: "Kira Heritage Walks", location: "Kira",
+    vendorDescription: "Short guided walks around Kira and Bweyogerere for fans with time before kickoff.",
+    title: "Kira Pre-Match Heritage Walk",
+    description: "A 2-hour guided walk through Kira's markets and history — a good way to fill the hours before a match.",
+    priceMinor: 45000, priceUnit: "/person", latitude: "0.355000", longitude: "32.648000",
+    experience: { durationText: "2 hours", groupSizeText: "2–12 people", whatsIncluded: "Guide, bottled water" },
+  },
+  {
+    type: "transport", businessName: "Namboole Express Transfers", location: "Kira",
+    vendorDescription: "Match-day transfers between central Kampala and Mandela National Stadium.",
+    title: "Namboole Express Transfers — Match-Day Shuttle",
+    description: "Fixed-route shuttle between Kampala city centre and the stadium on match days.",
+    priceMinor: 15000, priceUnit: "/person", latitude: "0.349000", longitude: "32.657000",
+  },
+  // Hoima City Stadium — Albertine circuit
+  {
+    type: "hotel", businessName: "Lake Albert View Lodge", location: "Hoima",
+    vendorDescription: "A lakeside lodge on the edge of Hoima, looking out over Lake Albert.",
+    title: "Lake Albert View Lodge — Lakeside Rooms",
+    description: "Quiet rooms with lake views, a short drive from Hoima City Stadium.",
+    priceMinor: 300000, priceUnit: "/night", latitude: "1.428000", longitude: "31.352000",
+    hotel: { roomTypes: "Standard, Lakeside Room", amenities: "Free Wi-Fi, restaurant, generator backup", checkInTime: "2:00 PM", checkOutTime: "10:00 AM" },
+  },
+  {
+    type: "restaurant", businessName: "Hoima Cultural Kitchen", location: "Hoima",
+    vendorDescription: "A Bunyoro-cuisine restaurant in central Hoima.",
+    title: "Hoima Cultural Kitchen",
+    description: "Traditional Bunyoro dishes — millet bread, groundnut sauce, and grilled tilapia from Lake Albert.",
+    priceMinor: 30000, priceUnit: "/person", latitude: "1.434000", longitude: "31.358000",
+    restaurant: { cuisine: "Bunyoro / Ugandan", priceRange: "Budget", hours: "8am–10pm daily" },
+  },
+  {
+    type: "experience", businessName: "Bunyoro Heritage Tours", location: "Hoima",
+    vendorDescription: "Cultural tours around Hoima and the Bunyoro Kingdom, ahead of the longer Murchison Falls trip.",
+    title: "Bunyoro Heritage Trail",
+    description: "A half-day tour of Bunyoro Kingdom cultural sites in and around Hoima City.",
+    priceMinor: 60000, priceUnit: "/person", latitude: "1.440000", longitude: "31.400000",
+    experience: { durationText: "Half-day", groupSizeText: "2–10 people", whatsIncluded: "Guide, kingdom site entry fees" },
+  },
+  {
+    type: "transport", businessName: "Albertine Route Transfers", location: "Hoima",
+    vendorDescription: "Match-day and onward transfers around Hoima and toward Murchison Falls.",
+    title: "Albertine Route Transfers — Match-Day Shuttle",
+    description: "Transfers between central Hoima and Hoima City Stadium, with onward Murchison Falls transfers available.",
+    priceMinor: 20000, priceUnit: "/person", latitude: "1.437000", longitude: "31.396000",
+  },
+];
+
+export async function seedAfconVenueVendors() {
+  const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
+  const results: string[] = [];
+
+  for (const spec of AFCON_VENUE_DEMO_LISTINGS) {
+    const [existingListing] = await db.select({ id: listings.id }).from(listings).where(eq(listings.title, spec.title)).limit(1);
+    if (existingListing) {
+      results.push(`Skipped (already exists): ${spec.title}`);
+      continue;
+    }
+
+    const email = `demo.${spec.businessName.toLowerCase().replace(/[^a-z0-9]+/g, ".")}@wano.app`;
+    let [vendorUser] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+    let vendorProfileId: string;
+    if (!vendorUser) {
+      [vendorUser] = await db
+        .insert(users)
+        .values({ email, passwordHash, name: spec.businessName, role: "vendor", username: await uniqueUsername(spec.businessName) })
+        .returning();
+      const [vendorProfile] = await db
+        .insert(vendorProfiles)
+        .values({
+          userId: vendorUser.id,
+          businessName: spec.businessName,
+          location: spec.location,
+          description: spec.vendorDescription,
+          accreditationStatus: "trusted",
+        })
+        .returning();
+      vendorProfileId = vendorProfile.id;
+    } else {
+      const [vendorProfile] = await db.select().from(vendorProfiles).where(eq(vendorProfiles.userId, vendorUser.id)).limit(1);
+      vendorProfileId = vendorProfile.id;
+    }
+
+    const [listing] = await db
+      .insert(listings)
+      .values({
+        vendorProfileId,
+        type: spec.type,
+        title: spec.title,
+        description: spec.description,
+        priceLabel: "From",
+        priceMinor: spec.priceMinor,
+        currency: "UGX",
+        priceUnit: spec.priceUnit,
+        latitude: spec.latitude,
+        longitude: spec.longitude,
+        isPublished: true,
+        active: true,
+      })
+      .returning();
+
+    await db.insert(offers).values({ listingId: listing.id, discountText: "10% off for Wano members", freebieText: null });
+
+    if (spec.hotel) await db.insert(hotelDetails).values({ listingId: listing.id, ...spec.hotel });
+    if (spec.restaurant) await db.insert(restaurantDetails).values({ listingId: listing.id, ...spec.restaurant });
+    if (spec.experience) await db.insert(experienceDetails).values({ listingId: listing.id, ...spec.experience });
+
+    await generatePlaceAddedItem(listing.id);
+    results.push(`Created: ${spec.title}`);
+  }
+
+  return results;
+}
+
 // Migration content for Milestone J, Phase J1 — turns the 5 read-only
 // campaign journeys into real, published, database-backed itineraries with
 // day-by-day stops linked to the real listings already seeded for them

@@ -5,6 +5,7 @@ import { requireRole } from "@/lib/auth";
 import { backfillFeedItems } from "@/lib/feed-generators";
 import {
   backfillEditorialJourneysJ1,
+  seedAfconVenueVendors,
   seedDemoInfluencer,
   seedDemoInventory,
   seedDemoRewards,
@@ -67,5 +68,19 @@ export async function runDemoRewardsBackfillAction() {
   revalidatePath("/admin/rewards");
   revalidatePath("/admin/funzone");
   revalidatePath("/admin/match-day");
+  return result;
+}
+
+/** One-off (safe to re-run) demo vendors for the AFCON venue pages — one
+ * hotel/restaurant/experience/transport listing near each of Namboole and
+ * Hoima, with real coordinates so the /afcon/[venue] distance sort has
+ * something to show. */
+export async function runAfconVenueVendorsSeedAction() {
+  await requireRole("admin");
+  const result = await seedAfconVenueVendors();
+  revalidatePath("/afcon");
+  revalidatePath("/afcon/namboole");
+  revalidatePath("/afcon/hoima");
+  revalidatePath("/explore");
   return result;
 }

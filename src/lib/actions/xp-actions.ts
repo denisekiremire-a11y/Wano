@@ -113,6 +113,7 @@ const matchSchema = z.object({
   title: z.string().min(3).max(150),
   description: z.string().min(5).max(1000),
   location: z.string().min(2).max(200),
+  venueId: z.enum(["namboole", "hoima"]).optional().or(z.literal("")),
   startAt: z.string().min(1),
   durationHours: z.coerce.number().min(1).max(6).default(2),
 });
@@ -127,6 +128,7 @@ export async function createMatchAction(_prev: ActionState, formData: FormData):
     title: formData.get("title"),
     description: formData.get("description"),
     location: formData.get("location"),
+    venueId: formData.get("venueId") ?? "",
     startAt: formData.get("startAt"),
     durationHours: formData.get("durationHours") || "2",
   });
@@ -145,11 +147,14 @@ export async function createMatchAction(_prev: ActionState, formData: FormData):
     startAt,
     endAt,
     location: parsed.data.location,
+    venueId: parsed.data.venueId || null,
     priceHint: `UGX ${WANO_XP_PRICE_PER_SEAT_UGX.toLocaleString()}/seat`,
   });
 
   revalidatePath("/admin/match-day");
   revalidatePath("/events");
+  revalidatePath("/afcon");
+  if (parsed.data.venueId) revalidatePath(`/afcon/${parsed.data.venueId}`);
 
   return {};
 }

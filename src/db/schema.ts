@@ -486,6 +486,11 @@ export const events = pgTable("events", {
   // standalone event — clubs are not a parallel system, a meetup is just an
   // event with this set.
   clubId: uuid("club_id").references((): AnyPgColumn => clubs.id, { onDelete: "set null" }),
+  // Set for a Wano XP match (category "match") at one of Uganda's two AFCON
+  // venues — app-typed as StadiumAnchorId ("namboole" | "hoima"), same
+  // reasoning as fixtures.venueId: only ever those two values, not worth a
+  // DB enum. Null for every non-match event and any event elsewhere.
+  venueId: text("venue_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

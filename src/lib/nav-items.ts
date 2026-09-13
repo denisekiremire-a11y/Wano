@@ -1,3 +1,4 @@
+import { AFCON_CLUB_ENABLED } from "@/lib/feature-flags";
 import type { SessionPayload } from "@/lib/session";
 
 export type NavItem = {
@@ -31,6 +32,7 @@ export function navItemsFor(role: SessionPayload["role"] | "guest"): NavItem[] {
       { href: "/social", label: "Social", icon: "chat" },
       { href: "/messages", label: "Messages", icon: "mail" },
       { href: "/passport", label: "Passport", icon: "stamp" },
+      ...(AFCON_CLUB_ENABLED ? [{ href: "/afcon", label: "AFCON", icon: "trophy" } as const] : []),
     ];
   }
   if (role === "vendor") {
@@ -69,6 +71,7 @@ export function navItemsFor(role: SessionPayload["role"] | "guest"): NavItem[] {
     { href: "/explore", label: "Explore", icon: "compass" },
     { href: "/events", label: "Events", icon: "calendar" },
     { href: "/how-it-works", label: "How it works", icon: "flag" },
+    ...(AFCON_CLUB_ENABLED ? [{ href: "/afcon", label: "AFCON", icon: "trophy" } as const] : []),
   ];
 }
 

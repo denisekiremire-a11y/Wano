@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AfconHero } from "@/components/afcon/afcon-hero";
 import { EventCard } from "@/components/event-card";
 import { JourneyArt } from "@/components/journey-art";
+import { STADIUM_ANCHORS } from "@/lib/afcon/anchors";
 import { getAttendanceCounts, getUpcomingEvents } from "@/lib/data/events";
 import { getJourneys } from "@/lib/data/journeys";
 import { AFCON_CLUB_ENABLED } from "@/lib/feature-flags";
@@ -50,6 +51,32 @@ export default async function AfconHubPage() {
                 Fan zone events
               </Link>
             </div>
+          </div>
+        </section>
+      )}
+
+      {AFCON_CLUB_ENABLED && (
+        <section className="mx-auto max-w-5xl px-4 py-12 md:px-6">
+          <h2 className="font-display text-2xl font-semibold text-forest-900">Pick your venue</h2>
+          <p className="mt-1 text-sm text-forest-800/70">
+            Match timetable, where to stay, where to eat, activities, and transport — narrowed down
+            to whichever stadium your trip is built around.
+          </p>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            {Object.values(STADIUM_ANCHORS).map((stadium) => (
+              <Link
+                key={stadium.id}
+                href={`/afcon/${stadium.id}`}
+                className="rounded-2xl border-2 border-forest-900/10 bg-forest-900 p-6 text-white transition hover:border-marigold-300 hover:shadow-lg"
+              >
+                <p className="text-xs font-medium uppercase tracking-wide text-marigold-300">{stadium.circuit}</p>
+                <p className="mt-1 font-display text-xl font-semibold">{stadium.label}</p>
+                <p className="mt-1.5 text-sm text-forest-100/70">{stadium.circuitDescription}</p>
+                <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-marigold-300">
+                  Explore {stadium.shortLabel} →
+                </span>
+              </Link>
+            ))}
           </div>
         </section>
       )}
