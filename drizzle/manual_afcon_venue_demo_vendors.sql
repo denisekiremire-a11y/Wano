@@ -1,9 +1,9 @@
--- Demo vendors for the AFCON venue pages (/afcon/namboole, /afcon/hoima) —
--- one hotel, restaurant, activity, and transport listing near each stadium,
--- with real coordinates so the distance sort has something to show.
--- Idempotent — safe to run more than once; skips any listing whose title
--- already exists. Equivalent to the "Seed AFCON venue vendors" admin button.
--- Demo vendor login password (all 8): WanoLocalDev-9214!
+-- Demo vendors for the AFCON venue pages (/afcon/namboole, /afcon/hoima,
+-- /afcon/lira) — one hotel, restaurant, activity, and transport listing near
+-- each stadium, with real coordinates so the distance sort has something to
+-- show. Idempotent — safe to run more than once; skips any listing whose
+-- title already exists. Equivalent to the "Seed AFCON venue vendors" admin
+-- button. Demo vendor login password (all 12): WanoLocalDev-9214!
 
 DO $$
 DECLARE
@@ -78,6 +78,38 @@ BEGIN
        'Albertine Route Transfers — Match-Day Shuttle',
        'Transfers between central Hoima and Hoima City Stadium, with onward Murchison Falls transfers available.',
        20000, '/person', 1.437000::numeric, 31.396000::numeric,
+       NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+      -- Akii Bua Stadium — Northern Uganda circuit
+      ('hotel', 'Akii Bua Heights Hotel', 'akii-bua-heights-hotel-demo',
+       'demo.akii.bua.heights.hotel@wano.app', 'Lira',
+       'A modern hotel in Lira City, close to the new Akii Bua Stadium.',
+       'Akii Bua Heights Hotel — Matchday Rooms',
+       'A short drive from Akii Bua Stadium, with a shuttle laid on for match days.',
+       220000, '/night', 2.246000::numeric, 32.897000::numeric,
+       'Standard, Deluxe, Family', 'Free Wi-Fi, match-day shuttle, generator backup', '2:00 PM', '11:00 AM',
+       NULL, NULL, NULL, NULL, NULL, NULL),
+      ('restaurant', 'Lira Lango Kitchen', 'lira-lango-kitchen-demo',
+       'demo.lira.lango.kitchen@wano.app', 'Lira',
+       'A Lango-cuisine restaurant in central Lira.',
+       'Lira Lango Kitchen',
+       'Malakwang, millet bread, and grilled fish — Lango home cooking near the stadium.',
+       28000, '/person', 2.243000::numeric, 32.903000::numeric,
+       NULL, NULL, NULL, NULL,
+       'Lango / Ugandan', 'Budget', '8am–10pm daily', NULL, NULL, NULL),
+      ('experience', 'Lango Heritage Walks', 'lango-heritage-walks-demo',
+       'demo.lango.heritage.walks@wano.app', 'Lira',
+       'Guided walks around Lira town and Lango cultural sites for fans with time before kickoff.',
+       'Lango Heritage & Craft Walk',
+       'A guided walk through Lira town''s markets and Lango cultural sites — a good way to fill the hours before a match.',
+       40000, '/person', 2.253000::numeric, 32.893000::numeric,
+       NULL, NULL, NULL, NULL,
+       NULL, NULL, NULL, '2 hours', '2–12 people', 'Guide, bottled water'),
+      ('transport', 'Lira Express Transfers', 'lira-express-transfers-demo',
+       'demo.lira.express.transfers@wano.app', 'Lira',
+       'Match-day transfers between central Lira and Akii Bua Stadium.',
+       'Lira Express Transfers — Match-Day Shuttle',
+       'Fixed-route shuttle between Lira town centre and the stadium on match days.',
+       12000, '/person', 2.248000::numeric, 32.899000::numeric,
        NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
     ) AS t(
       ltype, business_name, username, email, location, vendor_description, title, description,
