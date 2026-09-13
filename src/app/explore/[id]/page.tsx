@@ -5,13 +5,16 @@ import { PostComposer } from "@/components/post-composer";
 import { RatingBadge } from "@/components/rating-badge";
 import { SaveButton } from "@/components/save-button";
 import { VerifiedBadge } from "@/components/verified-badge";
+import { GettingThere, type TransportOption } from "@/components/afcon/getting-there";
 import { getBirthdayPerksForListing } from "@/lib/data/birthday";
 import { formatListingPrice } from "@/lib/currency";
+import { AFCON_CLUB_ENABLED } from "@/lib/feature-flags";
 import {
   getInterestedTravellers,
   getJourneysFeaturingListing,
   getListingById,
   getListingTypeDetails,
+  searchListings,
 } from "@/lib/data/journeys";
 import { getListingImageIdsFor } from "@/lib/data/listing-images";
 import { getRatingSummary, getReviewsForListing } from "@/lib/data/reviews";
@@ -89,16 +92,33 @@ export default async function ListingDetailPage({
     }
   }
 
-  const [tags, birthdayPerks, rating, reviews, interested, media, typeDetails, imageIds] = await Promise.all([
-    getJourneysFeaturingListing(listing.id),
-    getBirthdayPerksForListing(listing.id),
-    getRatingSummary(listing.id),
-    getReviewsForListing(listing.id),
-    getInterestedTravellers(listing.id),
-    getMediaPostsFor({ listingId: listing.id }),
-    getListingTypeDetails(listing.id),
-    getListingImageIdsFor(listing.id),
-  ]);
+  const [tags, birthdayPerks, rating, reviews, interested, media, typeDetails, imageIds, transportListings] =
+    await Promise.all([
+      getJourneysFeaturingListing(listing.id),
+      getBirthdayPerksForListing(listing.id),
+      getRatingSummary(listing.id),
+      getReviewsForListing(listing.id),
+      getInterestedTravellers(listing.id),
+      getMediaPostsFor({ listingId: listing.id }),
+      getListingTypeDetails(listing.id),
+      getListingImageIdsFor(listing.id),
+      AFCON_CLUB_ENABLED ? searchListings({ type: "transport" }) : Promise.resolve([]),
+    ]);
+
+  const transportOptions: TransportOption[] = transportListings
+    .filter((row) => row.listing.id !== listing.id)
+    .map((row) => ({
+      id: row.listing.id,
+      title: row.listing.title,
+      priceLabel: row.listing.priceLabel,
+      priceMinor: row.listing.priceMinor,
+      currency: row.listing.currency,
+      priceUnit: row.listing.priceUnit,
+      latitude: row.listing.latitude,
+      longitude: row.listing.longitude,
+      vendorBusinessName: row.vendor.businessName,
+      vendorContactPhone: row.vendor.contactPhone,
+    }));
 
   const mediaPostIds = media.map((m) => m.post.id);
   const [mediaImageIdsMap, mediaEngagement, mediaLikedIds, mediaCommentsRows] = await Promise.all([
@@ -421,6 +441,8 @@ export default async function ListingDetailPage({
             </ul>
           )}
         </div>
+
+        {AFCON_CLUB_ENABLED && <GettingThere transportOptions={transportOptions} />}
 
         <section className="mt-8">
           <h2 className="font-display text-lg font-semibold text-forest-900">Reviews</h2>
