@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { AfconPromoCard } from "@/components/afcon/afcon-promo-card";
 import { JourneyArt } from "@/components/journey-art";
 import { PartnerCard } from "@/components/partner-card";
 import { PartnerSearchForm } from "@/components/partner-search-form";
 import { getBirthdayPerksForListings } from "@/lib/data/birthday";
+import { AFCON_CLUB_ENABLED } from "@/lib/feature-flags";
 import {
   getDistinctListingLocations,
   getJourneyTagsForListings,
@@ -74,6 +76,12 @@ export default async function ExplorePage({
         Every place here is Wano-verified. Browse by type below, or dive into one of the five
         curated Wano Journeys.
       </p>
+
+      {AFCON_CLUB_ENABLED && (
+        <div className="mt-6">
+          <AfconPromoCard />
+        </div>
+      )}
 
       <section className="mt-8">
         <div className="flex items-end justify-between gap-4">
