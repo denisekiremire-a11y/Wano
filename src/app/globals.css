@@ -8,7 +8,12 @@
   --color-text-primary: #1b3a5c;
   --color-text-muted: #5b7085;
   --color-brand: #2c4a6e; /* navy — nav, primary buttons */
-  --color-accent: #2f7d6b; /* teal — CTAs, active states */
+  /* Falls back to the plain teal everywhere by default. During AFCON 2027
+     ("live"/"matchday", see SeasonProvider's data-season attribute below)
+     it resolves to a warmer tone instead — every component that uses
+     --color-accent (or the nile-* ramp derived from it) warms up without
+     knowing why. See the [data-season] rule further down. */
+  --color-accent: var(--wano-season-accent, #2f7d6b); /* teal — CTAs, active states */
   --color-warm: #b79b72; /* tan — badges, highlights */
 
   --background: var(--color-bg-page);
@@ -60,6 +65,15 @@
   --color-sand-50: var(--color-bg-page);
   --color-sand-100: var(--color-border);
   --color-sand-200: #d3dee9;
+}
+
+/* AFCON 2027 season skin — SeasonProvider sets data-season on a wrapper
+   around the whole app (app/layout.tsx). Only "live" and "matchday" warm
+   the accent; buildup/afterglow/off keep the plain teal, since the ask was
+   for the tournament itself to feel warmer, not the run-up or the recap. */
+[data-season="live"],
+[data-season="matchday"] {
+  --wano-season-accent: #c17a3a;
 }
 
 @theme inline {
