@@ -3,6 +3,12 @@ import { AFCON_KICKOFF } from "@/lib/afcon/anchors";
 
 export type SeasonPhase = "off" | "buildup" | "live" | "matchday" | "afterglow";
 
+const SEASON_PHASES: SeasonPhase[] = ["off", "buildup", "live", "matchday", "afterglow"];
+
+export function isSeasonPhase(value: string): value is SeasonPhase {
+  return (SEASON_PHASES as string[]).includes(value);
+}
+
 export type FixtureLite = {
   id: string;
   home: string;

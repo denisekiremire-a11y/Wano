@@ -7,9 +7,17 @@ import {
   daysUntil,
   getNextFixture,
   getTodaysFixture,
+  isSeasonPhase,
   type FixtureLite,
   type SeasonPhase,
 } from "@/lib/season/season";
+
+// Lets a plain visitor preview a phase via a link (e.g. https://.../social
+// ?season=matchday) — no admin login, no visible control — for demoing the
+// skin to someone as an ordinary user rather than through SeasonDemoSwitch.
+// Scoped to sessionStorage: it never touches other visitors, other tabs, or
+// this same tab tomorrow, only this one browsing session once it's set.
+const DEMO_OVERRIDE_STORAGE_KEY = "wano_season_demo_override";
 
 type SeasonContextValue = {
   phase: SeasonPhase;
@@ -53,6 +61,27 @@ export function SeasonProvider({
       clearTimeout(initial);
       clearInterval(interval);
     };
+  }, []);
+
+  useEffect(() => {
+    function applyDemoLink() {
+      try {
+        const fromUrl = new URLSearchParams(window.location.search).get("season");
+        if (fromUrl && isSeasonPhase(fromUrl)) {
+          sessionStorage.setItem(DEMO_OVERRIDE_STORAGE_KEY, fromUrl);
+          setOverridePhase(fromUrl);
+          return;
+        }
+        const stored = sessionStorage.getItem(DEMO_OVERRIDE_STORAGE_KEY);
+        if (stored && isSeasonPhase(stored)) setOverridePhase(stored);
+      } catch {
+        // sessionStorage unavailable (private mode, etc.) — the ?season=
+        // link still works for that one page load, just won't carry
+        // across navigating to another page.
+      }
+    }
+    const timeout = setTimeout(applyDemoLink, 0);
+    return () => clearTimeout(timeout);
   }, []);
 
   const todaysFixture = useMemo(() => (now ? getTodaysFixture(fixtures, now) : null), [fixtures, now]);
