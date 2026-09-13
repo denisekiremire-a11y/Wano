@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AfconPromoCard } from "@/components/afcon/afcon-promo-card";
 import { CalendarIcon, ChatIcon, CompassIcon, TicketIcon } from "@/components/icons";
 import { JourneyArt } from "@/components/journey-art";
 import { PartnerCard } from "@/components/partner-card";
 import { getBirthdayPerksForListings } from "@/lib/data/birthday";
+import { AFCON_CLUB_ENABLED } from "@/lib/feature-flags";
 import { getJourneyTagsForListings, getJourneys, searchListings } from "@/lib/data/journeys";
 import { getListingImageIds } from "@/lib/data/listing-images";
 import { getRatingSummaries } from "@/lib/data/reviews";
@@ -86,6 +88,12 @@ export default async function LandingPage() {
           ))}
         </div>
       </section>
+
+      {AFCON_CLUB_ENABLED && (
+        <section className="mx-auto max-w-6xl px-4 md:px-6">
+          <AfconPromoCard />
+        </section>
+      )}
 
       <section className="mx-auto max-w-6xl px-4 py-6 md:px-6">
         <div className="flex items-end justify-between gap-4">
