@@ -14,7 +14,7 @@ export function SiteHeader({
   const items = navItemsFor(session?.role ?? "guest");
 
   return (
-    <header className="sticky top-0 z-40 border-b border-forest-900/10 bg-sand-50/90 backdrop-blur">
+    <header className="sticky top-9 z-40 border-b border-forest-900/10 bg-sand-50/90 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 md:px-6">
         <Link href="/" className="flex items-center gap-2">
           <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-forest-800 to-forest-600 text-marigold-300 font-display text-base font-bold">

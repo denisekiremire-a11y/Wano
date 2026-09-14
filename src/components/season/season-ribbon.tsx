@@ -49,7 +49,7 @@ export function SeasonRibbon() {
   return (
     <Link
       href="/afcon"
-      className={`sticky top-16 z-30 flex h-9 items-center justify-center gap-2 px-4 text-center text-xs font-medium transition-colors ${PHASE_STYLE[phase]}`}
+      className={`sticky top-[6.25rem] z-30 flex h-9 items-center justify-center gap-2 px-4 text-center text-xs font-medium transition-colors ${PHASE_STYLE[phase]}`}
     >
       {phase === "matchday" && (
         <span

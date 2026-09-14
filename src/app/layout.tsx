@@ -5,6 +5,7 @@ import { AnchorProvider } from "@/components/afcon/anchor-provider";
 import { BottomNav } from "@/components/bottom-nav";
 import { InstallPrompt } from "@/components/install-prompt";
 import { LiteModeInit } from "@/components/lite-mode-init";
+import { PreviewBanner } from "@/components/preview-banner";
 import { SeasonDemoSwitch } from "@/components/season/season-demo-switch";
 import { SeasonProvider } from "@/components/season/season-provider";
 import { SeasonRibbon } from "@/components/season/season-ribbon";
@@ -93,6 +94,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <ServiceWorkerInit />
         <SeasonProvider enabled={AFCON_CLUB_ENABLED} fixtures={fixtures}>
           <AnchorProvider>
+            <PreviewBanner />
             <SiteHeader session={session} navBadges={navBadges} />
             <SeasonRibbon />
             <div className="has-bottom-nav flex-1">
