@@ -1,78 +1,78 @@
 @import "tailwindcss";
 
 :root {
-  /* --- Pale-blue theme tokens (source of truth) --- */
-  --color-bg-page: #f4f8fc;
+  /* --- Editorial theme tokens (source of truth) ---
+     Same cream/ink/ember system as DESIGN.md, now the app-wide default
+     rather than just the marketing pages. */
+  --color-bg-page: #fbf6ee;
   --color-bg-surface: #ffffff;
-  --color-border: #d8e4f0;
-  --color-text-primary: #1b3a5c;
-  --color-text-muted: #5b7085;
-  --color-brand: #2c4a6e; /* navy — nav, primary buttons */
-  /* Falls back to the plain teal everywhere by default. During AFCON 2027
+  --color-border: #e0dbd3;
+  --color-text-primary: #1e150e;
+  --color-text-muted: #60564b;
+  --color-brand: #2c2119; /* near-ink — nav, primary buttons */
+  /* Falls back to ember everywhere by default. During AFCON 2027
      ("live"/"matchday", see SeasonProvider's data-season attribute below)
-     it resolves to a warmer tone instead — every component that uses
-     --color-accent (or the nile-* ramp derived from it) warms up without
-     knowing why. See the [data-season] rule further down. */
-  --color-accent: var(--wano-season-accent, #2f7d6b); /* teal — CTAs, active states */
-  --color-warm: #b79b72; /* tan — badges, highlights */
+     it resolves to a slightly different warm tone instead — every
+     component that uses --color-accent (or the nile-* ramp derived from
+     it) shifts without knowing why. See the [data-season] rule further
+     down. */
+  --color-accent: var(--wano-season-accent, #db4603); /* ember — CTAs, active states */
+  --color-warm: #db4603; /* ember — badges, highlights */
 
   --background: var(--color-bg-page);
   --foreground: var(--color-text-primary);
 
-  /* "forest" is now the brand/navy ramp — kept under its original name
-     since ~1,460 existing `forest-*` utility classes reference it
-     directly; re-pointing the values here re-themes the whole app
-     without touching every component. 900/800 are pinned exactly to
-     text-primary/brand; the rest is a generated navy tint/shade ramp. */
-  --color-forest-950: #182534;
+  /* "forest" is now the ink ramp — kept under its original name since
+     ~1,460 existing `forest-*` utility classes reference it directly;
+     re-pointing the values here re-themes the whole app without touching
+     every component. 900/800 are pinned exactly to text-primary/brand;
+     the rest is a generated warm-ink tint/shade ramp. */
+  --color-forest-950: #120b06;
   --color-forest-900: var(--color-text-primary);
   --color-forest-800: var(--color-brand);
-  --color-forest-700: #3c6290;
-  --color-forest-600: #4d7bb2;
-  --color-forest-500: #7396bf;
-  --color-forest-400: #98b0cd;
-  --color-forest-300: #b9c8da;
-  --color-forest-200: #d6dde6;
-  --color-forest-100: #eaedf1;
-  --color-forest-50: #f6f7f8;
+  --color-forest-700: #403730;
+  --color-forest-600: #60564b;
+  --color-forest-500: #8a7f75;
+  --color-forest-400: #a89d92;
+  --color-forest-300: #c6bcb0;
+  --color-forest-200: #e0dbd3;
+  --color-forest-100: #ede8e1;
+  --color-forest-50: #f6f2ea;
 
-  /* "marigold" is now the warm/tan ramp. 500 pinned exactly to `warm`. */
-  --color-marigold-900: #4d3f2a;
-  --color-marigold-800: #665234;
-  --color-marigold-700: #866c46;
-  --color-marigold-600: #a68759;
+  /* "marigold" is now an ember-tinted ramp. 500 pinned exactly to `warm`
+     (ember) — DESIGN.md's single accent, not a second competing color. */
+  --color-marigold-900: #431600;
+  --color-marigold-800: #642300;
+  --color-marigold-700: #8a3300;
+  --color-marigold-600: #b03d02;
   --color-marigold-500: var(--color-warm);
-  --color-marigold-400: #c6b69f;
-  --color-marigold-300: #d6ccbd;
-  --color-marigold-200: #e4dfd8;
-  --color-marigold-100: #f0eeeb;
-  --color-marigold-50: #f8f7f7;
+  --color-marigold-400: #e2703f;
+  --color-marigold-300: #e99870;
+  --color-marigold-200: #f0bda0;
+  --color-marigold-100: #f6ddcc;
+  --color-marigold-50: #fbeee5;
 
-  /* "nile" is now the accent/teal ramp. 700 pinned exactly to `accent`. */
-  --color-nile-950: #18352e;
-  --color-nile-900: #235449;
-  --color-nile-800: #2a7060;
+  /* "nile" is now the accent/ember ramp. 700 pinned exactly to `accent`. */
+  --color-nile-950: #2a0c00;
+  --color-nile-900: #431600;
+  --color-nile-800: #642300;
   --color-nile-700: var(--color-accent);
-  --color-nile-600: #4ab59c;
-  --color-nile-500: #70c2af;
-  --color-nile-400: #97cec1;
-  --color-nile-300: #b8dad3;
-  --color-nile-200: #d5e7e3;
-  --color-nile-100: #eaf1ef;
-  --color-nile-50: #f6f8f8;
+  --color-nile-600: #e2602a;
+  --color-nile-500: #e87c52;
+  --color-nile-400: #ee9c7c;
+  --color-nile-300: #f3bca6;
+  --color-nile-200: #f7d6c8;
+  --color-nile-100: #fbe9e0;
+  --color-nile-50: #fdf4ef;
 
   /* "sand" is now the pale-page family. 50 pinned to bg-page, 100 to border. */
   --color-sand-50: var(--color-bg-page);
   --color-sand-100: var(--color-border);
-  --color-sand-200: #d3dee9;
+  --color-sand-200: #d4cdc2;
 
-  /* --- Editorial redesign palette (additive) ---
-     Used only by the public marketing/discovery pages (home, journeys,
-     afcon, verified, contact) via .eyebrow/.font-editorial and the
-     ink/ember/paper utilities below. Everything else in the app (admin,
-     vendor dashboard, booking flows, explore, passport, ...) keeps the
-     forest/marigold/nile palette above untouched. Exact values from the
-     project's design system spec — one accent color (ember), not two. */
+  /* --- Editorial palette (named tokens) ---
+     Same values as the ramps above, exposed under DESIGN.md's own names
+     (ink/ember/paper/...) for the pages already written against them. */
   --color-ink: #1e150e;
   --color-ember: #db4603;
   --color-ember-hover: #c23d02;
@@ -155,20 +155,33 @@
   --color-cream-muted: var(--color-cream-muted);
   --color-paper: var(--color-paper);
 
-  --font-sans: var(--font-geist-sans);
-  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-editorial-body);
+  --font-display: var(--font-editorial-display);
   --font-editorial: var(--font-editorial-display);
   --font-editorial-mono: var(--font-editorial-mono);
   --font-editorial-body: var(--font-editorial-body);
+
+  /* DESIGN.md: no drop shadows anywhere in the app. Zeroing the shadow
+     tokens neutralizes every existing shadow-sm/md/lg/xl/2xl/inner
+     utility site-wide without touching each call site. Focus-visible
+     rings use --tw-ring-* separately and are unaffected. */
+  --shadow-2xs: 0 0 #0000;
+  --shadow-xs: 0 0 #0000;
+  --shadow-sm: 0 0 #0000;
+  --shadow-md: 0 0 #0000;
+  --shadow-lg: 0 0 #0000;
+  --shadow-xl: 0 0 #0000;
+  --shadow-2xl: 0 0 #0000;
+  --shadow-inner: 0 0 #0000;
 }
 
 /* --- Editorial redesign utilities ---
    .eyebrow: the small tracked-out mono label above a headline (e.g.
    "AFCON 2027 · KAMPALA", "TOURNAMENT DATES"). .font-editorial: the
    display headline face (Anton — single 400 weight, tight leading).
-   .font-editorial-body: Inter, for body copy on the redesigned pages only
-   (the rest of the app keeps Geist). All three scoped to the redesigned
-   marketing pages. */
+   .font-editorial-body: Inter, now the app-wide default body face via
+   --font-sans above (kept as an explicit utility too, since a handful of
+   pages already apply it directly). */
 @utility eyebrow {
   font-family: var(--font-editorial-mono), ui-monospace, monospace;
   font-size: 0.6875rem;
@@ -195,7 +208,8 @@ body {
 }
 
 .font-display {
-  font-family: var(--font-display), Georgia, serif;
+  font-family: var(--font-display), Impact, sans-serif;
+  line-height: 1;
 }
 
 /* Passport stamp texture: a soft ring for unearned, solid marigold fill for earned */
