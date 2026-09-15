@@ -33,8 +33,8 @@ export default async function JourneysPage({
   }
 
   return (
-    <main className="mx-auto max-w-4xl bg-paper px-4 py-12 md:px-6">
-      <p className="eyebrow text-vermilion">
+    <main className="font-editorial-body mx-auto max-w-4xl bg-paper px-4 py-12 md:px-6">
+      <p className="eyebrow text-ember">
         {isExplore ? "All verified places" : "The five Wano Journeys"}
       </p>
       <h1 className="font-editorial mt-2 text-3xl font-bold text-ink md:text-4xl">
@@ -48,7 +48,7 @@ export default async function JourneysPage({
           : "Every business below is Wano-verified. Expand a journey to see who's on it — sign up and book to unlock that journey's member deals."}
       </p>
 
-      <div className="mt-6 inline-flex rounded-full bg-white p-1 shadow-sm">
+      <div className="mt-6 inline-flex rounded-full border border-line bg-white p-1">
         <Link
           href="/journeys"
           className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${

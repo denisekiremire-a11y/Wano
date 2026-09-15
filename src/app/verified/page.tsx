@@ -21,9 +21,9 @@ export default async function VerifiedPage() {
     .sort((a, b) => b.listing.viewCount - a.listing.viewCount);
 
   return (
-    <main className="bg-paper">
+    <main className="font-editorial-body bg-paper">
       <section className="mx-auto max-w-4xl px-4 pt-14 md:px-6">
-        <p className="eyebrow text-vermilion">Wano Verified</p>
+        <p className="eyebrow text-ember">Wano Verified</p>
         <h1 className="font-editorial mt-3 max-w-2xl text-4xl font-bold leading-[0.95] text-ink md:text-5xl">
           Trusted places. Real member deals.
         </h1>
@@ -35,7 +35,7 @@ export default async function VerifiedPage() {
 
       <section className="mx-auto max-w-4xl px-4 py-10 md:px-6">
         <div className="grid gap-4 md:grid-cols-[1fr_1.2fr]">
-          <div className="rounded-2xl bg-gold p-6 text-ink">
+          <div className="rounded-2xl bg-ember p-6 text-ink">
             <p className="eyebrow opacity-70">Member deals</p>
             <p className="font-editorial mt-2 text-2xl font-bold leading-tight">
               More Kampala. Less on the bill.
@@ -45,13 +45,13 @@ export default async function VerifiedPage() {
             </p>
             <Link
               href="/signup"
-              className="mt-4 inline-flex rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110"
+              className="mt-4 inline-flex rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-ink/90"
             >
               Unlock member deals
             </Link>
           </div>
-          <div className="rounded-2xl border border-ink/10 bg-white p-6">
-            <p className="eyebrow text-vermilion">How verification works</p>
+          <div className="rounded-2xl border border-line bg-white p-6">
+            <p className="eyebrow text-ember">How verification works</p>
             <ol className="mt-3 space-y-3 text-sm text-ink/75">
               {[
                 "We confirm the business is real and operating.",
@@ -59,7 +59,7 @@ export default async function VerifiedPage() {
                 "We verify you can book directly — no middlemen.",
               ].map((step, i) => (
                 <li key={step} className="flex gap-3">
-                  <span className="eyebrow shrink-0 text-vermilion">{String(i + 1).padStart(2, "0")}</span>
+                  <span className="eyebrow shrink-0 text-ember">{String(i + 1).padStart(2, "0")}</span>
                   <span>{step}</span>
                 </li>
               ))}
@@ -70,17 +70,17 @@ export default async function VerifiedPage() {
 
       <section className="mx-auto max-w-4xl px-4 pb-16 md:px-6">
         <div className="flex items-baseline justify-between">
-          <p className="eyebrow text-vermilion">Trending now</p>
+          <p className="eyebrow text-ember">Trending now</p>
           <p className="eyebrow text-ink/40">{withDeals.length} listed</p>
         </div>
         <h2 className="font-editorial mt-2 text-2xl font-bold text-ink">Verified places</h2>
 
         {withDeals.length === 0 ? (
-          <p className="mt-6 rounded-2xl border border-ink/10 bg-white p-6 text-center text-sm text-ink/60">
+          <p className="mt-6 rounded-2xl border border-line bg-white p-6 text-center text-sm text-ink/60">
             No member deals live right now — check back soon.
           </p>
         ) : (
-          <div className="mt-6 divide-y divide-ink/10 overflow-hidden rounded-2xl border border-ink/10 bg-white">
+          <div className="mt-6 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-white">
             {withDeals.map(({ listing, vendor, offer }) => {
               const price = formatListingPrice(listing);
               const badge = offer?.discountText ?? offer?.freebieText ?? null;

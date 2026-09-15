@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import { Fraunces } from "next/font/google";
-import { Space_Grotesk } from "next/font/google";
+import { Anton } from "next/font/google";
+import { Inter } from "next/font/google";
 import { JetBrains_Mono } from "next/font/google";
 import { AnchorProvider } from "@/components/afcon/anchor-provider";
 import { BottomNav } from "@/components/bottom-nav";
@@ -35,20 +36,27 @@ const fraunces = Fraunces({
 });
 
 // Editorial redesign typefaces — used only on the public marketing/discovery
-// pages (home, journeys, afcon, verified, contact) via the .font-editorial
-// and .eyebrow utilities in globals.css. Fraunces above stays the display
-// font everywhere else (journal, existing headers) so this is additive, not
-// a site-wide font swap.
-const spaceGrotesk = Space_Grotesk({
+// pages (home, journeys, afcon, verified, contact) via the .font-editorial,
+// .font-editorial-body and .eyebrow utilities in globals.css. Fraunces/Geist
+// above stay the display/body fonts everywhere else (journal, admin, vendor
+// dashboard) so this is additive, not a site-wide font swap. Anton only
+// ships weight 400 — it's a single-weight display face by design.
+const anton = Anton({
   variable: "--font-editorial-display",
   subsets: ["latin"],
-  weight: ["500", "700"],
+  weight: "400",
+});
+
+const editorialInter = Inter({
+  variable: "--font-editorial-body",
+  subsets: ["latin"],
+  weight: ["400", "500"],
 });
 
 const jetBrainsMono = JetBrains_Mono({
   variable: "--font-editorial-mono",
   subsets: ["latin"],
-  weight: ["500"],
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
@@ -103,7 +111,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${fraunces.variable} ${spaceGrotesk.variable} ${jetBrainsMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${fraunces.variable} ${anton.variable} ${editorialInter.variable} ${jetBrainsMono.variable} h-full antialiased`}
     >
       <body
         className="min-h-full flex flex-col bg-background text-foreground"

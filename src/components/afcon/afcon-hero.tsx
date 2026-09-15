@@ -1,12 +1,13 @@
 "use client";
 
+import Image from "next/image";
 import { AfconCountdown } from "@/components/afcon/countdown";
 import { useAnchor } from "@/components/afcon/anchor-provider";
 import { STADIUM_ANCHORS } from "@/lib/afcon/anchors";
 
 const PLATE_BASE =
-  "flex-1 min-w-[220px] rounded-2xl border-2 p-5 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold motion-reduce:transition-none";
-const PLATE_ACTIVE = "border-gold bg-white/15";
+  "flex-1 min-w-[220px] rounded-2xl border-2 p-5 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ember motion-reduce:transition-none";
+const PLATE_ACTIVE = "border-ember bg-white/15";
 const PLATE_INACTIVE = "border-white/15 bg-white/5 hover:border-white/30 hover:bg-white/10";
 
 /** The AFCON 2027 landing band, gated behind AFCON_CLUB_ENABLED. The two
@@ -17,18 +18,26 @@ export function AfconHero() {
   const { anchor, gpsLoading, gpsError, setStadiumAnchor, setGpsAnchor } = useAnchor();
 
   return (
-    <section className="relative overflow-hidden bg-ink">
+    <section className="font-editorial-body relative overflow-hidden bg-ink">
+      <Image
+        src="/images/afcon-crowd.jpg"
+        alt=""
+        aria-hidden
+        fill
+        sizes="100vw"
+        className="object-cover"
+      />
       <div
-        className="absolute inset-0 opacity-50"
+        className="absolute inset-0"
         aria-hidden
         style={{
-          backgroundImage:
-            "radial-gradient(circle at 10% 10%, rgba(226,165,60,0.3), transparent 45%), radial-gradient(circle at 90% 90%, rgba(225,83,31,0.28), transparent 45%)",
+          background:
+            "linear-gradient(0deg, rgba(30,21,14,0.9) 0%, rgba(30,21,14,0.55) 55%, rgba(30,21,14,0.25) 100%)",
         }}
       />
       <div className="relative mx-auto max-w-4xl px-4 py-12 md:px-6 md:py-16">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="eyebrow text-gold">AFCON 2027 · Kampala</p>
+          <p className="eyebrow text-ember">AFCON 2027 · Kampala</p>
           <AfconCountdown />
         </div>
 
@@ -51,7 +60,7 @@ export function AfconHero() {
                 onClick={() => setStadiumAnchor(stadium.id)}
                 className={`${PLATE_BASE} ${active ? PLATE_ACTIVE : PLATE_INACTIVE}`}
               >
-                <p className="eyebrow text-gold">{stadium.circuit}</p>
+                <p className="eyebrow text-ember">{stadium.circuit}</p>
                 <p className="font-editorial mt-1 text-lg font-bold text-white">{stadium.label}</p>
                 <p className="mt-1.5 text-xs text-white/60">{stadium.circuitDescription}</p>
               </button>
@@ -65,9 +74,9 @@ export function AfconHero() {
             aria-pressed={anchor?.id === "gps"}
             onClick={setGpsAnchor}
             disabled={gpsLoading}
-            className={`rounded-full border px-4 py-2 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold motion-reduce:transition-none disabled:opacity-60 ${
+            className={`rounded-full border px-4 py-2 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ember motion-reduce:transition-none disabled:opacity-60 ${
               anchor?.id === "gps"
-                ? "border-gold bg-gold/15 text-gold"
+                ? "border-ember bg-ember/15 text-ember"
                 : "border-white/20 text-white/80 hover:border-white/40"
             }`}
           >

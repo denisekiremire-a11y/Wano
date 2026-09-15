@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { AfconHero } from "@/components/afcon/afcon-hero";
 import { EventCard } from "@/components/event-card";
@@ -13,20 +14,28 @@ export default async function AfconHubPage() {
   const counts = await getAttendanceCounts(upcomingEvents.map((e) => e.event.id));
 
   return (
-    <main className="bg-paper">
+    <main className="font-editorial-body bg-paper">
       {AFCON_CLUB_ENABLED ? (
         <AfconHero />
       ) : (
         <section className="relative overflow-hidden bg-ink">
+          <Image
+            src="/images/afcon-crowd.jpg"
+            alt="Stadium crowd waving Uganda flags"
+            fill
+            sizes="100vw"
+            priority
+            className="object-cover"
+          />
           <div
-            className="absolute inset-0 opacity-50"
+            className="absolute inset-0"
             style={{
-              backgroundImage:
-                "radial-gradient(circle at 15% 20%, rgba(226,165,60,0.3), transparent 45%), radial-gradient(circle at 85% 0%, rgba(225,83,31,0.28), transparent 40%)",
+              background:
+                "linear-gradient(0deg, rgba(30,21,14,0.85) 0%, rgba(30,21,14,0.4) 55%, rgba(30,21,14,0) 80%)",
             }}
           />
           <div className="relative mx-auto max-w-5xl px-4 py-20 md:px-6">
-            <p className="eyebrow mb-4 text-gold">Wano × AFCON 2027 — launch campaign</p>
+            <p className="eyebrow mb-4 text-ember">Wano × AFCON 2027 — launch campaign</p>
             <h1 className="font-editorial max-w-2xl text-4xl font-bold leading-tight text-white md:text-5xl">
               Uganda&apos;s home for AFCON 2027 — and everything after it.
             </h1>
@@ -38,7 +47,7 @@ export default async function AfconHubPage() {
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
                 href="/explore"
-                className="rounded-full bg-vermilion px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-vermilion/20 transition hover:brightness-110"
+                className="rounded-full bg-ember px-6 py-3 text-sm font-semibold text-white transition hover:bg-ember-hover"
               >
                 Explore Wano Journeys
               </Link>
@@ -56,15 +65,15 @@ export default async function AfconHubPage() {
       {AFCON_CLUB_ENABLED && (
         <section className="mx-auto max-w-5xl px-4 pt-8 md:px-6">
           <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-2xl bg-gold p-6 text-ink">
+            <div className="rounded-2xl bg-ember p-6 text-ink">
               <p className="eyebrow opacity-70">Tournament dates</p>
               <p className="font-editorial mt-2 text-2xl font-bold">19 Jun – 17 Jul 2027</p>
             </div>
-            <div className="rounded-2xl bg-gold p-6 text-ink">
+            <div className="rounded-2xl bg-ember p-6 text-ink">
               <p className="eyebrow opacity-70">Host stadiums in Uganda</p>
               <p className="font-editorial mt-2 text-2xl font-bold">{Object.keys(STADIUM_ANCHORS).length} venues</p>
             </div>
-            <div className="rounded-2xl bg-gold p-6 text-ink">
+            <div className="rounded-2xl bg-ember p-6 text-ink">
               <p className="eyebrow opacity-70">Kampala watch parties</p>
               <p className="font-editorial mt-2 text-2xl font-bold">Citywide</p>
             </div>
@@ -74,7 +83,7 @@ export default async function AfconHubPage() {
 
       {AFCON_CLUB_ENABLED && (
         <section className="mx-auto max-w-5xl px-4 py-12 md:px-6">
-          <p className="eyebrow text-vermilion">Host stadiums</p>
+          <p className="eyebrow text-ember">Host stadiums</p>
           <h2 className="font-editorial mt-2 text-2xl font-bold text-ink">Where Uganda plays</h2>
           <p className="mt-1 text-sm text-ink/60">
             Match timetable, where to stay, where to eat, activities, and transport — narrowed down
@@ -85,12 +94,12 @@ export default async function AfconHubPage() {
               <Link
                 key={stadium.id}
                 href={`/afcon/${stadium.id}`}
-                className="rounded-2xl border-2 border-ink bg-ink p-6 text-white transition hover:border-gold hover:shadow-lg"
+                className="rounded-2xl border-2 border-ink bg-ink p-6 text-white transition hover:border-ember"
               >
-                <p className="eyebrow text-gold">{stadium.circuit}</p>
+                <p className="eyebrow text-ember">{stadium.circuit}</p>
                 <p className="font-editorial mt-1 text-xl font-bold">{stadium.label}</p>
                 <p className="mt-1.5 text-sm text-white/70">{stadium.circuitDescription}</p>
-                <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-gold">
+                <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-ember">
                   Explore {stadium.shortLabel} →
                 </span>
               </Link>
@@ -102,7 +111,7 @@ export default async function AfconHubPage() {
       {AFCON_CLUB_ENABLED && (
         <section className="mx-auto max-w-5xl px-4 pb-4 md:px-6">
           <div className="rounded-2xl bg-ink p-8 text-white md:p-10">
-            <p className="eyebrow text-vermilion">Match day</p>
+            <p className="eyebrow text-ember">Match day</p>
             <h2 className="font-editorial mt-2 text-3xl font-bold">Watch parties</h2>
             <p className="mt-1 text-sm text-white/50">Kampala-wide</p>
             <div className="mt-6 divide-y divide-white/10">
@@ -122,7 +131,7 @@ export default async function AfconHubPage() {
       )}
 
       <section className="mx-auto max-w-5xl px-4 py-12 md:px-6">
-        <p className="eyebrow text-vermilion">Wano Journeys</p>
+        <p className="eyebrow text-ember">Wano Journeys</p>
         <h2 className="font-editorial mt-2 text-2xl font-bold text-ink">
           Five journeys built for AFCON travellers
         </h2>
@@ -137,7 +146,7 @@ export default async function AfconHubPage() {
               <Link
                 key={journey.id}
                 href={`/journeys/${journey.slug}`}
-                className="group overflow-hidden rounded-2xl border border-ink/10 bg-white transition hover:shadow-lg"
+                className="group overflow-hidden rounded-2xl border border-line bg-white transition hover:border-ember"
               >
                 <div className={`h-28 overflow-hidden bg-gradient-to-br ${theme.gradient}`}>
                   <JourneyArt slug={journey.slug} className="h-full w-full opacity-90" />
@@ -174,7 +183,7 @@ export default async function AfconHubPage() {
       )}
 
       <section className="mx-auto max-w-5xl px-4 pb-14 md:px-6">
-        <div className="rounded-2xl border border-ink/10 bg-white p-6 text-sm text-ink/70">
+        <div className="rounded-2xl border border-line bg-white p-6 text-sm text-ink/70">
           Wano curates and connects fans to verified places and experiences — it does not operate
           transport, accommodation, or tours itself, and match fixtures aren&apos;t published here
           until the tournament schedule is officially confirmed. Every booking made through Wano is

@@ -69,12 +69,18 @@
   /* --- Editorial redesign palette (additive) ---
      Used only by the public marketing/discovery pages (home, journeys,
      afcon, verified, contact) via .eyebrow/.font-editorial and the
-     ink/gold/vermilion/paper utilities below. Everything else in the app
-     (admin, vendor dashboard, booking flows, explore, passport, ...) keeps
-     the forest/marigold/nile palette above untouched. */
-  --color-ink: #1c1410;
-  --color-gold: #e2a53c;
-  --color-vermilion: #e1531f;
+     ink/ember/paper utilities below. Everything else in the app (admin,
+     vendor dashboard, booking flows, explore, passport, ...) keeps the
+     forest/marigold/nile palette above untouched. Exact values from the
+     project's design system spec — one accent color (ember), not two. */
+  --color-ink: #1e150e;
+  --color-ember: #db4603;
+  --color-ember-hover: #c23d02;
+  --color-muted: #60564b;
+  --color-line: #e0dbd3;
+  --color-ink-line: #403730;
+  --color-ink-muted: #8a7f75;
+  --color-cream-muted: rgba(251, 246, 238, 0.75);
   --color-paper: #fbf6ee;
 }
 
@@ -140,31 +146,46 @@
   --color-sand-200: var(--color-sand-200);
 
   --color-ink: var(--color-ink);
-  --color-gold: var(--color-gold);
-  --color-vermilion: var(--color-vermilion);
+  --color-ember: var(--color-ember);
+  --color-ember-hover: var(--color-ember-hover);
+  --color-muted: var(--color-muted);
+  --color-line: var(--color-line);
+  --color-ink-line: var(--color-ink-line);
+  --color-ink-muted: var(--color-ink-muted);
+  --color-cream-muted: var(--color-cream-muted);
   --color-paper: var(--color-paper);
 
   --font-sans: var(--font-geist-sans);
   --font-display: var(--font-fraunces);
   --font-editorial: var(--font-editorial-display);
   --font-editorial-mono: var(--font-editorial-mono);
+  --font-editorial-body: var(--font-editorial-body);
 }
 
 /* --- Editorial redesign utilities ---
    .eyebrow: the small tracked-out mono label above a headline (e.g.
-   "AFCON 2027 · KAMPALA", "TOURNAMENT DATES"). .font-editorial: the bold
-   display headline face. Both scoped to the redesigned marketing pages. */
+   "AFCON 2027 · KAMPALA", "TOURNAMENT DATES"). .font-editorial: the
+   display headline face (Anton — single 400 weight, tight leading).
+   .font-editorial-body: Inter, for body copy on the redesigned pages only
+   (the rest of the app keeps Geist). All three scoped to the redesigned
+   marketing pages. */
 @utility eyebrow {
   font-family: var(--font-editorial-mono), ui-monospace, monospace;
   font-size: 0.6875rem;
   font-weight: 500;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
 }
 
 @utility font-editorial {
-  font-family: var(--font-editorial-display), Arial, sans-serif;
+  font-family: var(--font-editorial-display), Impact, sans-serif;
+  font-weight: 400;
+  line-height: 1;
   letter-spacing: -0.01em;
+}
+
+@utility font-editorial-body {
+  font-family: var(--font-editorial-body), system-ui, sans-serif;
 }
 
 body {

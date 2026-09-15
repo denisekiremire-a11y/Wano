@@ -21,8 +21,8 @@ export function HeaderNavLink({
   return (
     <Link
       href={href}
-      className={`relative shrink-0 whitespace-nowrap text-sm transition ${
-        isActive ? "font-semibold text-vermilion" : "font-medium text-ink/70 hover:text-ink"
+      className={`relative shrink-0 whitespace-nowrap text-[15px] transition ${
+        isActive ? "text-ember" : "text-muted hover:text-ink"
       }`}
     >
       {label}

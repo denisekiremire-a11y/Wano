@@ -30,7 +30,7 @@ export function ContactForm({ toEmail }: { toEmail: string }) {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Adelaide K"
-          className="mt-1.5 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-vermilion"
+          className="mt-1.5 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
         />
       </label>
       <label className="mt-4 block text-sm">
@@ -41,7 +41,7 @@ export function ContactForm({ toEmail }: { toEmail: string }) {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
-          className="mt-1.5 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-vermilion"
+          className="mt-1.5 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
         />
       </label>
       <label className="mt-4 block text-sm">
@@ -49,7 +49,7 @@ export function ContactForm({ toEmail }: { toEmail: string }) {
         <select
           value={intent}
           onChange={(e) => setIntent(e.target.value)}
-          className="mt-1.5 w-full rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm outline-none focus:border-vermilion"
+          className="mt-1.5 w-full rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm outline-none focus:border-ember"
         >
           {INTENTS.map((option) => (
             <option key={option} value={option}>
@@ -66,12 +66,12 @@ export function ContactForm({ toEmail }: { toEmail: string }) {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Tell us about your plans, dates, group size or business..."
-          className="mt-1.5 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-vermilion"
+          className="mt-1.5 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
         />
       </label>
       <button
         type="submit"
-        className="mt-5 rounded-full bg-vermilion px-6 py-3 text-sm font-semibold text-white transition hover:brightness-110"
+        className="mt-5 rounded-full bg-ember px-6 py-3 text-sm font-semibold text-white transition hover:bg-ember-hover"
       >
         Send message
       </button>

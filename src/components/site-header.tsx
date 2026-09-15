@@ -15,11 +15,11 @@ export function SiteHeader({
   const items = navItemsFor(session?.role ?? "guest");
 
   return (
-    <header className="sticky top-9 z-40 border-b border-ink/10 bg-paper/90 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 md:px-6">
-        <Link href="/" className="font-editorial flex items-center text-xl font-bold tracking-tight text-ink">
+    <header className="font-editorial-body sticky top-9 z-40 border-b border-line bg-paper">
+      <div className="mx-auto flex h-[70px] max-w-6xl items-center justify-between px-4 md:px-6">
+        <Link href="/" className="font-editorial flex items-center text-xl text-ink">
           WANO
-          <span className="text-vermilion">.</span>
+          <span className="text-ember">.</span>
         </Link>
 
         <nav className="hidden items-center gap-5 overflow-x-auto md:flex">
@@ -36,15 +36,15 @@ export function SiteHeader({
             <>
               <Link
                 href="/login"
-                className="hidden text-sm font-medium text-ink/80 sm:inline"
+                className="hidden text-sm font-medium text-ink sm:inline"
               >
                 Log in
               </Link>
               <Link
                 href="/signup"
-                className="rounded-full bg-vermilion px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110"
+                className="rounded-full bg-ember px-[22px] py-3 text-sm font-medium text-paper transition hover:bg-ember-hover"
               >
-                Join free
+                Join Wano
               </Link>
             </>
           )}
