@@ -39,7 +39,7 @@ export function AfconCountdown() {
   }
 
   if (timeLeft === "started") {
-    return <span className="text-sm font-semibold text-marigold-300">Kickoff is here 🎉</span>;
+    return <span className="text-sm font-semibold text-gold">Kickoff is here 🎉</span>;
   }
 
   return (

@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import { Fraunces } from "next/font/google";
+import { Space_Grotesk } from "next/font/google";
+import { JetBrains_Mono } from "next/font/google";
 import { AnchorProvider } from "@/components/afcon/anchor-provider";
 import { BottomNav } from "@/components/bottom-nav";
 import { InstallPrompt } from "@/components/install-prompt";
@@ -30,6 +32,23 @@ const fraunces = Fraunces({
   variable: "--font-fraunces",
   subsets: ["latin"],
   weight: ["500", "600", "700"],
+});
+
+// Editorial redesign typefaces — used only on the public marketing/discovery
+// pages (home, journeys, afcon, verified, contact) via the .font-editorial
+// and .eyebrow utilities in globals.css. Fraunces above stays the display
+// font everywhere else (journal, existing headers) so this is additive, not
+// a site-wide font swap.
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-editorial-display",
+  subsets: ["latin"],
+  weight: ["500", "700"],
+});
+
+const jetBrainsMono = JetBrains_Mono({
+  variable: "--font-editorial-mono",
+  subsets: ["latin"],
+  weight: ["500"],
 });
 
 export const metadata: Metadata = {
@@ -84,7 +103,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${fraunces.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${fraunces.variable} ${spaceGrotesk.variable} ${jetBrainsMono.variable} h-full antialiased`}
     >
       <body
         className="min-h-full flex flex-col bg-background text-foreground"

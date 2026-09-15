@@ -67,11 +67,12 @@ export function navItemsFor(role: SessionPayload["role"] | "guest"): NavItem[] {
     ];
   }
   return [
-    { href: "/", label: "Home", icon: "home" },
     { href: "/explore", label: "Explore", icon: "compass" },
+    { href: "/journeys", label: "Journeys", icon: "flag" },
     { href: "/events", label: "Events", icon: "calendar" },
-    { href: "/how-it-works", label: "How it works", icon: "flag" },
-    ...(AFCON_CLUB_ENABLED ? [{ href: "/afcon", label: "AFCON", icon: "trophy" } as const] : []),
+    ...(AFCON_CLUB_ENABLED ? [{ href: "/afcon", label: "AFCON 27", icon: "trophy" } as const] : []),
+    { href: "/verified", label: "Verified", icon: "tag" },
+    { href: "/contact", label: "Contact", icon: "mail" },
   ];
 }
 

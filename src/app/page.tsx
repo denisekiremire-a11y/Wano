@@ -28,62 +28,65 @@ export default async function LandingPage() {
   ]);
 
   return (
-    <main>
-      <section className="relative overflow-hidden bg-forest-950">
-        <div
-          className="absolute inset-0 opacity-40"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 15% 20%, rgba(224,161,28,0.25), transparent 45%), radial-gradient(circle at 85% 0%, rgba(42,148,189,0.35), transparent 40%)",
-          }}
-        />
-        <div className="relative mx-auto max-w-6xl px-4 py-20 md:px-6 md:py-28">
-          <p className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium uppercase tracking-wide text-marigold-300">
-            Discover. Connect. Experience.
-          </p>
-          <h1 className="max-w-2xl font-display text-4xl font-semibold leading-tight text-white md:text-6xl">
-            Kampala, wherever you find it.
-          </h1>
-          <p className="mt-5 max-w-xl text-lg text-forest-100">
-            Wano is the social discovery platform for Kampala and Uganda — places, events,
-            experiences, restaurants, and communities, plus real bookings you can trust.
-          </p>
-          <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Link
-              href="/signup"
-              className="rounded-full bg-marigold-500 px-6 py-3 text-sm font-semibold text-forest-950 shadow-lg shadow-marigold-500/20 transition hover:bg-marigold-400"
-            >
-              Join Wano free
-            </Link>
-            <Link
-              href="/explore"
-              className="rounded-full border border-white/25 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
-            >
-              Explore without an account
-            </Link>
+    <main className="bg-paper">
+      <section className="mx-auto max-w-6xl px-4 pt-6 md:px-6">
+        <div className="relative overflow-hidden rounded-3xl bg-ink">
+          <div
+            className="absolute inset-0 opacity-70"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle at 15% 15%, rgba(226,165,60,0.35), transparent 45%), radial-gradient(circle at 90% 85%, rgba(225,83,31,0.3), transparent 50%)",
+            }}
+          />
+          <div className="relative px-6 py-16 md:px-14 md:py-24">
+            <p className="eyebrow text-gold">Kampala · Discover. Connect. Experience.</p>
+            <h1 className="font-editorial mt-4 max-w-2xl text-5xl font-bold leading-[0.95] text-white md:text-7xl">
+              Kampala, wherever you <span className="text-gold">find it.</span>
+            </h1>
+            <p className="mt-5 max-w-xl text-lg text-white/75">
+              Wano is the social discovery platform for Kampala and Uganda — places, events,
+              experiences, restaurants, and communities, plus real bookings you can trust.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <Link
+                href="/signup"
+                className="rounded-full bg-vermilion px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-vermilion/20 transition hover:brightness-110"
+              >
+                Join Wano free
+              </Link>
+              <Link
+                href="/explore"
+                className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-ink transition hover:bg-white/90"
+              >
+                Explore without an account
+              </Link>
+            </div>
+            <p className="mt-6 text-xs text-white/60">
+              <Link href="/afcon" className="underline-offset-2 hover:underline">
+                Wano × AFCON 2027
+              </Link>{" "}
+              is our launch campaign — 19 Jun – 17 Jul 2027, co-hosted by Uganda, Kenya &amp;
+              Tanzania.
+            </p>
           </div>
-          <p className="mt-6 text-xs text-forest-200/80">
-            <Link href="/afcon" className="underline-offset-2 hover:underline">
-              Wano × AFCON 2027
-            </Link>{" "}
-            is our launch campaign — 19 Jun – 17 Jul 2027, co-hosted by Uganda, Kenya &amp;
-            Tanzania.
-          </p>
         </div>
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-14 md:px-6">
-        <div className="grid gap-6 sm:grid-cols-4">
+        <p className="eyebrow text-vermilion">How you&apos;ll wander</p>
+        <h2 className="font-editorial mt-2 text-3xl font-bold text-ink md:text-4xl">Four ways in</h2>
+        <div className="mt-6 grid gap-6 sm:grid-cols-4">
           {[
-            { icon: CompassIcon, title: "Explore", body: "Places, experiences and curated journeys across Kampala and beyond." },
-            { icon: CalendarIcon, title: "Events", body: "Concerts, watch parties, festivals and meetups — mark yourself Going." },
-            { icon: ChatIcon, title: "Social", body: "Follow people, share moments, and find your community." },
-            { icon: TicketIcon, title: "Book", body: "Real bookings, direct with the business — no fake payments, ever." },
-          ].map((step) => (
-            <div key={step.title} className="rounded-2xl border border-forest-900/10 bg-white p-6">
-              <step.icon className="h-8 w-8 text-forest-700" />
-              <h3 className="mt-4 font-display text-lg font-semibold text-forest-900">{step.title}</h3>
-              <p className="mt-2 text-sm text-forest-800/70">{step.body}</p>
+            { icon: CompassIcon, title: "Explore", body: "Places, experiences and curated journeys across Kampala and beyond.", tone: "bg-ink text-white" },
+            { icon: CalendarIcon, title: "Events", body: "Concerts, watch parties, festivals and meetups — mark yourself Going.", tone: "bg-gold text-ink" },
+            { icon: ChatIcon, title: "Social", body: "Follow people, share moments, and find your community.", tone: "bg-vermilion text-white" },
+            { icon: TicketIcon, title: "Book", body: "Real bookings, direct with the business — no fake payments, ever.", tone: "bg-ink text-white" },
+          ].map((step, i) => (
+            <div key={step.title} className={`rounded-2xl p-6 ${step.tone}`}>
+              <p className="eyebrow opacity-70">{String(i + 1).padStart(2, "0")}</p>
+              <step.icon className="mt-3 h-7 w-7 opacity-90" />
+              <h3 className="font-editorial mt-4 text-lg font-bold">{step.title}</h3>
+              <p className="mt-2 text-sm opacity-80">{step.body}</p>
             </div>
           ))}
         </div>
@@ -98,7 +101,7 @@ export default async function LandingPage() {
       <section className="mx-auto max-w-6xl px-4 py-6 md:px-6">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <h2 className="font-display text-2xl font-semibold text-forest-900 md:text-3xl">
+            <h2 className="font-editorial text-2xl font-bold text-ink md:text-3xl">
               Wano Journeys
             </h2>
             <p className="mt-1 text-sm text-forest-800/70">
@@ -152,7 +155,7 @@ export default async function LandingPage() {
       <section className="mx-auto max-w-6xl px-4 py-14 md:px-6">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <h2 className="font-display text-2xl font-semibold text-forest-900 md:text-3xl">
+            <h2 className="font-editorial text-2xl font-bold text-ink md:text-3xl">
               Trending places
             </h2>
             <p className="mt-1 text-sm text-forest-800/70">

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { HeaderLogoutButton } from "@/components/header-logout-button";
+import { HeaderNavLink } from "@/components/header-nav-link";
 import { HeaderSearch } from "@/components/header-search";
 import { navItemsFor } from "@/lib/nav-items";
 import type { SessionPayload } from "@/lib/session";
@@ -14,31 +15,16 @@ export function SiteHeader({
   const items = navItemsFor(session?.role ?? "guest");
 
   return (
-    <header className="sticky top-9 z-40 border-b border-forest-900/10 bg-sand-50/90 backdrop-blur">
+    <header className="sticky top-9 z-40 border-b border-ink/10 bg-paper/90 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 md:px-6">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-forest-800 to-forest-600 text-marigold-300 font-display text-base font-bold">
-            W
-          </span>
-          <span className="font-display text-lg font-semibold text-forest-900">
-            Wano
-          </span>
+        <Link href="/" className="font-editorial flex items-center text-xl font-bold tracking-tight text-ink">
+          WANO
+          <span className="text-vermilion">.</span>
         </Link>
 
         <nav className="hidden items-center gap-5 overflow-x-auto md:flex">
           {items.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="relative shrink-0 whitespace-nowrap text-sm font-medium text-forest-800/80 transition hover:text-forest-900"
-            >
-              {item.label}
-              {navBadges[item.href] > 0 && (
-                <span className="absolute -right-3 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-semibold text-white">
-                  {navBadges[item.href]}
-                </span>
-              )}
-            </Link>
+            <HeaderNavLink key={item.href} href={item.href} label={item.label} badge={navBadges[item.href]} />
           ))}
         </nav>
 
@@ -50,13 +36,13 @@ export function SiteHeader({
             <>
               <Link
                 href="/login"
-                className="hidden text-sm font-medium text-forest-800 sm:inline"
+                className="hidden text-sm font-medium text-ink/80 sm:inline"
               >
                 Log in
               </Link>
               <Link
                 href="/signup"
-                className="rounded-full bg-marigold-500 px-4 py-2 text-sm font-semibold text-forest-950 shadow-sm transition hover:bg-marigold-400"
+                className="rounded-full bg-vermilion px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110"
               >
                 Join free
               </Link>

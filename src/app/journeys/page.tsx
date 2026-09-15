@@ -33,26 +33,26 @@ export default async function JourneysPage({
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-12 md:px-6">
-      <p className="text-xs font-medium uppercase tracking-wide text-nile-700">
+    <main className="mx-auto max-w-4xl bg-paper px-4 py-12 md:px-6">
+      <p className="eyebrow text-vermilion">
         {isExplore ? "All verified places" : "The five Wano Journeys"}
       </p>
-      <h1 className="mt-2 font-display text-3xl font-semibold text-forest-900 md:text-4xl">
+      <h1 className="font-editorial mt-2 text-3xl font-bold text-ink md:text-4xl">
         {isExplore
           ? "Hotels, restaurants and experiences near you."
           : "Find the trip that matches why you're here."}
       </h1>
-      <p className="mt-3 max-w-2xl text-forest-800/75">
+      <p className="mt-3 max-w-2xl text-ink/70">
         {isExplore
           ? "Search across every Wano-verified place — not just the five Wano Journeys. Still the same trusted, verified-only network."
           : "Every business below is Wano-verified. Expand a journey to see who's on it — sign up and book to unlock that journey's member deals."}
       </p>
 
-      <div className="mt-6 inline-flex rounded-full bg-forest-50 p-1">
+      <div className="mt-6 inline-flex rounded-full bg-white p-1 shadow-sm">
         <Link
           href="/journeys"
           className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
-            !isExplore ? "bg-forest-800 text-white" : "text-forest-800/70"
+            !isExplore ? "bg-ink text-white" : "text-ink/60"
           }`}
         >
           By journey
@@ -60,7 +60,7 @@ export default async function JourneysPage({
         <Link
           href="/journeys?view=all"
           className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
-            isExplore ? "bg-forest-800 text-white" : "text-forest-800/70"
+            isExplore ? "bg-ink text-white" : "text-ink/60"
           }`}
         >
           All places

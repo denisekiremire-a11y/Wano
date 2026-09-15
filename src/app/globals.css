@@ -65,6 +65,17 @@
   --color-sand-50: var(--color-bg-page);
   --color-sand-100: var(--color-border);
   --color-sand-200: #d3dee9;
+
+  /* --- Editorial redesign palette (additive) ---
+     Used only by the public marketing/discovery pages (home, journeys,
+     afcon, verified, contact) via .eyebrow/.font-editorial and the
+     ink/gold/vermilion/paper utilities below. Everything else in the app
+     (admin, vendor dashboard, booking flows, explore, passport, ...) keeps
+     the forest/marigold/nile palette above untouched. */
+  --color-ink: #1c1410;
+  --color-gold: #e2a53c;
+  --color-vermilion: #e1531f;
+  --color-paper: #fbf6ee;
 }
 
 /* AFCON 2027 season skin — SeasonProvider sets data-season on a wrapper
@@ -128,8 +139,32 @@
   --color-sand-100: var(--color-sand-100);
   --color-sand-200: var(--color-sand-200);
 
+  --color-ink: var(--color-ink);
+  --color-gold: var(--color-gold);
+  --color-vermilion: var(--color-vermilion);
+  --color-paper: var(--color-paper);
+
   --font-sans: var(--font-geist-sans);
   --font-display: var(--font-fraunces);
+  --font-editorial: var(--font-editorial-display);
+  --font-editorial-mono: var(--font-editorial-mono);
+}
+
+/* --- Editorial redesign utilities ---
+   .eyebrow: the small tracked-out mono label above a headline (e.g.
+   "AFCON 2027 · KAMPALA", "TOURNAMENT DATES"). .font-editorial: the bold
+   display headline face. Both scoped to the redesigned marketing pages. */
+@utility eyebrow {
+  font-family: var(--font-editorial-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+@utility font-editorial {
+  font-family: var(--font-editorial-display), Arial, sans-serif;
+  letter-spacing: -0.01em;
 }
 
 body {
