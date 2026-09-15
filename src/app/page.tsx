@@ -88,17 +88,21 @@ export default async function LandingPage() {
         </div>
         <div className="mt-10 grid gap-4 sm:grid-cols-4">
           {[
-            { icon: CompassIcon, title: "Explore", body: "Places, experiences and curated journeys across Kampala and beyond." },
-            { icon: CalendarIcon, title: "Events", body: "Concerts, watch parties, festivals and meetups — mark yourself Going." },
-            { icon: ChatIcon, title: "Social", body: "Follow people, share moments, and find your community." },
-            { icon: TicketIcon, title: "Book", body: "Real bookings, direct with the business — no fake payments, ever." },
+            { href: "/explore", icon: CompassIcon, title: "Explore", body: "Places, experiences and curated journeys across Kampala and beyond." },
+            { href: "/events", icon: CalendarIcon, title: "Events", body: "Concerts, watch parties, festivals and meetups — mark yourself Going." },
+            { href: "/social", icon: ChatIcon, title: "Social", body: "Follow people, share moments, and find your community." },
+            { href: "/explore", icon: TicketIcon, title: "Book", body: "Real bookings, direct with the business — no fake payments, ever." },
           ].map((step, i) => (
-            <div key={step.title} className="rounded-[20px] border border-line bg-paper p-7">
+            <Link
+              key={step.title}
+              href={step.href}
+              className="rounded-[20px] border border-line bg-paper p-7 transition hover:border-ember"
+            >
               <p className="eyebrow text-ember">{String(i + 1).padStart(2, "0")}</p>
               <step.icon className="mt-4 h-7 w-7 text-ink" />
               <h3 className="font-editorial mt-4 text-2xl text-ink">{step.title}</h3>
               <p className="mt-2 text-sm text-muted">{step.body}</p>
-            </div>
+            </Link>
           ))}
         </div>
       </section>
