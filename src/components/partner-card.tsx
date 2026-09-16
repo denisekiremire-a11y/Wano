@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { DistanceBadge } from "@/components/afcon/distance-badge";
+import { HeartIcon } from "@/components/icons";
 import { ListingTypeIcon } from "@/components/listing-type-icon";
 import { OfferTeaser } from "@/components/offer-teaser";
 import { RatingBadge } from "@/components/rating-badge";
@@ -61,8 +62,16 @@ export function PartnerCard({
             </span>
             <VerifiedBadge status={vendor.accreditationStatus} />
           </div>
-          {session?.role === "traveller" && (
+          {session?.role === "traveller" ? (
             <SaveButton listingId={listing.id} initialSaved={saved ?? false} />
+          ) : (
+            <Link
+              href="/signup"
+              aria-label="Create a free account to save this place"
+              className="flex-none rounded-full p-1.5 text-forest-800/30 transition hover:text-forest-800/60"
+            >
+              <HeartIcon className="h-5 w-5" />
+            </Link>
           )}
         </div>
         <Link

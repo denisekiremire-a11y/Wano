@@ -1,15 +1,21 @@
 import Link from "next/link";
 import { EventCard } from "@/components/event-card";
-import { getAttendanceCounts, getDistinctEventCategories, getUpcomingEvents } from "@/lib/data/events";
+import {
+  getAttendanceCounts,
+  getDistinctEventCategories,
+  getEventsForToday,
+  getUpcomingEvents,
+} from "@/lib/data/events";
 
 export default async function EventsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string }>;
+  searchParams: Promise<{ category?: string; when?: string }>;
 }) {
-  const { category } = await searchParams;
+  const { category, when } = await searchParams;
+  const isToday = when === "today";
   const [events, categories] = await Promise.all([
-    getUpcomingEvents({ category }),
+    isToday ? getEventsForToday(50) : getUpcomingEvents({ category }),
     getDistinctEventCategories(),
   ]);
   const counts = await getAttendanceCounts(events.map((e) => e.event.id));
@@ -29,10 +35,18 @@ export default async function EventsPage({
         <Link
           href="/events"
           className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
-            !category ? "bg-forest-800 text-white" : "bg-forest-50 text-forest-800/70"
+            !category && !isToday ? "bg-forest-800 text-white" : "bg-forest-50 text-forest-800/70"
           }`}
         >
           All
+        </Link>
+        <Link
+          href="/events?when=today"
+          className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
+            isToday ? "bg-forest-800 text-white" : "bg-forest-50 text-forest-800/70"
+          }`}
+        >
+          Today
         </Link>
         {categories.map((c) => (
           <Link
@@ -58,7 +72,9 @@ export default async function EventsPage({
         ))}
         {events.length === 0 && (
           <p className="col-span-full rounded-xl border border-forest-900/10 bg-white p-6 text-center text-sm text-forest-800/60">
-            No upcoming events in this category yet — check back soon.
+            {isToday
+              ? "Nothing left today — check back tomorrow, or see everything upcoming."
+              : "No upcoming events in this category yet — check back soon."}
           </p>
         )}
       </div>

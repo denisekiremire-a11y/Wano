@@ -11,6 +11,7 @@ export type NavItem = {
     | "tag"
     | "flag"
     | "grid"
+    | "heart"
     | "megaphone"
     | "chart"
     | "users"
@@ -30,6 +31,7 @@ export function navItemsFor(role: SessionPayload["role"] | "guest"): NavItem[] {
       { href: "/explore", label: "Explore", icon: "compass" },
       { href: "/events", label: "Events", icon: "calendar" },
       { href: "/social", label: "Social", icon: "chat" },
+      { href: "/saved", label: "Saved", icon: "heart" },
       { href: "/messages", label: "Messages", icon: "mail" },
       { href: "/passport", label: "Passport", icon: "stamp" },
       ...(AFCON_CLUB_ENABLED ? [{ href: "/afcon", label: "AFCON", icon: "trophy" } as const] : []),

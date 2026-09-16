@@ -2,16 +2,51 @@ import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AfconPromoCard } from "@/components/afcon/afcon-promo-card";
-import { CalendarIcon, ChatIcon, CompassIcon, TicketIcon } from "@/components/icons";
+import { TicketIcon } from "@/components/icons";
 import { JourneyArt } from "@/components/journey-art";
 import { PartnerCard } from "@/components/partner-card";
 import { getBirthdayPerksForListings } from "@/lib/data/birthday";
 import { AFCON_CLUB_ENABLED } from "@/lib/feature-flags";
+import { getEventsForToday } from "@/lib/data/events";
 import { getJourneyTagsForListings, getJourneys, searchListings } from "@/lib/data/journeys";
 import { getListingImageIds } from "@/lib/data/listing-images";
 import { getRatingSummaries } from "@/lib/data/reviews";
 import { journeyTheme } from "@/lib/journey-theme";
 import { getSession } from "@/lib/session";
+
+const CATEGORIES = [
+  { href: "/explore?type=restaurant", emoji: "🍴", label: "Eat & Drink" },
+  { href: "/events", emoji: "🎵", label: "Events & Nightlife" },
+  { href: "/explore", emoji: "🌍", label: "Explore Uganda" },
+  { href: "/social", emoji: "👥", label: "Meet & Connect" },
+];
+
+const PERSONAS = [
+  {
+    href: "/explore",
+    emoji: "🇺🇬",
+    title: "I live here",
+    body: "Find something to do today.",
+    tags: "Events · Food · Friends · Experiences",
+    cta: "Explore Kampala →",
+  },
+  {
+    href: "/journeys",
+    emoji: "✈️",
+    title: "I'm visiting",
+    body: "Make the most of your time in Uganda.",
+    tags: "Journeys · Hotels · Experiences · Restaurants",
+    cta: "Plan my trip →",
+  },
+  {
+    href: "/afcon",
+    emoji: "⚽",
+    title: "I'm here for AFCON",
+    body: "Turn match day into a Ugandan experience.",
+    tags: "Food · Culture · Nightlife · Adventures",
+    cta: "Explore AFCON →",
+  },
+];
 
 export default async function LandingPage() {
   const session = await getSession();
@@ -19,7 +54,11 @@ export default async function LandingPage() {
   if (session?.role === "vendor") redirect("/vendor/dashboard");
   if (session?.role === "admin") redirect("/admin");
 
-  const [journeyList, featured] = await Promise.all([getJourneys(), searchListings()]);
+  const [journeyList, featured, todayEvents] = await Promise.all([
+    getJourneys(),
+    searchListings(),
+    getEventsForToday(4),
+  ]);
   const featuredListings = featured.slice(0, 3);
   const [journeyTagsByListing, ratings, birthdayPerks, imagesByListing] = await Promise.all([
     getJourneyTagsForListings(featuredListings.map((r) => r.listing.id)),
@@ -48,67 +87,115 @@ export default async function LandingPage() {
             }}
           />
           <div className="relative px-6 py-16 md:px-14 md:py-24">
-            <p className="eyebrow text-ember">Kampala · Discover. Connect. Experience.</p>
-            <h1 className="font-editorial mt-4 max-w-2xl text-5xl font-bold leading-[0.95] text-white md:text-7xl">
-              Kampala, wherever you <span className="text-gold">find it.</span>
+            <p className="eyebrow text-ember">Kampala · Uganda</p>
+            <h1 className="font-editorial mt-4 max-w-2xl text-5xl font-bold leading-[0.95] text-white md:text-6xl">
+              What do you want to do in Uganda?
             </h1>
             <p className="mt-5 max-w-xl text-lg text-white/75">
-              Wano is the social discovery platform for Kampala and Uganda — places, events,
-              experiences, restaurants, and communities, plus real bookings you can trust.
+              Find places. Discover experiences. Meet people. Build your trip.
             </p>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Link
-                href="/signup"
-                className="rounded-full bg-ember px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-ink"
-              >
-                Join Wano free
-              </Link>
+
+            <div className="mt-8 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
+              {CATEGORIES.map((c) => (
+                <Link
+                  key={c.label}
+                  href={c.href}
+                  className="flex items-center gap-2 rounded-full bg-white/10 px-5 py-3 text-sm font-semibold text-white ring-1 ring-white/25 backdrop-blur transition hover:bg-white/20"
+                >
+                  <span aria-hidden>{c.emoji}</span>
+                  {c.label}
+                </Link>
+              ))}
+            </div>
+
+            <div className="mt-6 flex flex-wrap items-center gap-3">
               <Link
                 href="/explore"
+                className="rounded-full bg-ember px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-ink"
+              >
+                Explore Kampala
+              </Link>
+              <Link
+                href="/journeys"
                 className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-ink transition-colors hover:bg-gold"
               >
-                Explore without an account
+                Plan a Trip
               </Link>
             </div>
-            <p className="mt-6 text-xs text-white/60">
-              <Link href="/afcon" className="underline-offset-2 hover:underline">
-                Wano × AFCON 2027
-              </Link>{" "}
-              is our launch campaign — 19 Jun – 17 Jul 2027, co-hosted by Uganda, Kenya &amp;
-              Tanzania.
-            </p>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-24 md:px-6">
-        <div className="flex items-baseline gap-4">
-          <p className="eyebrow text-ember">How you&apos;ll wander</p>
-          <h2 className="font-editorial text-4xl text-ink md:text-5xl">Four ways in</h2>
+      <section className="mx-auto max-w-6xl px-4 py-16 md:px-6">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <p className="eyebrow text-ember">📍 Kampala</p>
+            <h2 className="font-editorial mt-2 text-3xl text-ink md:text-4xl">
+              What&apos;s happening today?
+            </h2>
+          </div>
+          <Link href="/events?when=today" className="hidden text-sm font-semibold text-ember sm:inline">
+            View everything →
+          </Link>
         </div>
-        <div className="mt-10 grid gap-4 sm:grid-cols-4">
-          {[
-            { href: "/explore", icon: CompassIcon, title: "Explore", body: "Places, experiences and curated journeys across Kampala and beyond." },
-            { href: "/events", icon: CalendarIcon, title: "Events", body: "Concerts, watch parties, festivals and meetups — mark yourself Going." },
-            { href: "/social", icon: ChatIcon, title: "Social", body: "Follow people, share moments, and find your community." },
-            { href: "/explore", icon: TicketIcon, title: "Book", body: "Real bookings, direct with the business — no fake payments, ever." },
-          ].map((step, i) => (
+
+        {todayEvents.length > 0 ? (
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {todayEvents.map(({ event, organizer }) => (
+              <Link
+                key={event.id}
+                href={`/events/${event.id}`}
+                className="rounded-2xl border border-line bg-white p-5 transition hover:border-ember"
+              >
+                <p className="eyebrow text-ember">
+                  {new Date(event.startAt).toLocaleTimeString("en-GB", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </p>
+                <h3 className="font-editorial mt-2 text-lg text-ink">{event.title}</h3>
+                <p className="mt-1 text-sm text-ink/60">
+                  {event.location}
+                  {organizer?.businessName ? ` · ${organizer.businessName}` : ""}
+                </p>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-6 rounded-2xl border border-line bg-white p-6 text-center">
+            <p className="text-sm text-ink/60">Nothing scheduled for today yet.</p>
+            <Link href="/events" className="mt-2 inline-flex text-sm font-semibold text-ember">
+              See what&apos;s coming up →
+            </Link>
+          </div>
+        )}
+        <Link href="/events?when=today" className="mt-4 inline-flex text-sm font-semibold text-ember sm:hidden">
+          View everything →
+        </Link>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 pb-16 md:px-6">
+        <div className="grid gap-4 md:grid-cols-3">
+          {PERSONAS.map((p) => (
             <Link
-              key={step.title}
-              href={step.href}
-              className="rounded-[20px] border border-line bg-paper p-7 transition hover:border-ember"
+              key={p.title}
+              href={p.href}
+              className="rounded-2xl border border-line bg-white p-7 transition hover:border-ember"
             >
-              <p className="eyebrow text-ember">{String(i + 1).padStart(2, "0")}</p>
-              <step.icon className="mt-4 h-7 w-7 text-ink" />
-              <h3 className="font-editorial mt-4 text-2xl text-ink">{step.title}</h3>
-              <p className="mt-2 text-sm text-muted">{step.body}</p>
+              <span className="text-3xl" aria-hidden>
+                {p.emoji}
+              </span>
+              <h3 className="font-editorial mt-3 text-2xl text-ink">{p.title}</h3>
+              <p className="mt-1 text-sm text-ink/70">{p.body}</p>
+              <p className="eyebrow mt-3 text-ink/40">{p.tags}</p>
+              <p className="mt-4 text-sm font-semibold text-ember">{p.cta}</p>
             </Link>
           ))}
         </div>
       </section>
 
       {AFCON_CLUB_ENABLED && (
-        <section className="mx-auto max-w-6xl px-4 md:px-6">
+        <section className="mx-auto max-w-6xl px-4 pb-6 md:px-6">
           <AfconPromoCard />
         </section>
       )}

@@ -34,6 +34,23 @@ export async function getUpcomingEvents(filters: { category?: string; venueId?: 
   return rows;
 }
 
+/** Events starting later today (server-local calendar day) — backs the
+ * homepage's "What's happening today?" strip. Uses the server's own day
+ * boundary, same simple approach as the rest of the app's date handling
+ * (no per-traveller timezone lookup). */
+export async function getEventsForToday(limit = 4) {
+  const now = new Date();
+  const endOfDay = new Date(now);
+  endOfDay.setHours(23, 59, 59, 999);
+  const rows = await db
+    .select({ event: events, organizer: vendorProfiles })
+    .from(events)
+    .leftJoin(vendorProfiles, eq(events.organizerVendorProfileId, vendorProfiles.id))
+    .where(and(eq(events.active, true), gte(events.startAt, now)))
+    .orderBy(asc(events.startAt));
+  return rows.filter((r) => new Date(r.event.startAt) <= endOfDay).slice(0, limit);
+}
+
 export async function getEventsStartingWithinHours(hours: number, limit = 3) {
   const now = new Date();
   const cutoff = new Date(now.getTime() + hours * 60 * 60 * 1000);
