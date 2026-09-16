@@ -2,22 +2,24 @@
 
 :root {
   /* --- Editorial theme tokens (source of truth) ---
-     Same cream/ink/ember system as DESIGN.md, now the app-wide default
-     rather than just the marketing pages. */
-  --color-bg-page: #fbf6ee;
+     Matches the reference Lovable build's own design tokens exactly
+     (see Wano-design-guide-and-code.md) — oklch values straight from
+     that file, now the app-wide default rather than just the marketing
+     pages. Two accents: vermilion (primary CTAs) and gold (highlights),
+     plus leaf (verified/success) and clay (soft secondary). */
+  --color-bg-page: oklch(0.975 0.012 84); /* paper */
   --color-bg-surface: #ffffff;
-  --color-border: #e0dbd3;
-  --color-text-primary: #1e150e;
-  --color-text-muted: #60564b;
-  --color-brand: #2c2119; /* near-ink — nav, primary buttons */
-  /* Falls back to ember everywhere by default. During AFCON 2027
+  --color-border: oklch(0.205 0.02 64 / 12%); /* line */
+  --color-text-primary: oklch(0.205 0.02 64); /* ink */
+  --color-text-muted: oklch(0.46 0.022 74); /* ink-soft */
+  --color-brand: oklch(0.205 0.02 64); /* ink — nav, primary buttons */
+  /* Falls back to vermilion everywhere by default. During AFCON 2027
      ("live"/"matchday", see SeasonProvider's data-season attribute below)
-     it resolves to a slightly different warm tone instead — every
-     component that uses --color-accent (or the nile-* ramp derived from
-     it) shifts without knowing why. See the [data-season] rule further
-     down. */
-  --color-accent: var(--wano-season-accent, #db4603); /* ember — CTAs, active states */
-  --color-warm: #db4603; /* ember — badges, highlights */
+     it resolves to a warmer gold-leaning tone instead — every component
+     that uses --color-accent (or the nile-* ramp derived from it) shifts
+     without knowing why. See the [data-season] rule further down. */
+  --color-accent: var(--wano-season-accent, oklch(0.6 0.195 38)); /* vermilion — CTAs, active states */
+  --color-warm: oklch(0.8 0.145 78); /* gold — badges, highlights */
 
   --background: var(--color-bg-page);
   --foreground: var(--color-text-primary);
@@ -27,70 +29,78 @@
      re-pointing the values here re-themes the whole app without touching
      every component. 900/800 are pinned exactly to text-primary/brand;
      the rest is a generated warm-ink tint/shade ramp. */
-  --color-forest-950: #120b06;
+  --color-forest-950: oklch(0.12 0.02 64);
   --color-forest-900: var(--color-text-primary);
   --color-forest-800: var(--color-brand);
-  --color-forest-700: #403730;
-  --color-forest-600: #60564b;
-  --color-forest-500: #8a7f75;
-  --color-forest-400: #a89d92;
-  --color-forest-300: #c6bcb0;
-  --color-forest-200: #e0dbd3;
-  --color-forest-100: #ede8e1;
-  --color-forest-50: #f6f2ea;
+  --color-forest-700: oklch(0.35 0.02 64);
+  --color-forest-600: oklch(0.46 0.022 74);
+  --color-forest-500: oklch(0.58 0.025 70);
+  --color-forest-400: oklch(0.68 0.02 74);
+  --color-forest-300: oklch(0.78 0.018 78);
+  --color-forest-200: oklch(0.88 0.014 82);
+  --color-forest-100: oklch(0.93 0.012 84);
+  --color-forest-50: oklch(0.97 0.012 84);
 
-  /* "marigold" is now an ember-tinted ramp. 500 pinned exactly to `warm`
-     (ember) — DESIGN.md's single accent, not a second competing color. */
-  --color-marigold-900: #431600;
-  --color-marigold-800: #642300;
-  --color-marigold-700: #8a3300;
-  --color-marigold-600: #b03d02;
+  /* "marigold" is now the gold/warm ramp. 500 pinned exactly to `warm`. */
+  --color-marigold-900: oklch(0.35 0.09 70);
+  --color-marigold-800: oklch(0.48 0.11 74);
+  --color-marigold-700: oklch(0.6 0.13 76);
+  --color-marigold-600: oklch(0.7 0.14 77);
   --color-marigold-500: var(--color-warm);
-  --color-marigold-400: #e2703f;
-  --color-marigold-300: #e99870;
-  --color-marigold-200: #f0bda0;
-  --color-marigold-100: #f6ddcc;
-  --color-marigold-50: #fbeee5;
+  --color-marigold-400: oklch(0.85 0.11 80);
+  --color-marigold-300: oklch(0.9 0.08 82);
+  --color-marigold-200: oklch(0.94 0.05 83);
+  --color-marigold-100: oklch(0.97 0.025 84);
+  --color-marigold-50: oklch(0.98 0.012 84);
 
-  /* "nile" is now the accent/ember ramp. 700 pinned exactly to `accent`. */
-  --color-nile-950: #2a0c00;
-  --color-nile-900: #431600;
-  --color-nile-800: #642300;
+  /* "nile" is now the accent/vermilion ramp. 700 pinned exactly to `accent`. */
+  --color-nile-950: oklch(0.18 0.08 38);
+  --color-nile-900: oklch(0.28 0.12 38);
+  --color-nile-800: oklch(0.42 0.16 38);
   --color-nile-700: var(--color-accent);
-  --color-nile-600: #e2602a;
-  --color-nile-500: #e87c52;
-  --color-nile-400: #ee9c7c;
-  --color-nile-300: #f3bca6;
-  --color-nile-200: #f7d6c8;
-  --color-nile-100: #fbe9e0;
-  --color-nile-50: #fdf4ef;
+  --color-nile-600: oklch(0.66 0.18 38);
+  --color-nile-500: oklch(0.72 0.15 40);
+  --color-nile-400: oklch(0.79 0.11 45);
+  --color-nile-300: oklch(0.86 0.08 50);
+  --color-nile-200: oklch(0.91 0.05 55);
+  --color-nile-100: oklch(0.95 0.03 60);
+  --color-nile-50: oklch(0.98 0.015 65);
 
   /* "sand" is now the pale-page family. 50 pinned to bg-page, 100 to border. */
   --color-sand-50: var(--color-bg-page);
   --color-sand-100: var(--color-border);
-  --color-sand-200: #d4cdc2;
+  --color-sand-200: oklch(0.9 0.015 80);
 
   /* --- Editorial palette (named tokens) ---
-     Same values as the ramps above, exposed under DESIGN.md's own names
-     (ink/ember/paper/...) for the pages already written against them. */
-  --color-ink: #1e150e;
-  --color-ember: #db4603;
-  --color-ember-hover: #c23d02;
-  --color-muted: #60564b;
-  --color-line: #e0dbd3;
-  --color-ink-line: #403730;
-  --color-ink-muted: #8a7f75;
-  --color-cream-muted: rgba(251, 246, 238, 0.75);
-  --color-paper: #fbf6ee;
+     ink/paper/line/muted exactly as the reference. "ember" is kept as a
+     name (rather than renamed to "vermilion") since it's already used
+     across the redesigned pages' class names — its value now equals
+     vermilion. gold/leaf/clay/vermilion/ink-soft are exposed directly
+     too, for spots that want the reference's exact utility names. */
+  --color-ink: oklch(0.205 0.02 64);
+  --color-ember: oklch(0.6 0.195 38); /* = vermilion */
+  --color-ember-hover: oklch(0.52 0.18 36);
+  --color-muted: oklch(0.46 0.022 74);
+  --color-line: oklch(0.205 0.02 64 / 12%);
+  --color-ink-line: oklch(0.205 0.02 64 / 24%);
+  --color-ink-muted: oklch(0.58 0.025 72);
+  --color-cream-muted: oklch(0.975 0.012 84 / 75%);
+  --color-paper: oklch(0.975 0.012 84);
+  --color-vermilion: oklch(0.6 0.195 38);
+  --color-gold: oklch(0.8 0.145 78);
+  --color-leaf: oklch(0.5 0.118 150);
+  --color-clay: oklch(0.72 0.06 58);
+  --color-ink-soft: oklch(0.46 0.022 74);
 }
 
 /* AFCON 2027 season skin — SeasonProvider sets data-season on a wrapper
    around the whole app (app/layout.tsx). Only "live" and "matchday" warm
-   the accent; buildup/afterglow/off keep the plain teal, since the ask was
-   for the tournament itself to feel warmer, not the run-up or the recap. */
+   the accent; buildup/afterglow/off keep the plain vermilion, since the
+   ask was for the tournament itself to feel warmer, not the run-up or the
+   recap. */
 [data-season="live"],
 [data-season="matchday"] {
-  --wano-season-accent: #c17a3a;
+  --wano-season-accent: oklch(0.72 0.15 60);
 }
 
 @theme inline {
@@ -154,6 +164,11 @@
   --color-ink-muted: var(--color-ink-muted);
   --color-cream-muted: var(--color-cream-muted);
   --color-paper: var(--color-paper);
+  --color-vermilion: var(--color-vermilion);
+  --color-gold: var(--color-gold);
+  --color-leaf: var(--color-leaf);
+  --color-clay: var(--color-clay);
+  --color-ink-soft: var(--color-ink-soft);
 
   --font-sans: var(--font-editorial-body);
   --font-display: var(--font-editorial-display);
@@ -161,10 +176,11 @@
   --font-editorial-mono: var(--font-editorial-mono);
   --font-editorial-body: var(--font-editorial-body);
 
-  /* DESIGN.md: no drop shadows anywhere in the app. Zeroing the shadow
-     tokens neutralizes every existing shadow-sm/md/lg/xl/2xl/inner
-     utility site-wide without touching each call site. Focus-visible
-     rings use --tw-ring-* separately and are unaffected. */
+  /* The reference build's poster-style cards are flat — no drop shadow
+     appears anywhere in its source. Zeroing the shadow tokens neutralizes
+     every existing shadow-sm/md/lg/xl/2xl/inner utility site-wide without
+     touching each call site. Focus-visible rings use --tw-ring-*
+     separately and are unaffected. */
   --shadow-2xs: 0 0 #0000;
   --shadow-xs: 0 0 #0000;
   --shadow-sm: 0 0 #0000;

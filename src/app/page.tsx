@@ -50,7 +50,7 @@ export default async function LandingPage() {
           <div className="relative px-6 py-16 md:px-14 md:py-24">
             <p className="eyebrow text-ember">Kampala · Discover. Connect. Experience.</p>
             <h1 className="font-editorial mt-4 max-w-2xl text-5xl font-bold leading-[0.95] text-white md:text-7xl">
-              Kampala, wherever you <span className="text-ember">find it.</span>
+              Kampala, wherever you <span className="text-gold">find it.</span>
             </h1>
             <p className="mt-5 max-w-xl text-lg text-white/75">
               Wano is the social discovery platform for Kampala and Uganda — places, events,
@@ -59,13 +59,13 @@ export default async function LandingPage() {
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link
                 href="/signup"
-                className="rounded-full bg-ember px-6 py-3 text-sm font-semibold text-white transition hover:bg-ember-hover"
+                className="rounded-full bg-ember px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-ink"
               >
                 Join Wano free
               </Link>
               <Link
                 href="/explore"
-                className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-ink transition hover:bg-white/90"
+                className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-ink transition-colors hover:bg-gold"
               >
                 Explore without an account
               </Link>
