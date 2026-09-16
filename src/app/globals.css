@@ -208,7 +208,11 @@
 
 @utility font-editorial {
   font-family: var(--font-editorial-display), Impact, sans-serif;
-  font-weight: 400;
+  /* !important: Anton only ships weight 400. Several headings pair
+     font-editorial with a font-bold/font-semibold utility, which — same
+     cascade layer, later in source order — would otherwise win and force
+     the browser to synthesize a bold Anton, mangling the condensed face. */
+  font-weight: 400 !important;
   line-height: 1;
   letter-spacing: -0.01em;
 }
@@ -225,6 +229,14 @@ body {
 
 .font-display {
   font-family: var(--font-display), Impact, sans-serif;
+  /* Anton only ships weight 400. Many headings pair `font-display` with a
+     Tailwind font-bold/font-semibold utility (from the pre-rebrand design);
+     without a real bold face, the browser synthesizes one by fattening the
+     glyphs, which mangles a condensed display face like this into an
+     overlapping, "too compact" mess. Force 400 here — as an unlayered
+     rule it wins over any font-bold/font-semibold utility regardless of
+     class order, sitewide, without editing each heading. */
+  font-weight: 400 !important;
   line-height: 1;
 }
 
