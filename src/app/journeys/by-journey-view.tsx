@@ -39,28 +39,38 @@ export function ByJourneyView({
           <details
             className="group overflow-hidden rounded-2xl border border-forest-900/10 bg-white open:shadow-md"
           >
-            <summary className="flex cursor-pointer list-none items-center gap-4 p-5">
+            <summary className="flex cursor-pointer list-none flex-col">
               <span
-                className="relative h-24 w-24 flex-none overflow-hidden rounded-xl sm:h-28 sm:w-28"
+                className="relative h-48 w-full overflow-hidden sm:h-56"
                 style={{ backgroundColor: theme.hero }}
                 aria-hidden
               >
                 {theme.image && (
-                  <Image src={theme.image} alt="" fill sizes="112px" className="object-cover" />
+                  <Image
+                    src={theme.image}
+                    alt=""
+                    fill
+                    sizes="(min-width: 768px) 700px, 100vw"
+                    className="object-cover"
+                  />
                 )}
+                <span className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-forest-800 transition group-open:rotate-180">
+                  ▾
+                </span>
               </span>
-              <div className="flex-1">
-                <h2 className="font-display text-lg font-semibold text-forest-900">
-                  <Link href={`/journeys/${journey.slug}`} className="hover:underline">
-                    {journey.name}
-                  </Link>
-                </h2>
-                <p className="text-sm text-forest-800/65">
-                  {journey.location} · {partners.length} verified business
-                  {partners.length === 1 ? "" : "es"}
-                </p>
+              <div className="flex items-start justify-between gap-4 p-5">
+                <div>
+                  <h2 className="font-display text-lg font-semibold text-forest-900">
+                    <Link href={`/journeys/${journey.slug}`} className="hover:underline">
+                      {journey.name}
+                    </Link>
+                  </h2>
+                  <p className="text-sm text-forest-800/65">
+                    {journey.location} · {partners.length} verified business
+                    {partners.length === 1 ? "" : "es"}
+                  </p>
+                </div>
               </div>
-              <span className="text-forest-800/50 transition group-open:rotate-180">▾</span>
             </summary>
 
             <div className="border-t border-forest-900/10 p-5 pt-4">

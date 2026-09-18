@@ -1,27 +1,12 @@
-import Link from "next/link";
 import { ByJourneyView } from "./by-journey-view";
-import { ExploreView } from "./explore-view";
 import { AnchorBar } from "@/components/afcon/anchor-bar";
-import {
-  getAllPublicListings,
-  getDistinctListingLocations,
-  getJourneyTagsForListings,
-  searchListings,
-} from "@/lib/data/journeys";
-import { getListingImageIds } from "@/lib/data/listing-images";
+import { getAllPublicListings } from "@/lib/data/journeys";
 import { AFCON_CLUB_ENABLED } from "@/lib/feature-flags";
 import { getPassportProgress, getTravellerProfileByUserId } from "@/lib/data/traveller";
-import type { ListingType } from "@/lib/listing-type";
 import { getSession } from "@/lib/session";
 
-export default async function JourneysPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ view?: string; type?: string; location?: string; q?: string }>;
-}) {
-  const { view, type, location, q } = await searchParams;
+export default async function JourneysPage() {
   const session = await getSession();
-  const isExplore = view === "all";
 
   let unlockedJourneyIds = new Set<string>();
   if (session?.role === "traveller") {
@@ -32,40 +17,18 @@ export default async function JourneysPage({
     }
   }
 
+  const journeysWithPartners = await getAllPublicListings();
+
   return (
     <main className="font-editorial-body mx-auto max-w-4xl bg-paper px-4 py-12 md:px-6">
-      <p className="eyebrow text-ember">
-        {isExplore ? "All verified places" : "The five Wano Journeys"}
-      </p>
+      <p className="eyebrow text-ember">The five Wano Journeys</p>
       <h1 className="font-editorial mt-2 text-3xl font-bold text-ink md:text-4xl">
-        {isExplore
-          ? "Hotels, restaurants and experiences near you."
-          : "Find the trip that matches why you're here."}
+        Find the trip that matches why you&apos;re here.
       </h1>
       <p className="mt-3 max-w-2xl text-ink/70">
-        {isExplore
-          ? "Search across every Wano-verified place — not just the five Wano Journeys. Still the same trusted, verified-only network."
-          : "Every business below is Wano-verified. Expand a journey to see who's on it — sign up and book to unlock that journey's member deals."}
+        Every business below is Wano-verified. Expand a journey to see who&apos;s on it — sign up
+        and book to unlock that journey&apos;s member deals.
       </p>
-
-      <div className="mt-6 inline-flex rounded-full border border-line bg-white p-1">
-        <Link
-          href="/journeys"
-          className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
-            !isExplore ? "bg-ink text-white" : "text-ink/60"
-          }`}
-        >
-          By journey
-        </Link>
-        <Link
-          href="/journeys?view=all"
-          className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
-            isExplore ? "bg-ink text-white" : "text-ink/60"
-          }`}
-        >
-          All places
-        </Link>
-      </div>
 
       {AFCON_CLUB_ENABLED && (
         <div className="mt-6">
@@ -74,75 +37,12 @@ export default async function JourneysPage({
       )}
 
       <div className="mt-6">
-        {isExplore ? (
-          <ExploreContent
-            session={session}
-            unlockedJourneyIds={unlockedJourneyIds}
-            type={type}
-            location={location}
-            q={q}
-          />
-        ) : (
-          <ByJourneyContent session={session} unlockedJourneyIds={unlockedJourneyIds} />
-        )}
+        <ByJourneyView
+          journeysWithPartners={journeysWithPartners}
+          unlockedJourneyIds={unlockedJourneyIds}
+          session={session}
+        />
       </div>
     </main>
-  );
-}
-
-async function ByJourneyContent({
-  session,
-  unlockedJourneyIds,
-}: {
-  session: Awaited<ReturnType<typeof getSession>>;
-  unlockedJourneyIds: Set<string>;
-}) {
-  const journeysWithPartners = await getAllPublicListings();
-  return (
-    <ByJourneyView
-      journeysWithPartners={journeysWithPartners}
-      unlockedJourneyIds={unlockedJourneyIds}
-      session={session}
-    />
-  );
-}
-
-async function ExploreContent({
-  session,
-  unlockedJourneyIds,
-  type,
-  location,
-  q,
-}: {
-  session: Awaited<ReturnType<typeof getSession>>;
-  unlockedJourneyIds: Set<string>;
-  type?: string;
-  location?: string;
-  q?: string;
-}) {
-  const validType = (
-    ["hotel", "restaurant", "experience", "transport", "spa_salon"] as const
-  ).includes(type as ListingType)
-    ? (type as ListingType)
-    : undefined;
-
-  const [results, locations] = await Promise.all([
-    searchListings({ type: validType, location: location || undefined, query: q || undefined }),
-    getDistinctListingLocations(),
-  ]);
-
-  const journeyTagsByListing = await getJourneyTagsForListings(results.map((r) => r.listing.id));
-  const imagesByListing = await getListingImageIds(results.map((r) => r.listing.id));
-
-  return (
-    <ExploreView
-      results={results}
-      journeyTagsByListing={journeyTagsByListing}
-      imagesByListing={imagesByListing}
-      locations={locations}
-      unlockedJourneyIds={unlockedJourneyIds}
-      session={session}
-      filters={{ type: validType, location, q }}
-    />
   );
 }

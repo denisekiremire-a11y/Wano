@@ -121,7 +121,7 @@ export function GettingThere({ transportOptions }: { transportOptions: Transport
           {transportOptions.length === 0 ? (
             <p className="mt-3 rounded-xl border border-forest-900/10 bg-white p-4 text-sm text-forest-800/60">
               No transport partners listed on Wano yet — check{" "}
-              <Link href="/journeys?view=all&type=transport" className="font-medium text-nile-700 hover:underline">
+              <Link href="/explore?type=transport" className="font-medium text-nile-700 hover:underline">
                 Explore
               </Link>{" "}
               for ride options in the meantime.
