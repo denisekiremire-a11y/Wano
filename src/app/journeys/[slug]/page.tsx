@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { JourneyArt } from "@/components/journey-art";
@@ -56,8 +57,19 @@ export default async function JourneyDetailPage({
         className="relative overflow-hidden py-16 text-white"
         style={{ backgroundColor: theme.hero }}
       >
-        <JourneyArt slug={journey.slug} className="absolute inset-0 opacity-40" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
+        {theme.image ? (
+          <Image
+            src={theme.image}
+            alt=""
+            fill
+            sizes="100vw"
+            priority
+            className="object-cover"
+          />
+        ) : (
+          <JourneyArt slug={journey.slug} className="absolute inset-0 opacity-40" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
         <div className="relative mx-auto max-w-4xl px-4 md:px-6">
           <Link href="/journeys" className="text-sm text-white/80 hover:underline">
             ← All journeys

@@ -224,8 +224,18 @@ export default async function LandingPage() {
                 href={`/journeys/${journey.slug}`}
                 className="group overflow-hidden rounded-2xl border border-line bg-white transition hover:border-ember"
               >
-                <div className="h-28 overflow-hidden" style={{ backgroundColor: theme.hero }}>
-                  <JourneyArt slug={journey.slug} className="h-full w-full opacity-35" />
+                <div className="relative h-28 overflow-hidden" style={{ backgroundColor: theme.hero }}>
+                  {theme.image ? (
+                    <Image
+                      src={theme.image}
+                      alt=""
+                      fill
+                      sizes="(min-width: 1024px) 360px, 100vw"
+                      className="object-cover"
+                    />
+                  ) : (
+                    <JourneyArt slug={journey.slug} className="h-full w-full opacity-35" />
+                  )}
                 </div>
                 <div className="p-5">
                   <span

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { AfconPromoCard } from "@/components/afcon/afcon-promo-card";
 import { JourneyArt } from "@/components/journey-art";
@@ -100,8 +101,18 @@ export default async function ExplorePage({
                 href={`/journeys/${journey.slug}`}
                 className="group overflow-hidden rounded-2xl border border-forest-900/10 bg-white transition hover:shadow-lg"
               >
-                <div className="h-20 overflow-hidden" style={{ backgroundColor: theme.hero }}>
-                  <JourneyArt slug={journey.slug} className="h-full w-full opacity-35" />
+                <div className="relative h-20 overflow-hidden" style={{ backgroundColor: theme.hero }}>
+                  {theme.image ? (
+                    <Image
+                      src={theme.image}
+                      alt=""
+                      fill
+                      sizes="(min-width: 1024px) 220px, 50vw"
+                      className="object-cover"
+                    />
+                  ) : (
+                    <JourneyArt slug={journey.slug} className="h-full w-full opacity-35" />
+                  )}
                 </div>
                 <div className="p-3">
                   <h3 className="font-display text-sm font-semibold text-forest-900">{journey.name}</h3>

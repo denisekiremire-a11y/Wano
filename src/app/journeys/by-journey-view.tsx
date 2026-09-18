@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { AnchorSortedList, type AnchorSortableItem } from "@/components/afcon/anchor-sorted-list";
 import { DistanceBadge } from "@/components/afcon/distance-badge";
@@ -40,10 +41,14 @@ export function ByJourneyView({
           >
             <summary className="flex cursor-pointer list-none items-center gap-4 p-5">
               <span
-                className="h-12 w-12 flex-none rounded-xl"
+                className="relative h-12 w-12 flex-none overflow-hidden rounded-xl"
                 style={{ backgroundColor: theme.hero }}
                 aria-hidden
-              />
+              >
+                {theme.image && (
+                  <Image src={theme.image} alt="" fill sizes="48px" className="object-cover" />
+                )}
+              </span>
               <div className="flex-1">
                 <h2 className="font-display text-lg font-semibold text-forest-900">
                   <Link href={`/journeys/${journey.slug}`} className="hover:underline">
