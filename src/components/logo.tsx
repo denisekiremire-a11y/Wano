@@ -11,7 +11,7 @@ export function Logo({ className = "" }: { className?: string }) {
   return (
     <span className={`inline-flex items-start ${className}`}>
       <span className="font-editorial">WAN</span>
-      <svg viewBox="0 0 24 29" className="-ml-0.5 h-[1.15em] w-auto" aria-hidden>
+      <svg viewBox="0 0 24 29" className="-ml-0.5 h-[1.85em] w-auto" aria-hidden>
         <mask id={maskId}>
           <rect width="24" height="29" fill="white" />
           <circle cx="12" cy="7" r="4.8" fill="black" />
