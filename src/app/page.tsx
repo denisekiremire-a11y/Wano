@@ -224,11 +224,14 @@ export default async function LandingPage() {
                 href={`/journeys/${journey.slug}`}
                 className="group overflow-hidden rounded-2xl border border-line bg-white transition hover:border-ember"
               >
-                <div className={`h-28 overflow-hidden bg-gradient-to-br ${theme.gradient}`}>
-                  <JourneyArt slug={journey.slug} className="h-full w-full opacity-90" />
+                <div className="h-28 overflow-hidden" style={{ backgroundColor: theme.hero }}>
+                  <JourneyArt slug={journey.slug} className="h-full w-full opacity-35" />
                 </div>
                 <div className="p-5">
-                  <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${theme.chip}`}>
+                  <span
+                    className="inline-flex rounded-full px-2.5 py-1 text-xs font-medium"
+                    style={{ backgroundColor: theme.tagBg, color: theme.hero }}
+                  >
                     {journey.location}
                   </span>
                   <h3 className="font-editorial mt-3 text-lg font-bold text-ink">

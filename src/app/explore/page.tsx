@@ -100,8 +100,8 @@ export default async function ExplorePage({
                 href={`/journeys/${journey.slug}`}
                 className="group overflow-hidden rounded-2xl border border-forest-900/10 bg-white transition hover:shadow-lg"
               >
-                <div className={`h-20 overflow-hidden bg-gradient-to-br ${theme.gradient}`}>
-                  <JourneyArt slug={journey.slug} className="h-full w-full opacity-90" />
+                <div className="h-20 overflow-hidden" style={{ backgroundColor: theme.hero }}>
+                  <JourneyArt slug={journey.slug} className="h-full w-full opacity-35" />
                 </div>
                 <div className="p-3">
                   <h3 className="font-display text-sm font-semibold text-forest-900">{journey.name}</h3>

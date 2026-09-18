@@ -52,7 +52,10 @@ export default async function JourneyDetailPage({
 
   return (
     <main>
-      <section className={`relative overflow-hidden bg-gradient-to-br ${theme.gradient} py-16 text-white`}>
+      <section
+        className="relative overflow-hidden py-16 text-white"
+        style={{ backgroundColor: theme.hero }}
+      >
         <JourneyArt slug={journey.slug} className="absolute inset-0 opacity-40" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
         <div className="relative mx-auto max-w-4xl px-4 md:px-6">
@@ -152,7 +155,9 @@ export default async function JourneyDetailPage({
                 </p>
                 <p className="text-sm text-forest-800/70">{vendor.businessName}</p>
                 <p className="mt-1 text-sm text-forest-800/60">{listing.description}</p>
-                <p className="mt-2 text-sm font-medium text-nile-700">{formatListingPrice(listing)}</p>
+                <p className="mt-2 text-sm font-medium" style={{ color: theme.hero }}>
+                  {formatListingPrice(listing)}
+                </p>
               </div>
 
               <div className="mt-4 flex flex-col gap-3 sm:mt-0 sm:w-64">
@@ -180,14 +185,16 @@ export default async function JourneyDetailPage({
                     href={listing.externalBookingUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block w-full rounded-full bg-forest-800 px-4 py-2 text-center text-sm font-semibold text-white transition hover:bg-forest-700"
+                    className="block w-full rounded-full px-4 py-2 text-center text-sm font-semibold transition hover:opacity-90"
+                    style={{ backgroundColor: theme.hero, color: theme.buttonText }}
                   >
                     Book on {vendor.businessName} →
                   </a>
                 ) : session?.role === "traveller" ? (
                   <Link
                     href={`/explore/${listing.id}?journeyId=${journey.id}#book`}
-                    className="block w-full rounded-full bg-forest-800 px-4 py-2 text-center text-sm font-semibold text-white transition hover:bg-forest-700"
+                    className="block w-full rounded-full px-4 py-2 text-center text-sm font-semibold transition hover:opacity-90"
+                    style={{ backgroundColor: theme.hero, color: theme.buttonText }}
                   >
                     Book this journey
                   </Link>

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { AnchorSortedList, type AnchorSortableItem } from "@/components/afcon/anchor-sorted-list";
 import { DistanceBadge } from "@/components/afcon/distance-badge";
-import { JourneyArt } from "@/components/journey-art";
 import { OfferTeaser } from "@/components/offer-teaser";
 import type { Coordinates } from "@/lib/afcon/anchors";
 import { formatListingPrice } from "@/lib/currency";
@@ -40,9 +39,11 @@ export function ByJourneyView({
             className="group overflow-hidden rounded-2xl border border-forest-900/10 bg-white open:shadow-md"
           >
             <summary className="flex cursor-pointer list-none items-center gap-4 p-5">
-              <span className={`h-12 w-12 flex-none overflow-hidden rounded-xl bg-gradient-to-br ${theme.gradient}`}>
-                <JourneyArt slug={journey.slug} className="h-full w-full" />
-              </span>
+              <span
+                className="h-12 w-12 flex-none rounded-xl"
+                style={{ backgroundColor: theme.hero }}
+                aria-hidden
+              />
               <div className="flex-1">
                 <h2 className="font-display text-lg font-semibold text-forest-900">
                   <Link href={`/journeys/${journey.slug}`} className="hover:underline">

@@ -22,8 +22,9 @@ export function PassportGrid({ progress }: { progress: Progress }) {
             <span
               data-earned={earned}
               className={`stamp-slot flex h-14 w-14 items-center justify-center rounded-full sm:h-16 sm:w-16 ${
-                earned ? `bg-gradient-to-br ${theme.gradient} text-white` : "bg-forest-50 text-forest-300"
+                earned ? "text-white" : "bg-forest-50 text-forest-300"
               }`}
+              style={earned ? { backgroundColor: theme.hero } : undefined}
             >
               <StampIcon className="h-6 w-6" />
             </span>
