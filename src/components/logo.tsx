@@ -14,7 +14,7 @@ export function Logo({ className = "" }: { className?: string }) {
       <svg viewBox="0 0 24 29" className="-ml-0.5 h-[1.15em] w-auto" aria-hidden>
         <mask id={maskId}>
           <rect width="24" height="29" fill="white" />
-          <circle cx="12" cy="7" r="4.3" fill="black" />
+          <circle cx="12" cy="7" r="4.8" fill="black" />
         </mask>
         <path
           d="M12 0C8.13 0 5 3.13 5 7c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
