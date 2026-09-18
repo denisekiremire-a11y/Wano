@@ -4,10 +4,12 @@ export function PartnerSearchForm({
   locations,
   filters,
   hiddenFields,
+  showTypeFilter = true,
 }: {
   locations: string[];
   filters: { type?: string; location?: string; q?: string };
   hiddenFields?: Record<string, string>;
+  showTypeFilter?: boolean;
 }) {
   return (
     <form className="flex flex-wrap gap-2 rounded-2xl border border-forest-900/10 bg-white p-4">
@@ -15,6 +17,7 @@ export function PartnerSearchForm({
         Object.entries(hiddenFields).map(([name, value]) => (
           <input key={name} type="hidden" name={name} value={value} />
         ))}
+      {!showTypeFilter && filters.type && <input type="hidden" name="type" value={filters.type} />}
       <input
         type="text"
         name="q"
@@ -22,18 +25,20 @@ export function PartnerSearchForm({
         placeholder="Search by name, business, or place..."
         className="min-w-[200px] flex-1 rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
       />
-      <select
-        name="type"
-        defaultValue={filters.type ?? ""}
-        className="rounded-lg border border-forest-900/15 bg-white px-3 py-2 text-sm outline-none focus:border-forest-600"
-      >
-        <option value="">All types</option>
-        {Object.entries(listingTypeLabels).map(([value, label]) => (
-          <option key={value} value={value}>
-            {label}
-          </option>
-        ))}
-      </select>
+      {showTypeFilter && (
+        <select
+          name="type"
+          defaultValue={filters.type ?? ""}
+          className="rounded-lg border border-forest-900/15 bg-white px-3 py-2 text-sm outline-none focus:border-forest-600"
+        >
+          <option value="">All types</option>
+          {Object.entries(listingTypeLabels).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+      )}
       <select
         name="location"
         defaultValue={filters.location ?? ""}

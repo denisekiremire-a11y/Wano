@@ -1,5 +1,5 @@
 export const listingTypeLabels = {
-  hotel: "Hotel & Stay",
+  hotel: "Accommodation",
   restaurant: "Restaurant",
   experience: "Experience",
   transport: "Transport",

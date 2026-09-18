@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AfconPromoCard } from "@/components/afcon/afcon-promo-card";
 import { JourneyArt } from "@/components/journey-art";
+import { ListingTypeIcon } from "@/components/listing-type-icon";
 import { PartnerCard } from "@/components/partner-card";
 import { PartnerSearchForm } from "@/components/partner-search-form";
 import { getBirthdayPerksForListings } from "@/lib/data/birthday";
@@ -20,7 +21,7 @@ import {
 } from "@/lib/data/traveller";
 import { journeyTheme } from "@/lib/journey-theme";
 import { logEvent } from "@/lib/analytics";
-import type { ListingType } from "@/lib/listing-type";
+import { listingTypeLabels, type ListingType } from "@/lib/listing-type";
 import { getSession } from "@/lib/session";
 
 const validTypes: ListingType[] = ["hotel", "restaurant", "experience", "transport", "spa_salon"];
@@ -114,8 +115,46 @@ export default async function ExplorePage({
 
       <section className="mt-10">
         <h2 className="font-display text-xl font-semibold text-forest-900">Browse everything</h2>
+
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <Link
+            href="/explore"
+            className={`flex flex-col items-center gap-2 rounded-2xl border p-4 text-center transition ${
+              !validType
+                ? "border-forest-800 bg-forest-800 text-white"
+                : "border-forest-900/10 bg-white text-forest-900 hover:border-forest-800/40"
+            }`}
+          >
+            <span className="text-2xl" aria-hidden>
+              ✨
+            </span>
+            <span className="text-sm font-semibold">All places</span>
+          </Link>
+          {Object.entries(listingTypeLabels).map(([value, label]) => {
+            const active = validType === value;
+            return (
+              <Link
+                key={value}
+                href={`/explore?type=${value}`}
+                className={`flex flex-col items-center gap-2 rounded-2xl border p-4 text-center transition ${
+                  active
+                    ? "border-forest-800 bg-forest-800 text-white"
+                    : "border-forest-900/10 bg-white text-forest-900 hover:border-forest-800/40"
+                }`}
+              >
+                <ListingTypeIcon type={value as ListingType} className="h-6 w-6" />
+                <span className="text-sm font-semibold">{label}</span>
+              </Link>
+            );
+          })}
+        </div>
+
         <div className="mt-4">
-          <PartnerSearchForm locations={locations} filters={{ type: validType, location, q }} />
+          <PartnerSearchForm
+            locations={locations}
+            filters={{ type: validType, location, q }}
+            showTypeFilter={false}
+          />
 
           <p className="mt-4 text-sm text-forest-800/60">
             {results.length} Wano-verified {results.length === 1 ? "place" : "places"} found
