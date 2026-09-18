@@ -2,6 +2,7 @@ import Link from "next/link";
 import { HeaderLogoutButton } from "@/components/header-logout-button";
 import { HeaderNavLink } from "@/components/header-nav-link";
 import { HeaderSearch } from "@/components/header-search";
+import { Logo } from "@/components/logo";
 import { navItemsFor } from "@/lib/nav-items";
 import type { SessionPayload } from "@/lib/session";
 
@@ -17,9 +18,8 @@ export function SiteHeader({
   return (
     <header className="font-editorial-body sticky top-9 z-40 border-b border-line bg-paper/90 backdrop-blur">
       <div className="mx-auto flex h-[70px] max-w-6xl items-center justify-between px-4 md:px-6">
-        <Link href="/" className="font-editorial flex items-center text-xl text-ink">
-          WANO
-          <span className="text-ember">.</span>
+        <Link href="/" className="text-xl text-ink" aria-label="Wano home">
+          <Logo />
         </Link>
 
         <nav className="hidden items-center gap-5 overflow-x-auto md:flex">
