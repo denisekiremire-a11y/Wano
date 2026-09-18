@@ -69,7 +69,7 @@ export default async function JourneysPage({
 
       {AFCON_CLUB_ENABLED && (
         <div className="mt-6">
-          <AnchorBar />
+          <AnchorBar showStadiums={false} />
         </div>
       )}
 

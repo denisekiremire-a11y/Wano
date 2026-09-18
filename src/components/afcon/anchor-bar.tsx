@@ -10,8 +10,11 @@ const CHIP_INACTIVE = "border-forest-900/15 bg-white text-forest-800 hover:borde
 
 /** Sticky, horizontally scrollable anchor picker for the Journeys page —
  * stays reachable while scrolling a long list, mirrors the hero's picker
- * so switching anchor mid-browse doesn't require scrolling back up. */
-export function AnchorBar() {
+ * so switching anchor mid-browse doesn't require scrolling back up.
+ * `showStadiums` gates the AFCON stadium quick-picks — off for pages (like
+ * the general Journeys list) that should only offer the traveller's own
+ * location, not tournament venues. */
+export function AnchorBar({ showStadiums = true }: { showStadiums?: boolean }) {
   const { anchor, gpsLoading, gpsError, setStadiumAnchor, setGpsAnchor, clearAnchor } = useAnchor();
 
   return (
@@ -20,17 +23,18 @@ export function AnchorBar() {
         <span className="flex-none text-xs font-medium uppercase tracking-wide text-forest-800/50">
           Measure from
         </span>
-        {Object.values(STADIUM_ANCHORS).map((stadium) => (
-          <button
-            key={stadium.id}
-            type="button"
-            aria-pressed={anchor?.id === stadium.id}
-            onClick={() => setStadiumAnchor(stadium.id)}
-            className={`${CHIP_BASE} ${anchor?.id === stadium.id ? CHIP_ACTIVE : CHIP_INACTIVE}`}
-          >
-            {stadium.shortLabel}
-          </button>
-        ))}
+        {showStadiums &&
+          Object.values(STADIUM_ANCHORS).map((stadium) => (
+            <button
+              key={stadium.id}
+              type="button"
+              aria-pressed={anchor?.id === stadium.id}
+              onClick={() => setStadiumAnchor(stadium.id)}
+              className={`${CHIP_BASE} ${anchor?.id === stadium.id ? CHIP_ACTIVE : CHIP_INACTIVE}`}
+            >
+              {stadium.shortLabel}
+            </button>
+          ))}
         <button
           type="button"
           aria-pressed={anchor?.id === "gps"}

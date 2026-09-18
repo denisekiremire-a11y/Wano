@@ -41,12 +41,12 @@ export function ByJourneyView({
           >
             <summary className="flex cursor-pointer list-none items-center gap-4 p-5">
               <span
-                className="relative h-12 w-12 flex-none overflow-hidden rounded-xl"
+                className="relative h-24 w-24 flex-none overflow-hidden rounded-xl sm:h-28 sm:w-28"
                 style={{ backgroundColor: theme.hero }}
                 aria-hidden
               >
                 {theme.image && (
-                  <Image src={theme.image} alt="" fill sizes="48px" className="object-cover" />
+                  <Image src={theme.image} alt="" fill sizes="112px" className="object-cover" />
                 )}
               </span>
               <div className="flex-1">

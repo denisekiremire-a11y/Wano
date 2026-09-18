@@ -30,8 +30,7 @@ const themes: Record<JourneySlug, JourneyTheme> = {
     hero: "#E65C24",
     tagBg: "#FDF0EB",
     buttonText: "#ffffff",
-    // No matching safari/wildlife photo in the asset set yet — keeps the
-    // illustrated art + solid color treatment.
+    image: "/images/big-five-safari.jpg",
   },
   "kampala-city-experience": {
     // Night Purple — royal heritage & vibrant nightlife
