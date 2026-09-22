@@ -22,13 +22,15 @@ export type NavItem = {
     | "mail"
     | "user"
     | "ticket"
-    | "trophy";
+    | "trophy"
+    | "map";
 };
 
 export function navItemsFor(role: SessionPayload["role"] | "guest"): NavItem[] {
   if (role === "traveller") {
     return [
       { href: "/explore", label: "Explore", icon: "compass" },
+      { href: "/discover", label: "Discover", icon: "map" },
       { href: "/events", label: "Events", icon: "calendar" },
       { href: "/social", label: "Social", icon: "chat" },
       { href: "/saved", label: "Saved", icon: "heart" },
@@ -70,6 +72,7 @@ export function navItemsFor(role: SessionPayload["role"] | "guest"): NavItem[] {
   }
   return [
     { href: "/explore", label: "Explore", icon: "compass" },
+    { href: "/discover", label: "Discover", icon: "map" },
     { href: "/journeys", label: "Journeys", icon: "flag" },
     { href: "/events", label: "Events", icon: "calendar" },
     ...(AFCON_CLUB_ENABLED ? [{ href: "/afcon", label: "AFCON 27", icon: "trophy" } as const] : []),

@@ -316,12 +316,57 @@ export function BookmarkIcon({ className = base, filled = false }: IconProps & {
   );
 }
 
+export function SendIcon({ className = base }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={className}>
+      <path d="M4 12 20.5 4 13.5 20.5 11 13 4 12Z" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function DotsIcon({ className = base }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
       <circle cx="5" cy="12" r="1.8" />
       <circle cx="12" cy="12" r="1.8" />
       <circle cx="19" cy="12" r="1.8" />
+    </svg>
+  );
+}
+
+export function MapIcon({ className = base }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={className}>
+      <path
+        d="M9 4.5 4 6.5v13l5-2 6 2 5-2v-13l-5 2-6-2Z"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+      <path d="M9 4.5v13M15 6.5v13" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function BriefcaseIcon({ className = base }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={className}>
+      <rect x="3.5" y="7.5" width="17" height="12" rx="2" />
+      <path d="M8.5 7.5V6a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M3.5 12.5h17" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function PaletteIcon({ className = base }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={className}>
+      <path
+        d="M12 3.5a8.5 8 0 1 0 0 16c1 0 1.8-.7 1.8-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.7 1.8-1.7h1.7c1.8 0 3.2-1.4 3.2-3.2 0-4-3.4-7-7.5-7Z"
+        strokeLinejoin="round"
+      />
+      <circle cx="8" cy="11" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="11" cy="8" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="8.5" r="1.1" fill="currentColor" stroke="none" />
     </svg>
   );
 }

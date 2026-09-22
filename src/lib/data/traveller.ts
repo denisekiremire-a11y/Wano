@@ -4,6 +4,7 @@ import {
   bookings,
   challengeCompletions,
   challenges,
+  interests,
   journeys,
   listings,
   promoCodes,
@@ -11,6 +12,7 @@ import {
   rewards,
   savedListings,
   stamps,
+  travellerInterests,
   travellerProfiles,
   userRewards,
   vendorProfiles,
@@ -24,6 +26,18 @@ export async function getTravellerProfileByUserId(userId: string) {
     .where(eq(travellerProfiles.userId, userId))
     .limit(1);
   return profile ?? null;
+}
+
+/** A traveller's real, self-picked interests — used for the decorative
+ * category chips on their public profile. Empty for anyone who hasn't set
+ * any (no fabricated categories are shown in that case). */
+export async function getTravellerInterests(travellerId: string) {
+  return db
+    .select({ key: interests.key, label: interests.label })
+    .from(travellerInterests)
+    .innerJoin(interests, eq(interests.id, travellerInterests.interestId))
+    .where(eq(travellerInterests.travellerId, travellerId))
+    .orderBy(interests.sortOrder);
 }
 
 export async function getTravellerProfileById(travellerId: string) {

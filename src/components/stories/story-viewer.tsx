@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { deleteStoryAction, markStoryViewedAction } from "@/lib/actions/story-actions";
+import { useEffect, useRef, useState } from "react";
+import { HeartIcon, SendIcon } from "@/components/icons";
+import { deleteStoryAction, markStoryViewedAction, replyToStoryAction } from "@/lib/actions/story-actions";
 
 export type StoryReel = {
   travellerId: string;
@@ -16,14 +17,31 @@ const SLIDE_MS = 5000;
 /** Owns the progress fill for exactly one slide. Mounted fresh (via a
  * `key` on reelIndex+storyIndex in the parent) each time the active slide
  * changes, so its own timer and 0%-start state don't need resetting from
- * outside — no synchronous setState-in-effect. */
-function SlideProgress({ onComplete }: { onComplete: () => void }) {
+ * outside — no synchronous setState-in-effect. `paused` (read via a ref,
+ * not a dependency) freezes the fill without losing elapsed progress, so
+ * typing a reply doesn't lose your place when you're done. */
+function SlideProgress({ onComplete, paused }: { onComplete: () => void; paused: boolean }) {
   const [progress, setProgress] = useState(0);
+  const pausedRef = useRef(paused);
+
+  useEffect(() => {
+    pausedRef.current = paused;
+  }, [paused]);
 
   useEffect(() => {
     const start = Date.now();
+    let pausedMs = 0;
+    let pauseStartedAt: number | null = null;
     const tick = setInterval(() => {
-      const elapsed = Date.now() - start;
+      if (pausedRef.current) {
+        if (pauseStartedAt === null) pauseStartedAt = Date.now();
+        return;
+      }
+      if (pauseStartedAt !== null) {
+        pausedMs += Date.now() - pauseStartedAt;
+        pauseStartedAt = null;
+      }
+      const elapsed = Date.now() - start - pausedMs;
       const pct = Math.min(100, (elapsed / SLIDE_MS) * 100);
       setProgress(pct);
       if (pct >= 100) onComplete();
@@ -33,6 +51,71 @@ function SlideProgress({ onComplete }: { onComplete: () => void }) {
   }, []);
 
   return <div className="h-full bg-white transition-none" style={{ width: `${progress}%` }} />;
+}
+
+/** The reply box + heart-react for one slide. Mounted fresh (via the same
+ * `key` trick as SlideProgress) each time the active slide changes, so its
+ * text/feedback/reacted state starts clean with no reset effect needed. */
+function ReplyBar({ storyId, onFocusChange }: { storyId: string; onFocusChange: (focused: boolean) => void }) {
+  const [replyText, setReplyText] = useState("");
+  const [sending, setSending] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [reacted, setReacted] = useState(false);
+
+  async function sendReply(content: string) {
+    if (sending) return;
+    setSending(true);
+    const result = await replyToStoryAction(storyId, content);
+    setSending(false);
+    if (result.error) {
+      setFeedback(result.error);
+    } else {
+      setReplyText("");
+      setFeedback("Sent!");
+      setTimeout(() => setFeedback(null), 2000);
+    }
+  }
+
+  function handleHeart() {
+    if (reacted) return;
+    setReacted(true);
+    void sendReply("❤️");
+  }
+
+  return (
+    <div className="relative flex items-center gap-2 bg-black p-3">
+      <input
+        type="text"
+        value={replyText}
+        onChange={(e) => setReplyText(e.target.value)}
+        onFocus={() => onFocusChange(true)}
+        onBlur={() => onFocusChange(false)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && replyText.trim()) void sendReply(replyText);
+        }}
+        placeholder="Send a message…"
+        className="flex-1 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-sm text-white outline-none placeholder:text-white/50 focus:border-white/60"
+      />
+      <button
+        type="button"
+        onClick={handleHeart}
+        aria-label="React with heart"
+        className="flex h-9 w-9 flex-none items-center justify-center text-white"
+      >
+        <HeartIcon className="h-6 w-6" filled={reacted} />
+      </button>
+      <button
+        type="button"
+        onClick={() => replyText.trim() && sendReply(replyText)}
+        disabled={!replyText.trim() || sending}
+        aria-label="Send"
+        className="flex h-9 w-9 flex-none items-center justify-center text-white disabled:opacity-40"
+      >
+        <SendIcon className="h-6 w-6" />
+      </button>
+      {feedback && <span className="absolute bottom-14 right-3 text-xs text-white/80">{feedback}</span>}
+    </div>
+  );
 }
 
 export function StoryViewer({
@@ -46,6 +129,7 @@ export function StoryViewer({
 }) {
   const [reelIndex, setReelIndex] = useState(startReelIndex);
   const [storyIndex, setStoryIndex] = useState(0);
+  const [replyFocused, setReplyFocused] = useState(false);
 
   const reel = reels[reelIndex];
   const story = reel?.stories[storyIndex];
@@ -99,7 +183,7 @@ export function StoryViewer({
               {i < storyIndex ? (
                 <div className="h-full w-full bg-white" />
               ) : i === storyIndex ? (
-                <SlideProgress key={`${reelIndex}-${storyIndex}`} onComplete={goNext} />
+                <SlideProgress key={`${reelIndex}-${storyIndex}`} onComplete={goNext} paused={replyFocused} />
               ) : null}
             </div>
           ))}
@@ -167,6 +251,10 @@ export function StoryViewer({
             className="absolute inset-y-0 right-0 w-2/3"
           />
         </div>
+
+        {!reel.isMine && (
+          <ReplyBar key={`${reelIndex}-${storyIndex}`} storyId={story.id} onFocusChange={setReplyFocused} />
+        )}
       </div>
     </div>
   );

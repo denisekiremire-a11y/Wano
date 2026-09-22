@@ -4,6 +4,7 @@ import { searchEvents } from "@/lib/data/events";
 import { searchJournalPosts } from "@/lib/data/journal";
 import { searchJourneys, searchListings } from "@/lib/data/journeys";
 import { getListingImageIds } from "@/lib/data/listing-images";
+import { searchTravellers } from "@/lib/data/social";
 
 export default async function SearchPage({
   searchParams,
@@ -13,17 +14,19 @@ export default async function SearchPage({
   const { q } = await searchParams;
   const query = (q ?? "").trim();
 
-  const [listingResults, eventResults, journeyResults, journalResults] = query.length >= 2
+  const [listingResults, eventResults, journeyResults, journalResults, peopleResults] = query.length >= 2
     ? await Promise.all([
         searchListings({ query }),
         searchEvents(query),
         searchJourneys(query),
         searchJournalPosts(query),
+        searchTravellers(query, null),
       ])
-    : [[], [], [], []];
+    : [[], [], [], [], []];
 
   const imagesByListing = await getListingImageIds(listingResults.map((r) => r.listing.id));
-  const totalResults = listingResults.length + eventResults.length + journeyResults.length + journalResults.length;
+  const totalResults =
+    listingResults.length + eventResults.length + journeyResults.length + journalResults.length + peopleResults.length;
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-10 md:px-6">
@@ -38,12 +41,36 @@ export default async function SearchPage({
 
       {query.length >= 2 && totalResults === 0 && (
         <p className="mt-6 rounded-xl border border-forest-900/10 bg-white p-6 text-center text-sm text-forest-800/60">
-          Nothing matched &quot;{query}&quot;. Looking for a person instead?{" "}
-          <Link href="/social" className="font-medium text-nile-700 hover:underline">
-            Search people on Social
-          </Link>
-          .
+          Nothing matched &quot;{query}&quot;.
         </p>
+      )}
+
+      {peopleResults.length > 0 && (
+        <section className="mt-8">
+          <h2 className="font-display text-lg font-semibold text-forest-900">People</h2>
+          <div className="mt-3 space-y-2">
+            {peopleResults.map(({ traveller, user }) => (
+              <Link
+                key={traveller.id}
+                href={user.username ? `/profile/${user.username}` : "#"}
+                className="flex items-center gap-3 rounded-xl border border-forest-900/10 bg-white p-3 transition hover:bg-forest-50/50"
+              >
+                {user.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={user.avatarUrl} alt="" className="h-12 w-12 flex-none rounded-full object-cover" />
+                ) : (
+                  <span className="flex h-12 w-12 flex-none items-center justify-center rounded-full bg-forest-100 text-sm font-semibold text-forest-700">
+                    {traveller.displayName.charAt(0).toUpperCase()}
+                  </span>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium text-forest-900">{traveller.displayName}</p>
+                  <p className="truncate text-xs text-forest-800/50">@{user.username}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
       )}
 
       {listingResults.length > 0 && (

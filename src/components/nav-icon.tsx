@@ -10,6 +10,7 @@ import {
   HeartIcon,
   HomeIcon,
   MailIcon,
+  MapIcon,
   MegaphoneIcon,
   StampIcon,
   TagIcon,
@@ -39,6 +40,7 @@ const map: Record<NavItem["icon"], (props: { className?: string }) => React.JSX.
   user: UserIcon,
   ticket: TicketIcon,
   trophy: TrophyIcon,
+  map: MapIcon,
 };
 
 export function NavIcon({ icon, className }: { icon: NavItem["icon"]; className?: string }) {

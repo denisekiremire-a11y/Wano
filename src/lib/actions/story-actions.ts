@@ -3,10 +3,12 @@
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import { stories } from "@/db/schema";
+import { conversations, messages, stories } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
+import { findConversationBetween } from "@/lib/data/messages";
+import { getBlockedTravellerIds } from "@/lib/data/moderation";
 import { containsProfanity } from "@/lib/profanity";
-import { RATE_LIMITS } from "@/lib/rate-limit";
+import { countInLastHour, RATE_LIMITS } from "@/lib/rate-limit";
 import { countStoriesInLast24h, getStoryOwner, recordStoryView } from "@/lib/data/stories";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 import type { ActionState } from "@/lib/validation";
@@ -51,6 +53,54 @@ export async function markStoryViewedAction(storyId: string) {
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
   if (!travellerProfile) return;
   await recordStoryView(storyId, travellerProfile.id);
+}
+
+/** A story reply, sent as a direct message to the story's owner — same as
+ * Instagram's model, and reuses the existing 1:1 messaging system rather
+ * than a separate reaction/reply store. Used for both the text reply box
+ * and the quick heart-react (which just sends "❤️"). */
+export async function replyToStoryAction(storyId: string, content: string): Promise<ActionState> {
+  const session = await requireRole("traveller");
+  const viewerProfile = await getTravellerProfileByUserId(session.userId);
+  if (!viewerProfile) return { error: "Profile not found." };
+
+  const trimmed = content.trim();
+  if (!trimmed) return { error: "Write something before sending." };
+  if (trimmed.length > 2000) return { error: "That message is too long." };
+
+  const ownerId = await getStoryOwner(storyId);
+  if (!ownerId) return { error: "That story is no longer available." };
+  if (ownerId === viewerProfile.id) return { error: "You can't message yourself." };
+
+  const blockedIds = await getBlockedTravellerIds(viewerProfile.id);
+  if (blockedIds.has(ownerId)) return { error: "You can't message this person." };
+
+  const recentCount = await countInLastHour(
+    messages,
+    messages.senderTravellerId,
+    messages.createdAt,
+    viewerProfile.id,
+  );
+  if (recentCount >= RATE_LIMITS.messagesPerHour) {
+    return { error: "You're sending a lot of messages — try again in a bit." };
+  }
+
+  let conversation = await findConversationBetween(viewerProfile.id, ownerId);
+  if (!conversation) {
+    const [travellerOneId, travellerTwoId] = [viewerProfile.id, ownerId].sort();
+    [conversation] = await db.insert(conversations).values({ travellerOneId, travellerTwoId }).returning();
+  }
+
+  await db.insert(messages).values({
+    conversationId: conversation.id,
+    senderTravellerId: viewerProfile.id,
+    content: `Re your story: ${trimmed}`,
+  });
+  await db.update(conversations).set({ lastMessageAt: new Date() }).where(eq(conversations.id, conversation.id));
+
+  revalidatePath(`/messages/${conversation.id}`);
+  revalidatePath("/messages");
+  return {};
 }
 
 export async function deleteStoryAction(storyId: string) {
