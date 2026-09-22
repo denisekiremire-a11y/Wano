@@ -5,12 +5,14 @@ import { TrophyIcon } from "@/components/icons";
 import { PostCard } from "@/components/post-card";
 import { PostComposer } from "@/components/post-composer";
 import { MatchCard } from "@/components/season/match-card";
+import { StoriesBar } from "@/components/stories/stories-bar";
 import { UserSearch } from "@/components/user-search";
 import { getSession } from "@/lib/session";
 import { getRankedFeed } from "@/lib/data/feed";
 import { getBlockedTravellerIds } from "@/lib/data/moderation";
 import { getSuggestedAttachments, resolvePostContext, type PostContextType } from "@/lib/data/post-context";
 import { getClubCategories, getSuggestedPeople, getTopInfluencers, isFollowing } from "@/lib/data/social";
+import { getActiveStoryGroups, getMyActiveStories, getUserAvatarUrl } from "@/lib/data/stories";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 
 const SHARE_CONTEXT_TYPES = new Set<PostContextType>([
@@ -51,6 +53,12 @@ export default async function SocialPage({
         : Promise.resolve(null),
     ]);
 
+  const [storyGroups, myStories, myAvatarUrl] = await Promise.all([
+    getActiveStoryGroups(travellerProfile?.id ?? null),
+    travellerProfile ? getMyActiveStories(travellerProfile.id) : Promise.resolve([]),
+    session ? getUserAvatarUrl(session.userId) : Promise.resolve(null),
+  ]);
+
   const topInfluencerIds = new Set(topInfluencersRaw.map((i) => i.traveller.id));
   const topInfluencers = await Promise.all(
     topInfluencersRaw
@@ -84,6 +92,15 @@ export default async function SocialPage({
             are sharing.
           </p>
         </div>
+
+        <StoriesBar
+          myTravellerId={travellerProfile?.id ?? null}
+          myDisplayName={travellerProfile?.displayName ?? "You"}
+          myAvatarUrl={myAvatarUrl}
+          myStories={myStories}
+          groups={storyGroups}
+          canPost={Boolean(travellerProfile)}
+        />
 
         {travellerProfile ? (
           <PostComposer

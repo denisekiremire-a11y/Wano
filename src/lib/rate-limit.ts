@@ -25,4 +25,5 @@ export const RATE_LIMITS = {
   reportsPerHour: 10,
   messagesPerHour: 60,
   bookingMessagesPerHour: 60,
+  storiesPerDay: 20,
 } as const;

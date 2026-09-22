@@ -942,6 +942,47 @@ export const postImages = pgTable("post_images", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// 24h-expiring stories — one photo each, same bytea-in-Postgres approach as
+// postImages/listingImages. expiresAt is set at creation (createdAt + 24h)
+// rather than computed on read, so every query just filters
+// `expiresAt > now()` instead of doing date math per row.
+export const stories = pgTable(
+  "stories",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    travellerId: uuid("traveller_id")
+      .notNull()
+      .references(() => travellerProfiles.id, { onDelete: "cascade" }),
+    data: bytea("data").notNull(),
+    mimeType: text("mime_type").notNull(),
+    caption: text("caption"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    index("stories_traveller_id_expires_at_idx").on(table.travellerId, table.expiresAt),
+    index("stories_expires_at_idx").on(table.expiresAt),
+  ],
+);
+
+// Who has seen which story — drives the seen/unseen ring on the story
+// avatar. One row per (story, viewer); re-viewing is a no-op (see
+// markStoryViewedAction's onConflictDoNothing).
+export const storyViews = pgTable(
+  "story_views",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storyId: uuid("story_id")
+      .notNull()
+      .references(() => stories.id, { onDelete: "cascade" }),
+    viewerTravellerId: uuid("viewer_traveller_id")
+      .notNull()
+      .references(() => travellerProfiles.id, { onDelete: "cascade" }),
+    viewedAt: timestamp("viewed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique().on(table.storyId, table.viewerTravellerId)],
+);
+
 export const postLikes = pgTable(
   "post_likes",
   {
@@ -1156,6 +1197,16 @@ export const postsRelations = relations(posts, ({ one, many }) => ({
   audienceClub: one(clubs, { fields: [posts.audienceClubId], references: [clubs.id] }),
   likes: many(postLikes),
   comments: many(postComments),
+}));
+
+export const storiesRelations = relations(stories, ({ one, many }) => ({
+  traveller: one(travellerProfiles, { fields: [stories.travellerId], references: [travellerProfiles.id] }),
+  views: many(storyViews),
+}));
+
+export const storyViewsRelations = relations(storyViews, ({ one }) => ({
+  story: one(stories, { fields: [storyViews.storyId], references: [stories.id] }),
+  viewer: one(travellerProfiles, { fields: [storyViews.viewerTravellerId], references: [travellerProfiles.id] }),
 }));
 
 // A vendor-proposed listing or reward, created or edited, waiting for admin
