@@ -26,6 +26,7 @@ import {
   getLikedPostIds,
   getMediaPostsFor,
   getPostImageIds,
+  getSavedPostIds,
 } from "@/lib/data/social";
 import { PostCard } from "@/components/post-card";
 import {
@@ -121,10 +122,11 @@ export default async function ListingDetailPage({
     }));
 
   const mediaPostIds = media.map((m) => m.post.id);
-  const [mediaImageIdsMap, mediaEngagement, mediaLikedIds, mediaCommentsRows] = await Promise.all([
+  const [mediaImageIdsMap, mediaEngagement, mediaLikedIds, mediaSavedIds, mediaCommentsRows] = await Promise.all([
     getPostImageIds(mediaPostIds),
     getEngagementCounts(mediaPostIds),
     viewerTravellerId ? getLikedPostIds(viewerTravellerId, mediaPostIds) : Promise.resolve(new Set<string>()),
+    viewerTravellerId ? getSavedPostIds(viewerTravellerId, mediaPostIds) : Promise.resolve(new Set<string>()),
     Promise.all(mediaPostIds.map((id) => getCommentsForPost(id).then((c) => [id, c] as const))),
   ]);
   const mediaCommentsMap = new Map(mediaCommentsRows);
@@ -506,6 +508,7 @@ export default async function ListingDetailPage({
                   likeCount={mediaEngagement.likeMap.get(post.id) ?? 0}
                   commentCount={mediaEngagement.commentMap.get(post.id) ?? 0}
                   liked={mediaLikedIds.has(post.id)}
+                  saved={mediaSavedIds.has(post.id)}
                   canInteract={session?.role === "traveller"}
                   comments={mediaCommentsMap.get(post.id) ?? []}
                 />

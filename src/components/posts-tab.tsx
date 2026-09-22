@@ -39,9 +39,12 @@ export function PostsTab({
   authorTravellerId,
   authorName,
   authorUsername,
+  authorAvatarUrl = null,
+  authorLocation = null,
   likeMap,
   commentMap,
   likedPostIds,
+  savedPostIds = new Set(),
   commentsMap,
   imageIdsMap,
   contextMap,
@@ -51,9 +54,12 @@ export function PostsTab({
   authorTravellerId: string;
   authorName: string;
   authorUsername: string | null;
+  authorAvatarUrl?: string | null;
+  authorLocation?: string | null;
   likeMap: Map<string, number>;
   commentMap: Map<string, number>;
   likedPostIds: Set<string>;
+  savedPostIds?: Set<string>;
   commentsMap: Map<string, Comment[]>;
   imageIdsMap: Map<string, string[]>;
   contextMap: Map<string, PostContextCardData>;
@@ -148,6 +154,8 @@ export function PostsTab({
               authorTravellerId={authorTravellerId}
               authorName={authorName}
               authorUsername={authorUsername}
+              authorAvatarUrl={authorAvatarUrl}
+              authorLocation={authorLocation}
               content={post.content}
               imageUrl={post.imageUrl}
               imageIds={imageIdsMap.get(post.id) ?? []}
@@ -155,6 +163,7 @@ export function PostsTab({
               likeCount={likeMap.get(post.id) ?? 0}
               commentCount={commentMap.get(post.id) ?? 0}
               liked={likedPostIds.has(post.id)}
+              saved={savedPostIds.has(post.id)}
               canInteract
               comments={commentsMap.get(post.id) ?? []}
               context={

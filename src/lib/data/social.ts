@@ -10,6 +10,7 @@ import {
   postImages,
   postLikes,
   posts,
+  savedPosts,
   travellerProfiles,
   users,
   vendorProfiles,
@@ -102,6 +103,15 @@ export async function getLikedPostIds(travellerId: string, postIds: string[]) {
     .select({ postId: postLikes.postId })
     .from(postLikes)
     .where(and(eq(postLikes.travellerId, travellerId), inArray(postLikes.postId, postIds)));
+  return new Set(rows.map((r) => r.postId));
+}
+
+export async function getSavedPostIds(travellerId: string, postIds: string[]) {
+  if (postIds.length === 0) return new Set<string>();
+  const rows = await db
+    .select({ postId: savedPosts.postId })
+    .from(savedPosts)
+    .where(and(eq(savedPosts.travellerId, travellerId), inArray(savedPosts.postId, postIds)));
   return new Set(rows.map((r) => r.postId));
 }
 

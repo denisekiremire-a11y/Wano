@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { CameraIcon } from "@/components/icons";
 import { createPostAction, searchMentionablesAction } from "@/lib/actions/social-actions";
 import { compressImage } from "@/lib/image-compress";
 import type { PostContextType, SuggestedAttachment } from "@/lib/data/post-context";
@@ -17,12 +18,16 @@ export function PostComposer({
   presetContext,
   presetAudienceClubId,
   suggestions = [],
-  placeholder = "What's happening?",
+  placeholder = "Share a moment, ask a question…",
+  avatarUrl = null,
+  displayName = "You",
 }: {
   presetContext?: Attachment;
   presetAudienceClubId?: string;
   suggestions?: SuggestedAttachment[];
   placeholder?: string;
+  avatarUrl?: string | null;
+  displayName?: string;
 }) {
   const [content, setContent] = useState("");
   const [images, setImages] = useState<PendingImage[]>([]);
@@ -161,36 +166,48 @@ export function PostComposer({
         </div>
       )}
 
-      <div className="relative">
-        <textarea
-          ref={textareaRef}
-          name="content"
-          required
-          maxLength={MAX_CHARS}
-          rows={2}
-          value={content}
-          onChange={handleContentChange}
-          placeholder={placeholder}
-          className="w-full resize-none rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
-        />
-        {mentionQuery !== null && mentionResults.length > 0 && (
-          <div className="absolute z-10 mt-1 w-full rounded-lg border border-forest-900/10 bg-white shadow-md">
-            {mentionResults.map((r) => (
-              <button
-                key={`${r.type}:${r.id}`}
-                type="button"
-                onClick={() => selectMention(r)}
-                className="block w-full px-3 py-1.5 text-left text-sm text-forest-800 hover:bg-forest-50"
-              >
-                {r.label} <span className="text-xs text-forest-800/40">· {r.type}</span>
-              </button>
-            ))}
-          </div>
-        )}
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 flex-none">
+          {avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={avatarUrl} alt="" className="h-10 w-10 rounded-full object-cover" />
+          ) : (
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-forest-100 text-sm font-semibold text-forest-700">
+              {displayName.charAt(0).toUpperCase()}
+            </span>
+          )}
+        </span>
+        <div className="relative flex-1">
+          <textarea
+            ref={textareaRef}
+            name="content"
+            required
+            maxLength={MAX_CHARS}
+            rows={2}
+            value={content}
+            onChange={handleContentChange}
+            placeholder={placeholder}
+            className="w-full resize-none rounded-2xl border border-forest-900/15 bg-forest-50/40 px-4 py-2.5 text-sm outline-none focus:border-forest-600 focus:bg-white"
+          />
+          {mentionQuery !== null && mentionResults.length > 0 && (
+            <div className="absolute z-10 mt-1 w-full rounded-lg border border-forest-900/10 bg-white shadow-md">
+              {mentionResults.map((r) => (
+                <button
+                  key={`${r.type}:${r.id}`}
+                  type="button"
+                  onClick={() => selectMention(r)}
+                  className="block w-full px-3 py-1.5 text-left text-sm text-forest-800 hover:bg-forest-50"
+                >
+                  {r.label} <span className="text-xs text-forest-800/40">· {r.type}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {attachment && (
-        <div className="mt-1.5 flex items-center gap-1.5">
+        <div className="ml-[3.25rem] mt-1.5 flex items-center gap-1.5">
           <span className="inline-flex items-center gap-1 rounded-full bg-forest-100 px-2 py-0.5 text-[11px] font-medium text-forest-800">
             📎 {attachment.label}
             {!presetContext && (
@@ -202,14 +219,14 @@ export function PostComposer({
         </div>
       )}
 
-      <div className="mt-1 flex items-center justify-between text-[11px] text-forest-800/40">
+      <div className="ml-[3.25rem] mt-1 flex items-center justify-between text-[11px] text-forest-800/40">
         <span>
           {content.length}/{MAX_CHARS}
         </span>
       </div>
 
       {images.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-2">
+        <div className="ml-[3.25rem] mt-2 flex flex-wrap gap-2">
           {images.map((img, i) => (
             <div
               key={img.previewUrl}
@@ -235,7 +252,7 @@ export function PostComposer({
         </div>
       )}
 
-      <div className="mt-2 flex items-center justify-between">
+      <div className="ml-[3.25rem] mt-2 flex items-center justify-between">
         <div>
           <input
             ref={fileInputRef}
@@ -252,9 +269,10 @@ export function PostComposer({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={images.length >= MAX_IMAGES}
-            className="rounded-full border border-forest-900/15 px-3 py-1 text-xs font-medium text-forest-800 hover:bg-forest-50 disabled:opacity-40"
+            className="flex items-center gap-1.5 rounded-full border border-forest-900/15 px-3 py-1 text-xs font-medium text-forest-800 hover:bg-forest-50 disabled:opacity-40"
           >
-            📷 Photo ({images.length}/{MAX_IMAGES})
+            <CameraIcon className="h-3.5 w-3.5" />
+            Photo ({images.length}/{MAX_IMAGES})
           </button>
         </div>
         <button
@@ -266,8 +284,8 @@ export function PostComposer({
         </button>
       </div>
 
-      {state.error && <p className="mt-1 text-xs text-red-700">{state.error}</p>}
-      {posted && <p className="mt-1 text-xs text-forest-700">Posted!</p>}
+      {state.error && <p className="ml-[3.25rem] mt-1 text-xs text-red-700">{state.error}</p>}
+      {posted && <p className="ml-[3.25rem] mt-1 text-xs text-forest-700">Posted!</p>}
       <p className="mt-2 text-[11px] text-forest-800/40">
         By posting you agree to the{" "}
         <Link href="/community-guidelines" className="underline">

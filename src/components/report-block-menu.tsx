@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { DotsIcon } from "@/components/icons";
 import { blockUserAction, createReportAction } from "@/lib/actions/moderation-actions";
 
 const REASONS = [
@@ -36,15 +37,15 @@ export function ReportBlockMenu({
           setOpen(true);
         }}
         aria-label="Report or block"
-        className="text-forest-800/40 hover:text-forest-800"
+        className="flex h-7 w-7 items-center justify-center rounded-full text-forest-800/40 hover:bg-forest-50 hover:text-forest-800"
       >
-        ⋯
+        <DotsIcon className="h-4.5 w-4.5" />
       </button>
     );
   }
 
   return (
-    <div className="absolute right-0 top-6 z-10 w-56 rounded-xl border border-forest-900/10 bg-white p-3 shadow-lg">
+    <div className="absolute right-0 top-8 z-10 w-56 rounded-xl border border-forest-900/10 bg-white p-3 shadow-lg">
       {mode === "menu" && (
         <div className="space-y-1">
           <button

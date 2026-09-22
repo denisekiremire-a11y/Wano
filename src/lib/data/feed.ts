@@ -19,7 +19,7 @@ import {
   type FeedAffinityContext,
   type ScorableFeedItem,
 } from "@/lib/feed-ranking";
-import { getCommentsForPost, getEngagementCounts, getLikedPostIds } from "@/lib/data/social";
+import { getCommentsForPost, getEngagementCounts, getLikedPostIds, getSavedPostIds } from "@/lib/data/social";
 import { getBlockedTravellerIds } from "@/lib/data/moderation";
 import { resolvePostContexts, type PostContextCard, type PostContextType } from "@/lib/data/post-context";
 
@@ -56,9 +56,12 @@ export type FeedEntry =
       authorTravellerId: string | null;
       authorName: string;
       authorUsername: string | null;
+      authorAvatarUrl: string | null;
+      authorLocation: string | null;
       likeCount: number;
       commentCount: number;
       liked: boolean;
+      saved: boolean;
       canInteract: boolean;
       comments: Awaited<ReturnType<typeof getCommentsForPost>>;
       context: PostContextCard | null;
@@ -123,11 +126,14 @@ export async function getRankedFeed(viewerTravellerId: string | null, limit = 30
       authorTravellerId: string | null;
       authorName: string;
       authorUsername: string | null;
+      authorAvatarUrl: string | null;
+      authorLocation: string | null;
     }
   >();
   let likeMap = new Map<string, number>();
   let commentMap = new Map<string, number>();
   let likedIds = new Set<string>();
+  let savedIds = new Set<string>();
   let commentsMap = new Map<string, Awaited<ReturnType<typeof getCommentsForPost>>>();
   let imageIdsMap = new Map<string, string[]>();
 
@@ -151,6 +157,8 @@ export async function getRankedFeed(viewerTravellerId: string | null, limit = 30
           authorTravellerId: r.traveller?.id ?? null,
           authorName: r.vendor?.businessName ?? r.traveller?.displayName ?? "Wano member",
           authorUsername: r.travellerUser?.username ?? null,
+          authorAvatarUrl: r.travellerUser?.avatarUrl ?? null,
+          authorLocation: r.travellerUser?.location ?? r.traveller?.city ?? null,
         },
       ]),
     );
@@ -159,6 +167,7 @@ export async function getRankedFeed(viewerTravellerId: string | null, limit = 30
     likeMap = engagement.likeMap;
     commentMap = engagement.commentMap;
     likedIds = viewerTravellerId ? await getLikedPostIds(viewerTravellerId, postIds) : new Set();
+    savedIds = viewerTravellerId ? await getSavedPostIds(viewerTravellerId, postIds) : new Set();
     const commentsByPost = await Promise.all(
       postIds.map((id) => getCommentsForPost(id).then((c) => [id, c] as const)),
     );
@@ -196,9 +205,12 @@ export async function getRankedFeed(viewerTravellerId: string | null, limit = 30
         authorTravellerId: live.authorTravellerId,
         authorName: live.authorName,
         authorUsername: live.authorUsername,
+        authorAvatarUrl: live.authorAvatarUrl,
+        authorLocation: live.authorLocation,
         likeCount: likeMap.get(live.post.id) ?? 0,
         commentCount: commentMap.get(live.post.id) ?? 0,
         liked: likedIds.has(live.post.id),
+        saved: savedIds.has(live.post.id),
         canInteract: Boolean(viewerTravellerId),
         comments: commentsMap.get(live.post.id) ?? [],
         context:

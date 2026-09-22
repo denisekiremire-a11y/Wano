@@ -1010,6 +1010,23 @@ export const postComments = pgTable("post_comments", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Bookmarking a post — same shape as savedListings, for the Social feed's
+// bookmark icon.
+export const savedPosts = pgTable(
+  "saved_posts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    travellerId: uuid("traveller_id")
+      .notNull()
+      .references(() => travellerProfiles.id, { onDelete: "cascade" }),
+    postId: uuid("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique().on(table.travellerId, table.postId)],
+);
+
 // A member claiming a Wano Deal (promo code) — powers "My Deals".
 export const dealClaims = pgTable(
   "deal_claims",
@@ -1063,6 +1080,7 @@ export const travellerProfilesRelations = relations(travellerProfiles, ({ one, m
   challengeCompletions: many(challengeCompletions),
   reviews: many(reviews),
   savedListings: many(savedListings),
+  savedPosts: many(savedPosts),
   referredBy: one(travellerProfiles, {
     fields: [travellerProfiles.referredByTravellerId],
     references: [travellerProfiles.id],
@@ -1197,6 +1215,12 @@ export const postsRelations = relations(posts, ({ one, many }) => ({
   audienceClub: one(clubs, { fields: [posts.audienceClubId], references: [clubs.id] }),
   likes: many(postLikes),
   comments: many(postComments),
+  saves: many(savedPosts),
+}));
+
+export const savedPostsRelations = relations(savedPosts, ({ one }) => ({
+  traveller: one(travellerProfiles, { fields: [savedPosts.travellerId], references: [travellerProfiles.id] }),
+  post: one(posts, { fields: [savedPosts.postId], references: [posts.id] }),
 }));
 
 export const storiesRelations = relations(stories, ({ one, many }) => ({

@@ -105,6 +105,8 @@ export default async function SocialPage({
         {travellerProfile ? (
           <PostComposer
             suggestions={suggestions}
+            avatarUrl={myAvatarUrl}
+            displayName={travellerProfile.displayName}
             presetContext={
               shareContext
                 ? { type: shareContext.type, id: shareContext.id, label: shareContext.title }
@@ -165,6 +167,8 @@ export default async function SocialPage({
                 authorTravellerId={entry.authorTravellerId ?? undefined}
                 authorName={entry.authorName}
                 authorUsername={entry.authorUsername}
+                authorAvatarUrl={entry.authorAvatarUrl}
+                authorLocation={entry.authorLocation}
                 content={entry.post.content}
                 imageUrl={entry.post.imageUrl}
                 imageIds={entry.imageIds}
@@ -172,6 +176,7 @@ export default async function SocialPage({
                 likeCount={entry.likeCount}
                 commentCount={entry.commentCount}
                 liked={entry.liked}
+                saved={entry.saved}
                 canInteract={entry.canInteract}
                 comments={entry.comments}
                 context={entry.context}

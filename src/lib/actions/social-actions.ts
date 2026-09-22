@@ -4,7 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
-import { clubMemberships, follows, postComments, postImages, postLikes, posts } from "@/db/schema";
+import { clubMemberships, follows, postComments, postImages, postLikes, posts, savedPosts } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { generateUserPostItem } from "@/lib/feed-generators";
 import { getBlockedTravellerIds } from "@/lib/data/moderation";
@@ -189,6 +189,26 @@ export async function togglePostLikeAction(postId: string) {
     await db.delete(postLikes).where(eq(postLikes.id, existing.id));
   } else {
     await db.insert(postLikes).values({ postId, travellerId: travellerProfile.id });
+  }
+
+  revalidatePath("/social");
+}
+
+export async function toggleSavePostAction(postId: string) {
+  const session = await requireRole("traveller");
+  const travellerProfile = await getTravellerProfileByUserId(session.userId);
+  if (!travellerProfile) throw new Error("Traveller profile not found.");
+
+  const [existing] = await db
+    .select()
+    .from(savedPosts)
+    .where(and(eq(savedPosts.postId, postId), eq(savedPosts.travellerId, travellerProfile.id)))
+    .limit(1);
+
+  if (existing) {
+    await db.delete(savedPosts).where(eq(savedPosts.id, existing.id));
+  } else {
+    await db.insert(savedPosts).values({ postId, travellerId: travellerProfile.id });
   }
 
   revalidatePath("/social");

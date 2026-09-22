@@ -26,6 +26,7 @@ import {
   getMyClubs,
   getPostImageIds,
   getPostsByTraveller,
+  getSavedPostIds,
 } from "@/lib/data/social";
 import { resolvePostContexts, type PostContextType } from "@/lib/data/post-context";
 import { PostsTab } from "@/components/posts-tab";
@@ -71,9 +72,10 @@ export default async function PassportPage({
   ]);
 
   const postIds = postRows.map((r) => r.post.id);
-  const [{ likeMap, commentMap }, likedPostIds] = await Promise.all([
+  const [{ likeMap, commentMap }, likedPostIds, savedPostIds] = await Promise.all([
     getEngagementCounts(postIds),
     getLikedPostIds(travellerProfile.id, postIds),
+    getSavedPostIds(travellerProfile.id, postIds),
   ]);
   const commentsByPost = await Promise.all(
     postRows.map((r) => getCommentsForPost(r.post.id).then((comments) => [r.post.id, comments] as const)),
@@ -160,9 +162,12 @@ export default async function PassportPage({
             authorTravellerId={travellerProfile.id}
             authorName={travellerProfile.displayName}
             authorUsername={user?.username ?? null}
+            authorAvatarUrl={user?.avatarUrl ?? null}
+            authorLocation={travellerProfile.city}
             likeMap={likeMap}
             commentMap={commentMap}
             likedPostIds={likedPostIds}
+            savedPostIds={savedPostIds}
             commentsMap={commentsMap}
             imageIdsMap={imageIdsMap}
             contextMap={contextMap}
