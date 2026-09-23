@@ -11,6 +11,7 @@ export function RewardRow({
   discountType,
   discountValue,
   source,
+  milestoneThreshold,
   targetLabel,
   active,
 }: {
@@ -20,6 +21,7 @@ export function RewardRow({
   discountType: "percent" | "fixed" | "freebie";
   discountValue: string | null;
   source: string;
+  milestoneThreshold: number | null;
   targetLabel: string;
   active: boolean;
 }) {
@@ -33,6 +35,7 @@ export function RewardRow({
         <p className="text-[11px] text-forest-800/45">
           {formatRewardDiscount(discountType, discountValue)} · {targetLabel} ·{" "}
           <span className="capitalize">{source}</span>
+          {milestoneThreshold != null && ` (${milestoneThreshold.toLocaleString()} pts)`}
         </p>
       </div>
       <button

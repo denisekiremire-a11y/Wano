@@ -4,21 +4,23 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { BirthdayEditor } from "@/components/birthday-editor";
 import { FeedActivityToggle } from "@/components/feed-activity-toggle";
-import { CameraIcon, StampIcon, TrophyIcon, UserIcon } from "@/components/icons";
+import { CameraIcon, CheckIcon, StampIcon, StarIcon, TrophyIcon, UserIcon, UsersIcon } from "@/components/icons";
 import { LiteModeToggle } from "@/components/lite-mode-toggle";
 import { LogoutButton } from "@/components/logout-button";
 import { PassportGrid } from "@/components/passport-grid";
 import { PassportTabs } from "@/components/passport-tabs";
+import { PastVouchersSection } from "@/components/past-vouchers-section";
 import { ReviewForm } from "@/components/review-form";
 import { PASSPORT_TABS, type PassportTabKey } from "@/lib/passport-tabs";
 import { getSession, type SessionPayload } from "@/lib/session";
 import { claimDealFormAction } from "@/lib/actions/deal-actions";
+import { checkAndGrantMilestoneRewards } from "@/lib/actions/reward-actions";
 import { getAllActiveDeals, getClaimedDealIds } from "@/lib/data/deals";
 import { getReviewableBookings } from "@/lib/data/reviews";
-import { getMyWallet, getRewardsSummary } from "@/lib/data/rewards";
+import { getMilestoneReward, getMyWallet, getRewardsSummary } from "@/lib/data/rewards";
 import { ShareReferralBlock } from "@/components/share-referral-block";
 import { VoucherCard } from "@/components/voucher-card";
-import { formatRewardDiscount, getPointsProgress } from "@/lib/reward-format";
+import { formatRewardDiscount, getMilestoneRewardThreshold, getPointsProgress } from "@/lib/reward-format";
 import {
   getCommentsForPost,
   getEngagementCounts,
@@ -79,7 +81,6 @@ export default async function PassportPage({
     bookingRows,
     reviewableRows,
     rewardsSummary,
-    wallet,
     deals,
     claimedIds,
     postRows,
@@ -92,13 +93,23 @@ export default async function PassportPage({
     getTravellerBookings(travellerProfile.id),
     getReviewableBookings(travellerProfile.id),
     getRewardsSummary(travellerProfile.id, travellerProfile.persona, travellerProfile.city),
-    getMyWallet(travellerProfile.id),
     getAllActiveDeals(),
     getClaimedDealIds(travellerProfile.id),
     getPostsByTraveller(travellerProfile.id),
     getMyBlockedList(travellerProfile.id),
     getMyClubs(travellerProfile.id),
     getSavedListingsForTraveller(travellerProfile.id),
+  ]);
+
+  // Auto-grants a voucher for any points milestone crossed since the last
+  // visit — idempotent (see checkAndGrantMilestoneRewards), so this is
+  // safe to run on every render. Wallet is fetched after so a
+  // just-minted milestone voucher shows up immediately.
+  await checkAndGrantMilestoneRewards(travellerProfile.id, rewardsSummary.totalPoints);
+  const { next: nextMilestone } = getPointsProgress(rewardsSummary.totalPoints);
+  const [wallet, nextMilestoneReward] = await Promise.all([
+    getMyWallet(travellerProfile.id),
+    getMilestoneReward(getMilestoneRewardThreshold(nextMilestone)),
   ]);
 
   const postIds = postRows.map((r) => r.post.id);
@@ -207,7 +218,13 @@ export default async function PassportPage({
           <BookingsTab bookingRows={bookingRows} reviewableBookingIds={reviewableBookingIds} />
         )}
         {activeTab === "rewards" && (
-          <RewardsTab summary={rewardsSummary} wallet={wallet} deals={deals} claimedIds={claimedIds} />
+          <RewardsTab
+            summary={rewardsSummary}
+            wallet={wallet}
+            deals={deals}
+            claimedIds={claimedIds}
+            nextMilestoneReward={nextMilestoneReward}
+          />
         )}
         {activeTab === "posts" && (
           <PostsTab
@@ -440,17 +457,44 @@ function BookingGroup({
   );
 }
 
+const BREAKDOWN_ICONS: Record<string, (props: { className?: string }) => React.ReactElement> = {
+  "Passport stamps": StampIcon,
+  "Challenges completed": TrophyIcon,
+  "Reviews written": StarIcon,
+  "Friends referred": UsersIcon,
+  "Profile complete": CheckIcon,
+};
+
 function RewardsTab({
   summary,
   wallet,
   deals,
   claimedIds,
+  nextMilestoneReward,
 }: {
   summary: Awaited<ReturnType<typeof getRewardsSummary>>;
   wallet: Awaited<ReturnType<typeof getMyWallet>>;
   deals: Awaited<ReturnType<typeof getAllActiveDeals>>;
   claimedIds: Awaited<ReturnType<typeof getClaimedDealIds>>;
+  nextMilestoneReward: Awaited<ReturnType<typeof getMilestoneReward>>;
 }) {
+  const pastVoucherRows = [
+    ...wallet.used.map(({ userReward, reward, target }) => ({
+      id: userReward.id,
+      title: reward.title,
+      targetTitle: target?.title ?? "",
+      statusLabel: "Used" as const,
+      detail: userReward.redeemedAt ? `Redeemed ${userReward.redeemedAt.toLocaleDateString()}` : null,
+    })),
+    ...wallet.expired.map(({ userReward, reward, target }) => ({
+      id: userReward.id,
+      title: reward.title,
+      targetTitle: target?.title ?? "",
+      statusLabel: "Expired" as const,
+      detail: null,
+    })),
+  ];
+
   return (
     <div className="space-y-6">
       <div>
@@ -471,9 +515,10 @@ function RewardsTab({
                 <div className="h-full rounded-full bg-marigold-400" style={{ width: `${percent}%` }} />
               </div>
               <p className="mt-1.5 text-xs text-white/70">
-                {percent >= 100
-                  ? `You've hit ${next.toLocaleString()} pts!`
-                  : `${summary.totalPoints.toLocaleString()} / ${next.toLocaleString()} pts to your next milestone`}
+                {summary.totalPoints.toLocaleString()} / {next.toLocaleString()} pts to your next milestone
+              </p>
+              <p className="mt-1 text-xs font-medium text-marigold-200">
+                {nextMilestoneReward ? `Next: ${nextMilestoneReward.title}` : "Next: a reward is coming soon"}
               </p>
             </div>
           );
@@ -482,18 +527,21 @@ function RewardsTab({
 
       <section className="space-y-2">
         <h3 className="font-display text-lg font-semibold text-forest-900">How you got here</h3>
-        {summary.breakdown.map((row) => (
-          <div
-            key={row.label}
-            className="flex items-center justify-between rounded-xl border border-forest-900/10 bg-white p-3"
-          >
-            <div>
-              <p className="text-sm font-medium text-forest-900">{row.label}</p>
-              <p className="text-xs text-forest-800/50">{row.count}</p>
-            </div>
-            <span className="text-sm font-semibold text-forest-800">+{row.points} pts</span>
-          </div>
-        ))}
+        <div className="grid grid-cols-2 gap-2">
+          {summary.breakdown.map((row) => {
+            const Icon = BREAKDOWN_ICONS[row.label] ?? StarIcon;
+            return (
+              <div key={row.label} className="rounded-xl border border-forest-900/10 bg-white p-3">
+                <Icon className="h-4 w-4 text-forest-800/50" />
+                <p className="mt-1.5 text-sm font-medium text-forest-900">{row.label}</p>
+                <div className="mt-0.5 flex items-baseline justify-between">
+                  <p className="text-xs text-forest-800/50">{row.count}</p>
+                  <span className="text-xs font-semibold text-forest-800">+{row.points} pts</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
         {summary.pendingReferrals > 0 && (
           <p className="text-xs text-forest-800/50">
             +{summary.pendingReferrals} more referral{summary.pendingReferrals === 1 ? "" : "s"} pending —
@@ -527,46 +575,7 @@ function RewardsTab({
         )}
       </section>
 
-      {wallet.used.length > 0 && (
-        <section className="space-y-2">
-          <h3 className="font-display text-lg font-semibold text-forest-900">Used</h3>
-          {wallet.used.map(({ userReward, reward, target }) => (
-            <div
-              key={userReward.id}
-              className="flex items-center justify-between rounded-xl border border-forest-900/10 bg-white p-3"
-            >
-              <div>
-                <p className="text-sm font-medium text-forest-900">{reward.title}</p>
-                <p className="text-xs text-forest-800/50">
-                  {target?.title ?? ""}
-                  {userReward.redeemedAt ? ` · Redeemed ${userReward.redeemedAt.toLocaleDateString()}` : ""}
-                </p>
-              </div>
-              <span className="rounded-full bg-forest-800 px-3 py-1 text-xs font-semibold text-white">Used</span>
-            </div>
-          ))}
-        </section>
-      )}
-
-      {wallet.expired.length > 0 && (
-        <section className="space-y-2">
-          <h3 className="font-display text-lg font-semibold text-forest-900">Expired</h3>
-          {wallet.expired.map(({ userReward, reward, target }) => (
-            <div
-              key={userReward.id}
-              className="flex items-center justify-between rounded-xl border border-forest-900/10 bg-white p-3 opacity-60"
-            >
-              <div>
-                <p className="text-sm font-medium text-forest-900">{reward.title}</p>
-                <p className="text-xs text-forest-800/50">{target?.title ?? ""}</p>
-              </div>
-              <span className="rounded-full bg-forest-100 px-3 py-1 text-xs font-semibold text-forest-800">
-                Expired
-              </span>
-            </div>
-          ))}
-        </section>
-      )}
+      <PastVouchersSection rows={pastVoucherRows} />
 
       <section className="space-y-3">
         <h3 className="font-display text-lg font-semibold text-forest-900">Free deals</h3>

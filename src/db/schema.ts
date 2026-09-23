@@ -161,6 +161,10 @@ export const travellerProfiles = pgTable(
     // follow rows. Zero for every real account.
     bonusFollowers: integer("bonus_followers").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    // Highest points-milestone threshold already granted a reward for —
+    // a watermark gating checkAndGrantMilestoneRewards, not a points
+    // balance (points stay fully live-computed, see rewards.ts).
+    milestonePointsClaimed: integer("milestone_points_claimed").notNull().default(0),
   },
   (table) => [index("traveller_profiles_referred_by_idx").on(table.referredByTravellerId)],
 );
@@ -667,6 +671,7 @@ export const rewardSourceEnum = pgEnum("reward_source", [
   "referral",
   "campaign",
   "manual",
+  "milestone",
 ]);
 
 export const rewards = pgTable("rewards", {
@@ -685,6 +690,12 @@ export const rewards = pgTable("rewards", {
   defaultValidityDays: integer("default_validity_days").notNull().default(30),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  // Only set when source="milestone" — which points-ladder rung
+  // (see MILESTONE_LADDER in reward-format.ts) this reward is granted
+  // for. A reward configured at the ladder's last rung is reused for
+  // every repeat crossing beyond it, so no rows are needed past the
+  // fifth. See checkAndGrantMilestoneRewards in reward-actions.ts.
+  milestoneThreshold: integer("milestone_threshold"),
 });
 
 export const userRewardStatusEnum = pgEnum("user_reward_status", [

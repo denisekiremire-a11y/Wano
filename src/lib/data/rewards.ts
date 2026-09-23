@@ -52,6 +52,19 @@ export async function getRewardsSummary(travellerId: string, persona: string | n
   };
 }
 
+/** The reward configured for a given milestone tier, if an admin has set
+ * one up yet — powers the "Next: 15% off at ..." preview on Passport's
+ * Rewards tab. Pass it through getMilestoneRewardThreshold first, since
+ * every repeat past the ladder's last rung reuses that rung's reward. */
+export async function getMilestoneReward(threshold: number) {
+  const [reward] = await db
+    .select({ title: rewards.title })
+    .from(rewards)
+    .where(and(eq(rewards.source, "milestone"), eq(rewards.milestoneThreshold, threshold), eq(rewards.active, true)))
+    .limit(1);
+  return reward ?? null;
+}
+
 export type RewardTarget = { targetType: "listing" | "event"; targetId: string };
 
 async function resolveTargets(refs: RewardTarget[]) {

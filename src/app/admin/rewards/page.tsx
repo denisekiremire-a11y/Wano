@@ -47,6 +47,7 @@ export default async function AdminRewardsPage() {
               discountType={reward.discountType}
               discountValue={reward.discountValue}
               source={reward.source}
+              milestoneThreshold={reward.milestoneThreshold}
               targetLabel={reward.target?.title ?? "Unknown target"}
               active={reward.active}
             />
