@@ -5,6 +5,7 @@ import {
   bookings,
   challengeCompletions,
   challenges,
+  events,
   interests,
   journeys,
   listings,
@@ -119,10 +120,12 @@ export async function getTravellerBookings(travellerId: string) {
     .select({
       booking: bookings,
       listing: listings,
+      event: events,
       journey: journeys,
     })
     .from(bookings)
-    .innerJoin(listings, eq(bookings.listingId, listings.id))
+    .leftJoin(listings, eq(bookings.listingId, listings.id))
+    .leftJoin(events, eq(bookings.eventId, events.id))
     .leftJoin(journeys, eq(bookings.journeyId, journeys.id))
     .where(eq(bookings.travellerId, travellerId))
     .orderBy(bookings.createdAt);
@@ -146,13 +149,18 @@ export async function getBookingByRef(bookingRef: string, travellerId: string) {
     .select({
       booking: bookings,
       listing: listings,
+      event: events,
       vendor: vendorProfiles,
       journey: journeys,
       appliedReward: rewards,
     })
     .from(bookings)
-    .innerJoin(listings, eq(bookings.listingId, listings.id))
-    .innerJoin(vendorProfiles, eq(listings.vendorProfileId, vendorProfiles.id))
+    .leftJoin(listings, eq(bookings.listingId, listings.id))
+    .leftJoin(events, eq(bookings.eventId, events.id))
+    .leftJoin(
+      vendorProfiles,
+      or(eq(vendorProfiles.id, listings.vendorProfileId), eq(vendorProfiles.id, events.organizerVendorProfileId)),
+    )
     .leftJoin(journeys, eq(bookings.journeyId, journeys.id))
     .leftJoin(userRewards, eq(bookings.appliedUserRewardId, userRewards.id))
     .leftJoin(rewards, eq(userRewards.rewardId, rewards.id))

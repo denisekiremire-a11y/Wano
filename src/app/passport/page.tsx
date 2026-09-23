@@ -408,11 +408,11 @@ function BookingGroup({
   return (
     <section className="space-y-3">
       <h3 className="font-display text-lg font-semibold text-forest-900">{title}</h3>
-      {[...rows].reverse().map(({ booking, listing, journey }) => (
+      {[...rows].reverse().map(({ booking, listing, event, journey }) => (
         <div key={booking.id} className="rounded-2xl border border-forest-900/10 bg-white p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-forest-900">{listing.title}</p>
+              <p className="font-medium text-forest-900">{listing?.title ?? event?.title}</p>
               <p className="text-sm text-forest-800/60">
                 {journey ? `${journey.name} · ` : ""}
                 <Link href={`/bookings/${booking.bookingRef}`} className="hover:underline">
@@ -431,7 +431,7 @@ function BookingGroup({
               {booking.status}
             </span>
           </div>
-          {reviewableBookingIds.has(booking.id) && (
+          {listing && reviewableBookingIds.has(booking.id) && (
             <ReviewForm bookingId={booking.id} listingTitle={listing.title} />
           )}
         </div>

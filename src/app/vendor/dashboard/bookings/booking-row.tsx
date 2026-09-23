@@ -16,6 +16,7 @@ export function BookingRow({
   bookingId,
   travellerName,
   travellerEmail,
+  subjectLabel,
   journeyName,
   bookingRef,
   status,
@@ -30,6 +31,7 @@ export function BookingRow({
   bookingId: string;
   travellerName: string;
   travellerEmail: string;
+  subjectLabel?: string;
   journeyName: string | null;
   bookingRef: string;
   status: "pending" | "confirmed" | "completed" | "cancelled";
@@ -49,6 +51,7 @@ export function BookingRow({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="font-medium text-forest-900">{travellerName}</p>
+          {subjectLabel && <p className="text-sm font-medium text-nile-700">{subjectLabel}</p>}
           <p className="text-sm text-forest-800/60">
             {journeyName ?? "General booking"} · ref {bookingRef}
           </p>

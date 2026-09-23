@@ -108,7 +108,7 @@ export default async function ListingDetailPage({
       hasBirthdaySet = travellerProfile.dateOfBirth != null;
       travellerDisplayName = travellerProfile.displayName;
       viewerTravellerId = travellerProfile.id;
-      myBookings = allBookings.filter((b) => b.listing.id === listing.id);
+      myBookings = allBookings.filter((b) => b.listing?.id === listing.id);
       claimableRewards = claimable;
       myClaimedRewards = myClaimed;
     }

@@ -3,7 +3,7 @@
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import { bookings, listings, stamps } from "@/db/schema";
+import { bookings, events, listings, stamps } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { notifyTravellerOfBookingStatus } from "@/lib/booking-notifications";
 import { awardReferralCreditOnFirstBooking } from "@/lib/data/traveller";
@@ -18,14 +18,16 @@ export async function respondToBookingAction(
   if (!vendorProfile) throw new Error("Vendor profile not found.");
 
   const [row] = await db
-    .select({ booking: bookings, listing: listings })
+    .select({ booking: bookings, listing: listings, event: events })
     .from(bookings)
-    .innerJoin(listings, eq(bookings.listingId, listings.id))
+    .leftJoin(listings, eq(bookings.listingId, listings.id))
+    .leftJoin(events, eq(bookings.eventId, events.id))
     .where(eq(bookings.id, bookingId))
     .limit(1);
 
-  if (!row || row.listing.vendorProfileId !== vendorProfile.id) {
-    throw new Error("You can only respond to bookings on your own listing.");
+  const ownerId = row?.listing?.vendorProfileId ?? row?.event?.organizerVendorProfileId;
+  if (!row || ownerId !== vendorProfile.id) {
+    throw new Error("You can only respond to bookings on your own listing or event.");
   }
   if (row.booking.status !== "pending") {
     return;

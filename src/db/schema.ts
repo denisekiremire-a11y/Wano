@@ -355,9 +355,11 @@ export const listingImages = pgTable("listing_images", {
 // Courses", "Standard Package") — null renders ungrouped.
 export const listingItems = pgTable("listing_items", {
   id: uuid("id").primaryKey().defaultRandom(),
-  listingId: uuid("listing_id")
-    .notNull()
-    .references(() => listings.id, { onDelete: "cascade" }),
+  // Exactly one of listingId/eventId is set — a menu/service/room/vehicle
+  // belongs to a listing, a ticket tier belongs to a standalone event.
+  // Enforced in app code (parseItemFields callers), not a DB constraint.
+  listingId: uuid("listing_id").references(() => listings.id, { onDelete: "cascade" }),
+  eventId: uuid("event_id").references(() => events.id, { onDelete: "cascade" }),
   sectionLabel: text("section_label"),
   name: text("name").notNull(),
   description: text("description"),
@@ -541,14 +543,13 @@ export const bookings = pgTable("bookings", {
   travellerId: uuid("traveller_id")
     .notNull()
     .references(() => travellerProfiles.id, { onDelete: "cascade" }),
-  listingId: uuid("listing_id")
-    .notNull()
-    .references(() => listings.id),
+  // Exactly one of listingId/eventId is set (enforced in app code) — a
+  // reservation against a place, or a ticket purchase against a standalone
+  // event. Both nullable for that reason.
+  listingId: uuid("listing_id").references(() => listings.id),
   // Null when the listing wasn't booked in the context of any of the 5
   // journeys (e.g. a general nearby restaurant) — no stamp is awarded then.
   journeyId: uuid("journey_id").references(() => journeys.id),
-  // Set when this booking is actually a reservation against an event rather
-  // than a place — the same pending/confirmed/completed lifecycle applies.
   eventId: uuid("event_id").references(() => events.id, { onDelete: "cascade" }),
   // Optional context a traveller can attach when requesting a booking — used
   // to check eligibility for a listing's birthday perk (see birthdayPerks).
@@ -1175,6 +1176,7 @@ export const eventsRelations = relations(events, ({ one, many }) => ({
   attendance: many(eventAttendance),
   bookings: many(bookings),
   posts: many(posts),
+  items: many(listingItems),
 }));
 
 export const eventAttendanceRelations = relations(eventAttendance, ({ one }) => ({
@@ -1450,6 +1452,7 @@ export const listingsRelations = relations(listings, ({ one, many }) => ({
 
 export const listingItemsRelations = relations(listingItems, ({ one, many }) => ({
   listing: one(listings, { fields: [listingItems.listingId], references: [listings.id] }),
+  event: one(events, { fields: [listingItems.eventId], references: [events.id] }),
   images: many(listingItemImages),
 }));
 

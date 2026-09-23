@@ -3,7 +3,7 @@
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import { listingItemImages, listingItems, listings } from "@/db/schema";
+import { events, listingItemImages, listingItems, listings } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { getVendorOwnListingFull, getVendorProfileByUserId } from "@/lib/data/vendor";
 import type { ActionState } from "@/lib/validation";
@@ -19,17 +19,46 @@ async function requireOwnListing(vendorUserId: string, listingId: string) {
   return listingRow.listing.id;
 }
 
+async function requireOwnEvent(vendorUserId: string, eventId: string) {
+  const vendorProfile = await getVendorProfileByUserId(vendorUserId);
+  if (!vendorProfile) return null;
+  const [event] = await db.select().from(events).where(eq(events.id, eventId)).limit(1);
+  if (!event || event.organizerVendorProfileId !== vendorProfile.id) return null;
+  return event.id;
+}
+
+/** Where an item belongs — a listing's menu/services/rooms/vehicles, or a
+ * standalone event's ticket tiers. Exactly one of listingId/eventId is set
+ * on the item itself; this resolves which and checks the caller owns it. */
 async function requireOwnItem(vendorUserId: string, itemId: string) {
   const vendorProfile = await getVendorProfileByUserId(vendorUserId);
   if (!vendorProfile) return null;
   const [row] = await db
-    .select({ item: listingItems, vendorProfileId: listings.vendorProfileId })
+    .select({
+      item: listingItems,
+      listingVendorProfileId: listings.vendorProfileId,
+      eventOrganizerVendorProfileId: events.organizerVendorProfileId,
+    })
     .from(listingItems)
-    .innerJoin(listings, eq(listings.id, listingItems.listingId))
+    .leftJoin(listings, eq(listings.id, listingItems.listingId))
+    .leftJoin(events, eq(events.id, listingItems.eventId))
     .where(eq(listingItems.id, itemId))
     .limit(1);
-  if (!row || row.vendorProfileId !== vendorProfile.id) return null;
+  if (!row) return null;
+  const ownerId = row.listingVendorProfileId ?? row.eventOrganizerVendorProfileId;
+  if (ownerId !== vendorProfile.id) return null;
   return row.item;
+}
+
+function revalidateItemPaths(item: { listingId: string | null; eventId: string | null }) {
+  if (item.listingId) {
+    revalidatePath(`/vendor/dashboard/listings/${item.listingId}/items`);
+    revalidatePath(`/explore/${item.listingId}`);
+  }
+  if (item.eventId) {
+    revalidatePath(`/vendor/dashboard/events/${item.eventId}/items`);
+    revalidatePath(`/events/${item.eventId}`);
+  }
 }
 
 function parseItemFields(formData: FormData) {
@@ -57,14 +86,24 @@ function parseItemFields(formData: FormData) {
   } as const;
 }
 
-// Items are supplementary listing content, same class as photos (not the
-// core title/type/price identity gated by submitListingAction's
-// admin-review queue) — vendors can add/edit/delete them directly, no
+// Items are supplementary content, same class as photos (not the core
+// title/type/price identity gated by submitListingAction's admin-review
+// queue) — vendors/organizers can add/edit/delete them directly, no
 // moderation step, consistent with uploadListingPhotosAction.
 export async function createListingItemAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const session = await requireRole("vendor");
-  const listingId = await requireOwnListing(session.userId, String(formData.get("listingId") ?? ""));
-  if (!listingId) return { error: "You don't have a listing yet." };
+  const rawEventId = String(formData.get("eventId") ?? "");
+  const rawListingId = String(formData.get("listingId") ?? "");
+
+  let listingId: string | null = null;
+  let eventId: string | null = null;
+  if (rawEventId) {
+    eventId = await requireOwnEvent(session.userId, rawEventId);
+    if (!eventId) return { error: "You don't organize this event." };
+  } else {
+    listingId = await requireOwnListing(session.userId, rawListingId);
+    if (!listingId) return { error: "You don't have a listing yet." };
+  }
 
   const parsed = parseItemFields(formData);
   if ("error" in parsed) return { error: parsed.error };
@@ -72,12 +111,11 @@ export async function createListingItemAction(_prev: ActionState, formData: Form
   const existing = await db
     .select({ id: listingItems.id })
     .from(listingItems)
-    .where(eq(listingItems.listingId, listingId));
+    .where(listingId ? eq(listingItems.listingId, listingId) : eq(listingItems.eventId, eventId!));
 
-  await db.insert(listingItems).values({ listingId, sortOrder: existing.length, ...parsed.data });
+  await db.insert(listingItems).values({ listingId, eventId, sortOrder: existing.length, ...parsed.data });
 
-  revalidatePath(`/vendor/dashboard/listings/${listingId}/items`);
-  revalidatePath(`/explore/${listingId}`);
+  revalidateItemPaths({ listingId, eventId });
   return {};
 }
 
@@ -91,8 +129,7 @@ export async function updateListingItemAction(_prev: ActionState, formData: Form
 
   await db.update(listingItems).set(parsed.data).where(eq(listingItems.id, item.id));
 
-  revalidatePath(`/vendor/dashboard/listings/${item.listingId}/items`);
-  revalidatePath(`/explore/${item.listingId}`);
+  revalidateItemPaths(item);
   return {};
 }
 
@@ -103,8 +140,7 @@ export async function deleteListingItemAction(itemId: string) {
 
   await db.delete(listingItems).where(eq(listingItems.id, itemId));
 
-  revalidatePath(`/vendor/dashboard/listings/${item.listingId}/items`);
-  revalidatePath(`/explore/${item.listingId}`);
+  revalidateItemPaths(item);
 }
 
 export async function uploadListingItemPhotosAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -134,8 +170,7 @@ export async function uploadListingItemPhotosAction(_prev: ActionState, formData
     });
   }
 
-  revalidatePath(`/vendor/dashboard/listings/${item.listingId}/items`);
-  revalidatePath(`/explore/${item.listingId}`);
+  revalidateItemPaths(item);
   return {};
 }
 
@@ -147,21 +182,22 @@ export async function deleteListingItemImageAction(imageId: string) {
   const [image] = await db
     .select({
       id: listingItemImages.id,
-      itemId: listingItemImages.itemId,
-      listingId: listingItems.listingId,
-      vendorProfileId: listings.vendorProfileId,
+      item: listingItems,
+      listingVendorProfileId: listings.vendorProfileId,
+      eventOrganizerVendorProfileId: events.organizerVendorProfileId,
     })
     .from(listingItemImages)
     .innerJoin(listingItems, eq(listingItems.id, listingItemImages.itemId))
-    .innerJoin(listings, eq(listings.id, listingItems.listingId))
+    .leftJoin(listings, eq(listings.id, listingItems.listingId))
+    .leftJoin(events, eq(events.id, listingItems.eventId))
     .where(eq(listingItemImages.id, imageId))
     .limit(1);
-  if (!image || image.vendorProfileId !== vendorProfile.id) {
-    throw new Error("You can only remove photos on your own listing.");
+  const ownerId = image?.listingVendorProfileId ?? image?.eventOrganizerVendorProfileId;
+  if (!image || ownerId !== vendorProfile.id) {
+    throw new Error("You can only remove photos on your own item.");
   }
 
   await db.delete(listingItemImages).where(eq(listingItemImages.id, imageId));
 
-  revalidatePath(`/vendor/dashboard/listings/${image.listingId}/items`);
-  revalidatePath(`/explore/${image.listingId}`);
+  revalidateItemPaths(image.item);
 }

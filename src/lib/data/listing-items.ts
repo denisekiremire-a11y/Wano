@@ -19,6 +19,16 @@ export async function getListingItemById(itemId: string): Promise<ListingItem | 
   return item;
 }
 
+/** Ticket tiers for one standalone event, ordered by sortOrder — same
+ * shape as getListingItems, just keyed by eventId instead of listingId. */
+export async function getEventItems(eventId: string): Promise<ListingItem[]> {
+  return db
+    .select()
+    .from(listingItems)
+    .where(eq(listingItems.eventId, eventId))
+    .orderBy(listingItems.sortOrder);
+}
+
 /** Image ids per item, ordered by sortOrder — index 0 is the cover shown on
  * item cards. Bulk form mirrors getListingImageIds. */
 export async function getListingItemImageIds(itemIds: string[]): Promise<Map<string, string[]>> {

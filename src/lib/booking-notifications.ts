@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { db } from "@/db";
-import { bookings, listings, travellerProfiles, users, vendorProfiles } from "@/db/schema";
+import { bookings, events, listings, travellerProfiles, users, vendorProfiles } from "@/db/schema";
 import { notifyAdmin, notifyUser } from "@/lib/notify";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
@@ -21,46 +21,61 @@ export async function notifyTravellerOfBookingStatus(bookingId: string, status: 
     .select({
       booking: bookings,
       listingTitle: listings.title,
+      eventTitle: events.title,
       vendorBusinessName: vendorProfiles.businessName,
       travellerEmail: users.email,
     })
     .from(bookings)
-    .innerJoin(listings, eq(listings.id, bookings.listingId))
-    .innerJoin(vendorProfiles, eq(vendorProfiles.id, listings.vendorProfileId))
+    .leftJoin(listings, eq(listings.id, bookings.listingId))
+    .leftJoin(events, eq(events.id, bookings.eventId))
+    .leftJoin(
+      vendorProfiles,
+      or(eq(vendorProfiles.id, listings.vendorProfileId), eq(vendorProfiles.id, events.organizerVendorProfileId)),
+    )
     .innerJoin(travellerProfiles, eq(travellerProfiles.id, bookings.travellerId))
     .innerJoin(users, eq(users.id, travellerProfiles.userId))
     .where(eq(bookings.id, bookingId))
     .limit(1);
   if (!row) return;
 
+  const title = row.listingTitle ?? row.eventTitle;
   await notifyUser(row.travellerEmail, `Your booking ${message}`, [
-    `Your booking with <strong>${row.vendorBusinessName}</strong> for <strong>${row.listingTitle}</strong> ${message}.`,
+    row.vendorBusinessName
+      ? `Your booking with <strong>${row.vendorBusinessName}</strong> for <strong>${title}</strong> ${message}.`
+      : `Your booking for <strong>${title}</strong> ${message}.`,
     `Confirmation code: ${row.booking.bookingRef}`,
     `<a href="${APP_URL}/bookings/${row.booking.bookingRef}">View your booking</a>.`,
   ]);
 }
 
-/** Emails the vendor when a traveller makes a new booking request against
- * one of their listings. */
+/** Emails the vendor/organizer when a traveller makes a new booking request
+ * against one of their listings or events. No-ops if there's no one to
+ * notify (an unorganized event has no vendor account behind it). */
 export async function notifyVendorOfNewBooking(bookingId: string) {
   const [row] = await db
     .select({
       booking: bookings,
       listingTitle: listings.title,
+      eventTitle: events.title,
       travellerName: travellerProfiles.displayName,
       vendorEmail: users.email,
     })
     .from(bookings)
-    .innerJoin(listings, eq(listings.id, bookings.listingId))
-    .innerJoin(vendorProfiles, eq(vendorProfiles.id, listings.vendorProfileId))
-    .innerJoin(users, eq(users.id, vendorProfiles.userId))
+    .leftJoin(listings, eq(listings.id, bookings.listingId))
+    .leftJoin(events, eq(events.id, bookings.eventId))
+    .leftJoin(
+      vendorProfiles,
+      or(eq(vendorProfiles.id, listings.vendorProfileId), eq(vendorProfiles.id, events.organizerVendorProfileId)),
+    )
+    .leftJoin(users, eq(users.id, vendorProfiles.userId))
     .innerJoin(travellerProfiles, eq(travellerProfiles.id, bookings.travellerId))
     .where(eq(bookings.id, bookingId))
     .limit(1);
-  if (!row) return;
+  if (!row || !row.vendorEmail) return;
 
+  const title = row.listingTitle ?? row.eventTitle;
   await notifyUser(row.vendorEmail, "New booking request", [
-    `<strong>${row.travellerName}</strong> requested to book <strong>${row.listingTitle}</strong>.`,
+    `<strong>${row.travellerName}</strong> requested to book <strong>${title}</strong>.`,
     `Confirmation code: ${row.booking.bookingRef}`,
     `<a href="${APP_URL}/vendor/dashboard/bookings">Respond in your dashboard</a>.`,
   ]);
@@ -74,27 +89,35 @@ export async function notifyTravellerOfNewBooking(bookingId: string) {
     .select({
       booking: bookings,
       listingTitle: listings.title,
+      eventTitle: events.title,
       vendorBusinessName: vendorProfiles.businessName,
       travellerName: travellerProfiles.displayName,
       travellerEmail: users.email,
     })
     .from(bookings)
-    .innerJoin(listings, eq(listings.id, bookings.listingId))
-    .innerJoin(vendorProfiles, eq(vendorProfiles.id, listings.vendorProfileId))
+    .leftJoin(listings, eq(listings.id, bookings.listingId))
+    .leftJoin(events, eq(events.id, bookings.eventId))
+    .leftJoin(
+      vendorProfiles,
+      or(eq(vendorProfiles.id, listings.vendorProfileId), eq(vendorProfiles.id, events.organizerVendorProfileId)),
+    )
     .innerJoin(travellerProfiles, eq(travellerProfiles.id, bookings.travellerId))
     .innerJoin(users, eq(users.id, travellerProfiles.userId))
     .where(eq(bookings.id, bookingId))
     .limit(1);
   if (!row) return;
 
+  const title = row.listingTitle ?? row.eventTitle;
   await notifyUser(row.travellerEmail, "Booking request sent", [
-    `Your request to book <strong>${row.listingTitle}</strong> with <strong>${row.vendorBusinessName}</strong> is in.`,
+    row.vendorBusinessName
+      ? `Your request to book <strong>${title}</strong> with <strong>${row.vendorBusinessName}</strong> is in.`
+      : `Your request to book <strong>${title}</strong> is in.`,
     `Confirmation code: ${row.booking.bookingRef}`,
     `<a href="${APP_URL}/bookings/${row.booking.bookingRef}">View your booking</a>.`,
   ]);
 
   await notifyAdmin("New booking", [
-    `<strong>${row.travellerName}</strong> booked <strong>${row.listingTitle}</strong> (${row.vendorBusinessName}).`,
+    `<strong>${row.travellerName}</strong> booked <strong>${title}</strong>${row.vendorBusinessName ? ` (${row.vendorBusinessName})` : ""}.`,
     `Confirmation code: ${row.booking.bookingRef}`,
     `<a href="${APP_URL}/admin/bookings">View in admin</a>.`,
   ]);

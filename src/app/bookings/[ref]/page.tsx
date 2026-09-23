@@ -38,11 +38,15 @@ export default async function BookingConfirmationPage({ params }: { params: Prom
 
   const row = await getBookingByRef(ref, travellerProfile.id);
   if (!row) notFound();
-  const { booking, listing, vendor, journey, appliedReward } = row;
+  const { booking, listing, event, vendor, journey, appliedReward } = row;
   const status = STATUS_COPY[booking.status] ?? STATUS_COPY.pending;
   const lineItems = await getBookingItems(booking.id);
+  const title = listing?.title ?? event?.title ?? "Booking";
+  const subtitle = listing
+    ? [vendor?.businessName, vendor?.location].filter(Boolean).join(" · ")
+    : [vendor?.businessName, event?.location].filter(Boolean).join(" · ");
   const directionsUrl =
-    listing.latitude && listing.longitude
+    listing?.latitude && listing?.longitude
       ? `https://www.google.com/maps/search/?api=1&query=${listing.latitude},${listing.longitude}`
       : null;
 
@@ -68,11 +72,20 @@ export default async function BookingConfirmationPage({ params }: { params: Prom
       </div>
 
       <div className="mt-4 rounded-2xl border border-forest-900/10 bg-white p-5">
-        <p className="font-display text-lg font-semibold text-forest-900">{listing.title}</p>
-        <p className="text-sm text-forest-800/60">
-          {vendor.businessName} · {vendor.location}
-        </p>
+        <p className="font-display text-lg font-semibold text-forest-900">{title}</p>
+        {subtitle && <p className="text-sm text-forest-800/60">{subtitle}</p>}
         <div className="mt-3 space-y-1 text-sm text-forest-800/80">
+          {event && (
+            <p>
+              {new Intl.DateTimeFormat("en-GB", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+                hour: "numeric",
+                minute: "2-digit",
+              }).format(new Date(event.startAt))}
+            </p>
+          )}
           {booking.bookingName && <p>Reservation name: {booking.bookingName}</p>}
           {booking.visitDate && (
             <p>
@@ -159,18 +172,22 @@ export default async function BookingConfirmationPage({ params }: { params: Prom
             Get directions
           </a>
         )}
-        <a
-          href="#message-provider"
-          className="rounded-full border border-forest-900/15 px-5 py-2.5 text-sm font-semibold text-forest-800 transition hover:bg-forest-900/5"
-        >
-          Contact provider
-        </a>
-        <ShareBookingButton title={`${listing.title} — Wano booking`} url={`${APP_URL}/bookings/${booking.bookingRef}`} />
+        {vendor && (
+          <a
+            href="#message-provider"
+            className="rounded-full border border-forest-900/15 px-5 py-2.5 text-sm font-semibold text-forest-800 transition hover:bg-forest-900/5"
+          >
+            Contact provider
+          </a>
+        )}
+        <ShareBookingButton title={`${title} — Wano booking`} url={`${APP_URL}/bookings/${booking.bookingRef}`} />
       </div>
 
-      <div id="message-provider" className="mt-4 scroll-mt-20">
-        <BookingThread bookingId={booking.id} heading={`Message ${vendor.businessName}`} />
-      </div>
+      {vendor && (
+        <div id="message-provider" className="mt-4 scroll-mt-20">
+          <BookingThread bookingId={booking.id} heading={`Message ${vendor.businessName}`} />
+        </div>
+      )}
 
       <div className="mt-4 rounded-2xl border border-marigold-300 bg-marigold-50 p-4 text-sm text-marigold-900">
         <p className="font-medium">Haven&apos;t heard back?</p>

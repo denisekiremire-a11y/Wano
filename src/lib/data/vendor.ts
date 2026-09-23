@@ -2,6 +2,7 @@ import { and, count, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import {
   bookings,
+  events,
   experienceDetails,
   hotelDetails,
   journeys,
@@ -215,5 +216,36 @@ export async function getVendorBookings(vendorProfileId: string) {
     .leftJoin(userRewards, eq(bookings.appliedUserRewardId, userRewards.id))
     .leftJoin(rewards, eq(userRewards.rewardId, rewards.id))
     .where(inArray(bookings.listingId, listingIds))
+    .orderBy(desc(bookings.createdAt));
+}
+
+/** Ticket purchases for events this vendor organizes — the event-ticket
+ * counterpart to getVendorBookings, kept as a separate query rather than
+ * folded into it since a booking has exactly one of listingId/eventId and
+ * the two rarely need to render identically. */
+export async function getVendorEventTicketBookings(vendorProfileId: string) {
+  const vendorEvents = await db
+    .select({ id: events.id })
+    .from(events)
+    .where(eq(events.organizerVendorProfileId, vendorProfileId));
+
+  const eventIds = vendorEvents.map((e) => e.id);
+  if (eventIds.length === 0) return [];
+
+  return db
+    .select({
+      booking: bookings,
+      traveller: travellerProfiles,
+      travellerUser: users,
+      event: events,
+      appliedReward: rewards,
+    })
+    .from(bookings)
+    .innerJoin(travellerProfiles, eq(bookings.travellerId, travellerProfiles.id))
+    .innerJoin(users, eq(travellerProfiles.userId, users.id))
+    .innerJoin(events, eq(bookings.eventId, events.id))
+    .leftJoin(userRewards, eq(bookings.appliedUserRewardId, userRewards.id))
+    .leftJoin(rewards, eq(userRewards.rewardId, rewards.id))
+    .where(inArray(bookings.eventId, eventIds))
     .orderBy(desc(bookings.createdAt));
 }

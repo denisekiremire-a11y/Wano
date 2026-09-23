@@ -1,5 +1,5 @@
 import { checkBirthdayEligibility, getBirthdayPerksForListings } from "@/lib/data/birthday";
-import { getVendorBookings, getVendorProfileByUserId } from "@/lib/data/vendor";
+import { getVendorBookings, getVendorEventTicketBookings, getVendorProfileByUserId } from "@/lib/data/vendor";
 import { getSession } from "@/lib/session";
 import { BookingRow } from "./booking-row";
 
@@ -8,10 +8,13 @@ export default async function VendorBookingsPage() {
   const vendorProfile = await getVendorProfileByUserId(session!.userId);
   if (!vendorProfile) return null;
 
-  const bookingRows = await getVendorBookings(vendorProfile.id);
-  const perksByListing = await getBirthdayPerksForListings(bookingRows.map((r) => r.listing.id));
+  const [listingBookingRows, eventBookingRows] = await Promise.all([
+    getVendorBookings(vendorProfile.id),
+    getVendorEventTicketBookings(vendorProfile.id),
+  ]);
+  const perksByListing = await getBirthdayPerksForListings(listingBookingRows.map((r) => r.listing.id));
 
-  function birthdayInfoFor(row: (typeof bookingRows)[number]) {
+  function birthdayInfoFor(row: (typeof listingBookingRows)[number]) {
     const perks = perksByListing.get(row.listing.id) ?? [];
     if (perks.length === 0 || (!row.booking.visitDate && !row.booking.partySize)) return null;
     const perk = perks[0];
@@ -23,6 +26,27 @@ export default async function VendorBookingsPage() {
     );
     return { perkTitle: perk.title, eligible, reason };
   }
+
+  const bookingRows = [
+    ...listingBookingRows.map((row) => ({
+      id: row.booking.id,
+      booking: row.booking,
+      travellerUser: row.travellerUser,
+      journeyName: row.journey?.name ?? null,
+      appliedReward: row.appliedReward,
+      birthdayInfo: birthdayInfoFor(row),
+      subjectLabel: row.listing.title,
+    })),
+    ...eventBookingRows.map((row) => ({
+      id: row.booking.id,
+      booking: row.booking,
+      travellerUser: row.travellerUser,
+      journeyName: null as string | null,
+      appliedReward: row.appliedReward,
+      birthdayInfo: null,
+      subjectLabel: row.event.title,
+    })),
+  ].sort((a, b) => new Date(b.booking.createdAt).getTime() - new Date(a.booking.createdAt).getTime());
 
   const pending = bookingRows.filter((r) => r.booking.status === "pending");
   const others = bookingRows.filter((r) => r.booking.status !== "pending");
@@ -50,11 +74,12 @@ export default async function VendorBookingsPage() {
               </h2>
               {pending.map((row) => (
                 <BookingRow
-                  key={row.booking.id}
+                  key={row.id}
                   bookingId={row.booking.id}
                   travellerName={row.travellerUser.name}
                   travellerEmail={row.travellerUser.email}
-                  journeyName={row.journey?.name ?? null}
+                  subjectLabel={row.subjectLabel}
+                  journeyName={row.journeyName}
                   bookingRef={row.booking.bookingRef}
                   status={row.booking.status}
                   bookingName={row.booking.bookingName}
@@ -63,7 +88,7 @@ export default async function VendorBookingsPage() {
                   partySize={row.booking.partySize}
                   notes={row.booking.notes}
                   appliedReward={row.appliedReward}
-                  birthdayInfo={birthdayInfoFor(row)}
+                  birthdayInfo={row.birthdayInfo}
                 />
               ))}
             </section>
@@ -74,11 +99,12 @@ export default async function VendorBookingsPage() {
               <h2 className="font-display text-lg font-semibold text-forest-900">History</h2>
               {others.map((row) => (
                 <BookingRow
-                  key={row.booking.id}
+                  key={row.id}
                   bookingId={row.booking.id}
                   travellerName={row.travellerUser.name}
                   travellerEmail={row.travellerUser.email}
-                  journeyName={row.journey?.name ?? null}
+                  subjectLabel={row.subjectLabel}
+                  journeyName={row.journeyName}
                   bookingRef={row.booking.bookingRef}
                   status={row.booking.status}
                   bookingName={row.booking.bookingName}
@@ -87,7 +113,7 @@ export default async function VendorBookingsPage() {
                   partySize={row.booking.partySize}
                   notes={row.booking.notes}
                   appliedReward={row.appliedReward}
-                  birthdayInfo={birthdayInfoFor(row)}
+                  birthdayInfo={row.birthdayInfo}
                 />
               ))}
             </section>

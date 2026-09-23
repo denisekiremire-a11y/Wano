@@ -54,6 +54,9 @@ export async function submitReviewAction(
   if (booking.status !== "completed") {
     return { error: "You can only review a booking once it's marked completed." };
   }
+  if (!booking.listingId) {
+    return { error: "Only place bookings can be reviewed." };
+  }
 
   const [existing] = await db
     .select({ id: reviews.id })
