@@ -134,6 +134,12 @@ export default async function SocialPage({
         {travellerProfile && peopleRail.length > 0 && <PeopleToFollowRail people={peopleRail} />}
 
         {travellerProfile && (
+          <div className="md:hidden">
+            <UserSearch />
+          </div>
+        )}
+
+        {travellerProfile && (
           <div id="clubs" className="scroll-mt-20 rounded-2xl border border-forest-900/10 bg-white p-4">
             <h2 className="font-display text-sm font-semibold text-forest-900">Wano Clubs</h2>
             <p className="mt-0.5 text-xs text-forest-800/60">
@@ -168,7 +174,11 @@ export default async function SocialPage({
       </div>
 
       <aside className="space-y-3">
-        {travellerProfile && <UserSearch />}
+        {travellerProfile && (
+          <div className="hidden md:block">
+            <UserSearch />
+          </div>
+        )}
         {topInfluencers.length > 0 && (
           <>
             <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-forest-800/60">

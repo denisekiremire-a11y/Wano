@@ -37,7 +37,7 @@ export function HeaderSearch() {
       <input
         ref={inputRef}
         name="q"
-        placeholder="Search places, events, journeys…"
+        placeholder="Search places, people, journeys…"
         autoComplete="off"
         onBlur={(e) => {
           if (!e.target.value) setOpen(false);
