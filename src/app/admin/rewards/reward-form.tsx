@@ -2,7 +2,6 @@
 
 import { useActionState, useState } from "react";
 import { createRewardAction } from "@/lib/actions/reward-actions";
-import { MILESTONE_LADDER } from "@/lib/reward-format";
 import type { ActionState } from "@/lib/validation";
 
 const initialState: ActionState = {};
@@ -19,7 +18,7 @@ export function RewardForm({
 }) {
   const [state, formAction, pending] = useActionState(createRewardAction, initialState);
   const [discountType, setDiscountType] = useState<"percent" | "fixed" | "freebie">("percent");
-  const [source, setSource] = useState<"manual" | "funzone" | "xp_draw" | "milestone">("manual");
+  const [source, setSource] = useState<"manual" | "funzone" | "xp_draw" | "points_shop">("manual");
 
   return (
     <form action={formAction} className="space-y-4 rounded-2xl border border-forest-900/10 bg-white p-5">
@@ -83,31 +82,23 @@ export function RewardForm({
           <option value="manual">Campaign — travellers claim it on the place/event page</option>
           <option value="funzone">Fun Zone — staff issue it to a game winner</option>
           <option value="xp_draw">XP draw — awarded to a match-day draw winner</option>
-          <option value="milestone">Milestone — auto-granted when a traveller crosses a points threshold</option>
+          <option value="points_shop">Points shop — travellers spend points to redeem</option>
         </select>
       </div>
 
-      {source === "milestone" && (
+      {source === "points_shop" && (
         <div>
-          <label className="text-sm font-medium text-forest-900">Points milestone</label>
-          <select
-            name="milestoneThreshold"
+          <label className="text-sm font-medium text-forest-900">Cost in points</label>
+          <input
+            name="pointsCost"
+            type="number"
+            min={1}
             required
-            defaultValue=""
-            className="mt-1 w-full rounded-lg border border-forest-900/15 bg-white px-3 py-2 text-sm outline-none focus:border-forest-600"
-          >
-            <option value="" disabled>
-              Choose a threshold
-            </option>
-            {MILESTONE_LADDER.map((m, i) => (
-              <option key={m} value={m}>
-                {m.toLocaleString()} pts{i === MILESTONE_LADDER.length - 1 ? " (and every +2,500 after)" : ""}
-              </option>
-            ))}
-          </select>
+            placeholder="1500"
+            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          />
           <p className="mt-1 text-xs text-forest-800/50">
-            Only one active reward per threshold — travellers get this the moment their live points total
-            crosses it.
+            Travellers can redeem this again and again, any time their points balance covers the cost.
           </p>
         </div>
       )}

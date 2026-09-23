@@ -4,23 +4,24 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { BirthdayEditor } from "@/components/birthday-editor";
 import { FeedActivityToggle } from "@/components/feed-activity-toggle";
-import { CameraIcon, CheckIcon, StampIcon, StarIcon, TrophyIcon, UserIcon, UsersIcon } from "@/components/icons";
+import { CameraIcon, StampIcon, TrophyIcon, UserIcon } from "@/components/icons";
+import { HowYouGotHereSection } from "@/components/how-you-got-here-section";
 import { LiteModeToggle } from "@/components/lite-mode-toggle";
 import { LogoutButton } from "@/components/logout-button";
 import { PassportGrid } from "@/components/passport-grid";
 import { PassportTabs } from "@/components/passport-tabs";
 import { PastVouchersSection } from "@/components/past-vouchers-section";
+import { RedeemPointsRewardButton } from "@/components/redeem-points-reward-button";
 import { ReviewForm } from "@/components/review-form";
 import { PASSPORT_TABS, type PassportTabKey } from "@/lib/passport-tabs";
 import { getSession, type SessionPayload } from "@/lib/session";
 import { claimDealFormAction } from "@/lib/actions/deal-actions";
-import { checkAndGrantMilestoneRewards } from "@/lib/actions/reward-actions";
 import { getAllActiveDeals, getClaimedDealIds } from "@/lib/data/deals";
 import { getReviewableBookings } from "@/lib/data/reviews";
-import { getMilestoneReward, getMyWallet, getRewardsSummary } from "@/lib/data/rewards";
+import { getMyWallet, getPointsShopCatalog, getRewardsSummary } from "@/lib/data/rewards";
 import { ShareReferralBlock } from "@/components/share-referral-block";
 import { VoucherCard } from "@/components/voucher-card";
-import { formatRewardDiscount, getMilestoneRewardThreshold, getPointsProgress } from "@/lib/reward-format";
+import { formatRewardDiscount } from "@/lib/reward-format";
 import {
   getCommentsForPost,
   getEngagementCounts,
@@ -101,15 +102,9 @@ export default async function PassportPage({
     getSavedListingsForTraveller(travellerProfile.id),
   ]);
 
-  // Auto-grants a voucher for any points milestone crossed since the last
-  // visit — idempotent (see checkAndGrantMilestoneRewards), so this is
-  // safe to run on every render. Wallet is fetched after so a
-  // just-minted milestone voucher shows up immediately.
-  await checkAndGrantMilestoneRewards(travellerProfile.id, rewardsSummary.totalPoints);
-  const { next: nextMilestone } = getPointsProgress(rewardsSummary.totalPoints);
-  const [wallet, nextMilestoneReward] = await Promise.all([
+  const [wallet, pointsShopCatalog] = await Promise.all([
     getMyWallet(travellerProfile.id),
-    getMilestoneReward(getMilestoneRewardThreshold(nextMilestone)),
+    getPointsShopCatalog(),
   ]);
 
   const postIds = postRows.map((r) => r.post.id);
@@ -223,7 +218,7 @@ export default async function PassportPage({
             wallet={wallet}
             deals={deals}
             claimedIds={claimedIds}
-            nextMilestoneReward={nextMilestoneReward}
+            pointsShopCatalog={pointsShopCatalog}
           />
         )}
         {activeTab === "posts" && (
@@ -457,26 +452,18 @@ function BookingGroup({
   );
 }
 
-const BREAKDOWN_ICONS: Record<string, (props: { className?: string }) => React.ReactElement> = {
-  "Passport stamps": StampIcon,
-  "Challenges completed": TrophyIcon,
-  "Reviews written": StarIcon,
-  "Friends referred": UsersIcon,
-  "Profile complete": CheckIcon,
-};
-
 function RewardsTab({
   summary,
   wallet,
   deals,
   claimedIds,
-  nextMilestoneReward,
+  pointsShopCatalog,
 }: {
   summary: Awaited<ReturnType<typeof getRewardsSummary>>;
   wallet: Awaited<ReturnType<typeof getMyWallet>>;
   deals: Awaited<ReturnType<typeof getAllActiveDeals>>;
   claimedIds: Awaited<ReturnType<typeof getClaimedDealIds>>;
-  nextMilestoneReward: Awaited<ReturnType<typeof getMilestoneReward>>;
+  pointsShopCatalog: Awaited<ReturnType<typeof getPointsShopCatalog>>;
 }) {
   const pastVoucherRows = [
     ...wallet.used.map(({ userReward, reward, target }) => ({
@@ -500,55 +487,66 @@ function RewardsTab({
       <div>
         <h2 className="font-display text-xl font-semibold text-forest-900">Rewards</h2>
         <p className="mt-1 text-sm text-forest-800/60">
-          Earned from booking, reviewing, and referring friends to Wano.
+          Earned from booking, reviewing, and referring friends to Wano — spend them on the rewards below.
         </p>
       </div>
 
       <div className="rounded-2xl bg-gradient-to-br from-forest-800 to-forest-600 p-6 text-white">
-        <p className="text-xs font-medium uppercase tracking-wide text-white/70">Your points</p>
-        <p className="mt-1 font-display text-4xl font-bold">{summary.totalPoints.toLocaleString()} pts</p>
-        {(() => {
-          const { next, percent } = getPointsProgress(summary.totalPoints);
-          return (
-            <div className="mt-4">
-              <div className="h-2 w-full overflow-hidden rounded-full bg-white/20">
-                <div className="h-full rounded-full bg-marigold-400" style={{ width: `${percent}%` }} />
-              </div>
-              <p className="mt-1.5 text-xs text-white/70">
-                {summary.totalPoints.toLocaleString()} / {next.toLocaleString()} pts to your next milestone
-              </p>
-              <p className="mt-1 text-xs font-medium text-marigold-200">
-                {nextMilestoneReward ? `Next: ${nextMilestoneReward.title}` : "Next: a reward is coming soon"}
-              </p>
-            </div>
-          );
-        })()}
+        <p className="text-xs font-medium uppercase tracking-wide text-white/70">Points to spend</p>
+        <p className="mt-1 font-display text-4xl font-bold">{summary.availablePoints.toLocaleString()} pts</p>
+        <p className="mt-1.5 text-xs text-white/70">{summary.totalPoints.toLocaleString()} pts earned lifetime</p>
       </div>
 
-      <section className="space-y-2">
-        <h3 className="font-display text-lg font-semibold text-forest-900">How you got here</h3>
-        <div className="grid grid-cols-2 gap-2">
-          {summary.breakdown.map((row) => {
-            const Icon = BREAKDOWN_ICONS[row.label] ?? StarIcon;
+      <section className="space-y-3">
+        <h3 className="font-display text-lg font-semibold text-forest-900">Redeem your points</h3>
+        {pointsShopCatalog.length === 0 ? (
+          <p className="text-sm text-forest-800/60">No rewards to redeem yet — check back soon.</p>
+        ) : (
+          pointsShopCatalog.map((reward) => {
+            const affordable = summary.availablePoints >= (reward.pointsCost ?? Infinity);
+            const percent = reward.pointsCost
+              ? Math.min(100, Math.round((summary.availablePoints / reward.pointsCost) * 100))
+              : 0;
             return (
-              <div key={row.label} className="rounded-xl border border-forest-900/10 bg-white p-3">
-                <Icon className="h-4 w-4 text-forest-800/50" />
-                <p className="mt-1.5 text-sm font-medium text-forest-900">{row.label}</p>
-                <div className="mt-0.5 flex items-baseline justify-between">
-                  <p className="text-xs text-forest-800/50">{row.count}</p>
-                  <span className="text-xs font-semibold text-forest-800">+{row.points} pts</span>
+              <div key={reward.id} className="rounded-xl border border-forest-900/10 bg-white p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-forest-900">{reward.title}</p>
+                    <p className="text-xs text-forest-800/60">
+                      {formatRewardDiscount(reward.discountType, reward.discountValue)}
+                      {reward.target ? ` · ${reward.target.title}` : ""}
+                    </p>
+                  </div>
+                  {affordable ? (
+                    <RedeemPointsRewardButton
+                      rewardId={reward.id}
+                      title={reward.title}
+                      discountLabel={formatRewardDiscount(reward.discountType, reward.discountValue)}
+                      pointsCost={reward.pointsCost ?? 0}
+                    />
+                  ) : (
+                    <span className="flex-none rounded-full bg-forest-100 px-3 py-1.5 text-xs font-semibold text-forest-800/60">
+                      Need {((reward.pointsCost ?? 0) - summary.availablePoints).toLocaleString()} more pts
+                    </span>
+                  )}
                 </div>
+                {!affordable && (
+                  <div className="mt-2.5">
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-forest-100">
+                      <div className="h-full rounded-full bg-marigold-400" style={{ width: `${percent}%` }} />
+                    </div>
+                    <p className="mt-1 text-[11px] text-forest-800/50">
+                      {summary.availablePoints.toLocaleString()} / {(reward.pointsCost ?? 0).toLocaleString()} pts
+                    </p>
+                  </div>
+                )}
               </div>
             );
-          })}
-        </div>
-        {summary.pendingReferrals > 0 && (
-          <p className="text-xs text-forest-800/50">
-            +{summary.pendingReferrals} more referral{summary.pendingReferrals === 1 ? "" : "s"} pending —
-            lands once they confirm their first booking.
-          </p>
+          })
         )}
       </section>
+
+      <HowYouGotHereSection breakdown={summary.breakdown} pendingReferrals={summary.pendingReferrals} />
 
       {summary.referralCode && <ShareReferralBlock code={summary.referralCode} />}
 

@@ -2,16 +2,15 @@
 
 import bcrypt from "bcryptjs";
 import QRCode from "qrcode";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
-import { events, rewards, travellerProfiles, userRewards, vendorProfiles, vendorSubmissions } from "@/db/schema";
+import { events, pointRedemptions, rewards, userRewards, vendorProfiles, vendorSubmissions } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { generateVoucherCode } from "@/lib/codes";
-import { getOwningVendorProfileId, getUserRewardById } from "@/lib/data/rewards";
+import { getOwningVendorProfileId, getRewardsSummary, getUserRewardById } from "@/lib/data/rewards";
 import { vendorRewardContentSchema } from "@/lib/actions/reward-shared";
-import { getMilestoneRewardThreshold, getNextMilestoneThreshold, MILESTONE_LADDER } from "@/lib/reward-format";
 import { getPendingEditSubmission } from "@/lib/data/submissions";
 import { getTravellerProfileById, getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { getVendorProfileByUserId } from "@/lib/data/vendor";
@@ -81,50 +80,53 @@ export async function mintUserReward(travellerId: string, rewardId: string) {
   return created;
 }
 
-/** Checks whether a traveller has crossed a new points milestone since
- * their last check, and mints a voucher for each one crossed —
- * milestonePointsClaimed is a watermark, not a points balance (points
- * stay fully live-computed, see getRewardsSummary), so this is safe to
- * call on every Passport Rewards-tab view. Idempotent via an
- * UPDATE ... WHERE milestonePointsClaimed = <what we read> guard, same
- * pattern as confirmXpPayment's status='pending' guard. */
-export async function checkAndGrantMilestoneRewards(travellerId: string, currentPoints: number): Promise<void> {
-  const [profile] = await db
-    .select({ claimed: travellerProfiles.milestonePointsClaimed })
-    .from(travellerProfiles)
-    .where(eq(travellerProfiles.id, travellerId))
-    .limit(1);
-  if (!profile) return;
-  let claimed = profile.claimed;
+/** Spends points on a points-shop reward the traveller picked. Points
+ * are never a stored balance (see getRewardsSummary) — "available"
+ * is totalPoints (live) minus every past pointRedemptions row (also
+ * live) — so the transaction re-sums spend under a per-traveller
+ * advisory lock before inserting, the same pattern createXpBookingAction
+ * uses for its per-match seat cap, so two rapid clicks can't both
+ * spend the same points. No duplicate-purchase guard: unlike a
+ * one-time campaign claim, a points-shop reward is meant to be
+ * redeemable again once enough new points have been earned. */
+export async function redeemPointsRewardAction(rewardId: string): Promise<ActionState> {
+  const session = await requireRole("traveller");
+  const travellerProfile = await getTravellerProfileByUserId(session.userId);
+  if (!travellerProfile) return { error: "Traveller profile not found." };
 
-  // Defensive cap — a real traveller never crosses this many tiers in one check.
-  for (let i = 0; i < 20; i++) {
-    const nextThreshold = getNextMilestoneThreshold(claimed);
-    if (currentPoints < nextThreshold) break;
-
-    const [reward] = await db
-      .select()
-      .from(rewards)
-      .where(
-        and(
-          eq(rewards.source, "milestone"),
-          eq(rewards.milestoneThreshold, getMilestoneRewardThreshold(nextThreshold)),
-          eq(rewards.active, true),
-        ),
-      )
-      .limit(1);
-    if (!reward) break; // nothing configured for this tier yet — don't advance, retry next visit
-
-    const [updated] = await db
-      .update(travellerProfiles)
-      .set({ milestonePointsClaimed: nextThreshold })
-      .where(and(eq(travellerProfiles.id, travellerId), eq(travellerProfiles.milestonePointsClaimed, claimed)))
-      .returning();
-    if (!updated) break; // lost the race to a concurrent call
-
-    await mintUserReward(travellerId, reward.id);
-    claimed = nextThreshold;
+  const [reward] = await db.select().from(rewards).where(eq(rewards.id, rewardId)).limit(1);
+  if (!reward || !reward.active || reward.source !== "points_shop" || !reward.pointsCost) {
+    return { error: "That reward isn't available to redeem." };
   }
+
+  const { totalPoints } = await getRewardsSummary(travellerProfile.id, travellerProfile.persona, travellerProfile.city);
+
+  const redemption = await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${travellerProfile.id}))`);
+
+    const [{ spent }] = await tx
+      .select({ spent: sql<number>`coalesce(sum(${pointRedemptions.pointsCost}), 0)::int` })
+      .from(pointRedemptions)
+      .where(eq(pointRedemptions.travellerId, travellerProfile.id));
+
+    if (totalPoints - spent < reward.pointsCost!) return null;
+
+    const [created] = await tx
+      .insert(pointRedemptions)
+      .values({ travellerId: travellerProfile.id, rewardId: reward.id, pointsCost: reward.pointsCost! })
+      .returning();
+    return created;
+  });
+
+  if (!redemption) return { error: "You don't have enough points for this yet." };
+
+  const userReward = await mintUserReward(travellerProfile.id, reward.id);
+  await db.update(pointRedemptions).set({ userRewardId: userReward.id }).where(eq(pointRedemptions.id, redemption.id));
+
+  revalidateRewardPaths();
+  revalidatePath(reward.targetType === "listing" ? `/explore/${reward.targetId}` : `/events/${reward.targetId}`);
+
+  return {};
 }
 
 export async function claimRewardAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -326,8 +328,8 @@ const rewardSchema = z.object({
   target: z.string().min(1),
   discountType: z.enum(["percent", "fixed", "freebie"]),
   discountValue: z.string().optional().or(z.literal("")),
-  source: z.enum(["manual", "funzone", "xp_draw", "milestone"]),
-  milestoneThreshold: z.coerce.number().int().optional(),
+  source: z.enum(["manual", "funzone", "xp_draw", "points_shop"]),
+  pointsCost: z.coerce.number().int().optional(),
   fundedBy: z.string().optional().or(z.literal("")),
   defaultValidityDays: z.coerce.number().int().min(1).max(365),
 });
@@ -342,7 +344,7 @@ export async function createRewardAction(_prev: ActionState, formData: FormData)
     discountType: formData.get("discountType"),
     discountValue: formData.get("discountValue") ?? "",
     source: formData.get("source") || "manual",
-    milestoneThreshold: formData.get("milestoneThreshold") || undefined,
+    pointsCost: formData.get("pointsCost") || undefined,
     fundedBy: formData.get("fundedBy") ?? "",
     defaultValidityDays: formData.get("defaultValidityDays") || "30",
   });
@@ -359,8 +361,8 @@ export async function createRewardAction(_prev: ActionState, formData: FormData)
   if (parsed.data.discountType !== "freebie" && !parsed.data.discountValue) {
     return { error: "Enter a discount value." };
   }
-  if (parsed.data.source === "milestone" && !MILESTONE_LADDER.includes(parsed.data.milestoneThreshold ?? -1)) {
-    return { error: "Pick which points milestone this reward is for." };
+  if (parsed.data.source === "points_shop" && (!parsed.data.pointsCost || parsed.data.pointsCost < 1)) {
+    return { error: "Enter how many points this reward costs to redeem." };
   }
 
   await db.insert(rewards).values({
@@ -371,7 +373,7 @@ export async function createRewardAction(_prev: ActionState, formData: FormData)
     discountType: parsed.data.discountType,
     discountValue: parsed.data.discountType === "freebie" ? null : parsed.data.discountValue || null,
     source: parsed.data.source,
-    milestoneThreshold: parsed.data.source === "milestone" ? parsed.data.milestoneThreshold : null,
+    pointsCost: parsed.data.source === "points_shop" ? parsed.data.pointsCost : null,
     fundedBy: parsed.data.fundedBy || null,
     defaultValidityDays: parsed.data.defaultValidityDays,
   });

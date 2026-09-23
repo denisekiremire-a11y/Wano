@@ -1,6 +1,15 @@
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { events, listings, reviews, rewards, travellerInterests, userRewards, vendorProfiles } from "@/db/schema";
+import {
+  events,
+  listings,
+  pointRedemptions,
+  reviews,
+  rewards,
+  travellerInterests,
+  userRewards,
+  vendorProfiles,
+} from "@/db/schema";
 import { getChallengesWithStatus, getPassportProgress, getReferralStats } from "./traveller";
 import { resolvePostContexts } from "./post-context";
 
@@ -16,12 +25,16 @@ const POINTS = {
 } as const;
 
 export async function getRewardsSummary(travellerId: string, persona: string | null, city: string | null) {
-  const [{ stampCount }, challenges, myReviews, referralStats, interestRows] = await Promise.all([
+  const [{ stampCount }, challenges, myReviews, referralStats, interestRows, [{ spent }]] = await Promise.all([
     getPassportProgress(travellerId),
     getChallengesWithStatus(travellerId),
     db.select({ id: reviews.id }).from(reviews).where(eq(reviews.travellerId, travellerId)),
     getReferralStats(travellerId),
     db.select({ id: travellerInterests.id }).from(travellerInterests).where(eq(travellerInterests.travellerId, travellerId)),
+    db
+      .select({ spent: sql<number>`coalesce(sum(${pointRedemptions.pointsCost}), 0)::int` })
+      .from(pointRedemptions)
+      .where(eq(pointRedemptions.travellerId, travellerId)),
   ]);
 
   const completedChallenges = challenges.filter((c) => c.completion?.status === "verified").length;
@@ -46,23 +59,11 @@ export async function getRewardsSummary(travellerId: string, persona: string | n
 
   return {
     totalPoints,
+    availablePoints: totalPoints - spent,
     breakdown,
     referralCode: referralStats.referralCode,
     pendingReferrals: referralStats.pendingCount,
   };
-}
-
-/** The reward configured for a given milestone tier, if an admin has set
- * one up yet — powers the "Next: 15% off at ..." preview on Passport's
- * Rewards tab. Pass it through getMilestoneRewardThreshold first, since
- * every repeat past the ladder's last rung reuses that rung's reward. */
-export async function getMilestoneReward(threshold: number) {
-  const [reward] = await db
-    .select({ title: rewards.title })
-    .from(rewards)
-    .where(and(eq(rewards.source, "milestone"), eq(rewards.milestoneThreshold, threshold), eq(rewards.active, true)))
-    .limit(1);
-  return reward ?? null;
 }
 
 export type RewardTarget = { targetType: "listing" | "event"; targetId: string };
@@ -198,6 +199,21 @@ export async function getActiveRewardsBySource(source: "funzone" | "xp_draw") {
     .select()
     .from(rewards)
     .where(and(eq(rewards.active, true), eq(rewards.source, source)));
+  const targetMap = await resolveTargets(catalog);
+  return catalog.map((reward) => ({
+    ...reward,
+    target: targetMap.get(targetKey(reward.targetType, reward.targetId)) ?? null,
+  }));
+}
+
+// The points-shop catalog — every active reward a traveller can spend
+// points on, cheapest first, with its target resolved for display.
+export async function getPointsShopCatalog() {
+  const catalog = await db
+    .select()
+    .from(rewards)
+    .where(and(eq(rewards.active, true), eq(rewards.source, "points_shop")))
+    .orderBy(asc(rewards.pointsCost));
   const targetMap = await resolveTargets(catalog);
   return catalog.map((reward) => ({
     ...reward,
