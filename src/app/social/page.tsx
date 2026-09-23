@@ -1,17 +1,23 @@
 import Link from "next/link";
-import { FeedItemCard } from "@/components/feed-item-card";
 import { FollowButton } from "@/components/follow-button";
 import { TrophyIcon } from "@/components/icons";
-import { PostCard } from "@/components/post-card";
+import { PeopleToFollowRail } from "@/components/people-to-follow-rail";
 import { PostComposer } from "@/components/post-composer";
 import { MatchCard } from "@/components/season/match-card";
+import { SocialFeed } from "@/components/social-feed";
 import { StoriesBar } from "@/components/stories/stories-bar";
 import { UserSearch } from "@/components/user-search";
 import { getSession } from "@/lib/session";
 import { getRankedFeed } from "@/lib/data/feed";
 import { getBlockedTravellerIds } from "@/lib/data/moderation";
 import { getSuggestedAttachments, resolvePostContext, type PostContextType } from "@/lib/data/post-context";
-import { getClubCategories, getSuggestedPeople, getTopInfluencers, isFollowing } from "@/lib/data/social";
+import {
+  getClubCategories,
+  getFollowingTravellerIds,
+  getSuggestedPeople,
+  getTopInfluencers,
+  isFollowing,
+} from "@/lib/data/social";
 import { getActiveStoryGroups, getMyActiveStories, getUserAvatarUrl } from "@/lib/data/stories";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 
@@ -53,10 +59,11 @@ export default async function SocialPage({
         : Promise.resolve(null),
     ]);
 
-  const [storyGroups, myStories, myAvatarUrl] = await Promise.all([
+  const [storyGroups, myStories, myAvatarUrl, followingTravellerIds] = await Promise.all([
     getActiveStoryGroups(travellerProfile?.id ?? null),
     travellerProfile ? getMyActiveStories(travellerProfile.id) : Promise.resolve([]),
     session ? getUserAvatarUrl(session.userId) : Promise.resolve(null),
+    travellerProfile ? getFollowingTravellerIds(travellerProfile.id) : Promise.resolve([]),
   ]);
 
   const topInfluencerIds = new Set(topInfluencersRaw.map((i) => i.traveller.id));
@@ -81,6 +88,7 @@ export default async function SocialPage({
     : [];
 
   const now = new Date();
+  const peopleRail = [...topInfluencers, ...suggestedWithFollow].slice(0, 8);
 
   return (
     <main className="mx-auto grid max-w-4xl gap-6 px-4 py-8 md:grid-cols-[1fr_260px] md:px-6">
@@ -123,8 +131,10 @@ export default async function SocialPage({
           </div>
         )}
 
+        {travellerProfile && peopleRail.length > 0 && <PeopleToFollowRail people={peopleRail} />}
+
         {travellerProfile && (
-          <div className="rounded-2xl border border-forest-900/10 bg-white p-4">
+          <div id="clubs" className="scroll-mt-20 rounded-2xl border border-forest-900/10 bg-white p-4">
             <h2 className="font-display text-sm font-semibold text-forest-900">Wano Clubs</h2>
             <p className="mt-0.5 text-xs text-forest-800/60">
               Find your people — browse a category to see its clubs, or join one directly.
@@ -154,38 +164,7 @@ export default async function SocialPage({
 
         <MatchCard />
 
-        {feed.length === 0 ? (
-          <p className="rounded-xl border border-forest-900/10 bg-white p-6 text-center text-sm text-forest-800/60">
-            Nothing here yet — check back soon.
-          </p>
-        ) : (
-          feed.map((entry) =>
-            entry.kind === "user_post" ? (
-              <PostCard
-                key={entry.id}
-                postId={entry.post.id}
-                authorTravellerId={entry.authorTravellerId ?? undefined}
-                authorName={entry.authorName}
-                authorUsername={entry.authorUsername}
-                authorAvatarUrl={entry.authorAvatarUrl}
-                authorLocation={entry.authorLocation}
-                content={entry.post.content}
-                imageUrl={entry.post.imageUrl}
-                imageIds={entry.imageIds}
-                createdAt={new Date(entry.post.createdAt)}
-                likeCount={entry.likeCount}
-                commentCount={entry.commentCount}
-                liked={entry.liked}
-                saved={entry.saved}
-                canInteract={entry.canInteract}
-                comments={entry.comments}
-                context={entry.context}
-              />
-            ) : (
-              <FeedItemCard key={entry.id} entry={entry} now={now} />
-            ),
-          )
-        )}
+        <SocialFeed entries={feed} followingIds={followingTravellerIds} now={now} />
       </div>
 
       <aside className="space-y-3">

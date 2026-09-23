@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { DiscoverListingCard } from "@/components/discover/discover-listing-card";
 import { DiscoverPersonCard } from "@/components/discover/discover-person-card";
 import type { MapPin } from "@/components/discover/discover-map";
@@ -54,7 +55,10 @@ export function DiscoverTabs({
   canSaveListings: boolean;
   canFollow: boolean;
 }) {
-  const [tab, setTab] = useState<Tab>("trending");
+  const searchParams = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+  const initialTab: Tab = TABS.some((t) => t.key === requestedTab) ? (requestedTab as Tab) : "trending";
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [coords, setCoords] = useState<Coordinates | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
   const [geoLoading, setGeoLoading] = useState(false);

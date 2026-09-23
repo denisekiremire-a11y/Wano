@@ -152,6 +152,14 @@ export async function getFollowCounts(travellerId: string) {
   };
 }
 
+/** Everyone a traveller follows, as a plain id list — for client-side
+ * filtering (e.g. the Social feed's "Following" tab) rather than one
+ * isFollowing() check per feed entry. */
+export async function getFollowingTravellerIds(travellerId: string) {
+  const rows = await db.select({ id: follows.followingId }).from(follows).where(eq(follows.followerId, travellerId));
+  return rows.map((r) => r.id);
+}
+
 export async function isFollowing(followerId: string, followingId: string) {
   const [row] = await db
     .select()
