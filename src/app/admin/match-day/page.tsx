@@ -32,7 +32,7 @@ export default async function AdminMatchDayPage() {
         {matches.length === 0 ? (
           <p className="text-sm text-forest-800/60">No matches yet — add one above.</p>
         ) : (
-          matches.map(({ match, seatsTaken, confirmedCount, draw }) => (
+          matches.map(({ match, seatsTaken, confirmedCount, pendingCount, draw }) => (
             <MatchRow
               key={match.id}
               matchId={match.id}
@@ -41,6 +41,7 @@ export default async function AdminMatchDayPage() {
               startAt={match.startAt.toISOString()}
               seatsTaken={seatsTaken}
               confirmedCount={confirmedCount}
+              pendingCount={pendingCount}
               drawWinnerName={draw?.winner?.displayName ?? null}
               drawPrizeTitle={draw?.draw.prizeTitle ?? null}
               prizeOptions={prizeOptions}

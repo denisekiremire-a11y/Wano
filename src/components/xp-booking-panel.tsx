@@ -14,11 +14,15 @@ export function XpBookingPanel({
   matchStartAt,
   seatsRemaining,
   myBookings,
+  paymentJustConfirmed,
+  paymentFailed,
 }: {
   matchId: string;
   matchStartAt: string;
   seatsRemaining: number;
   myBookings: XpBooking[];
+  paymentJustConfirmed?: boolean;
+  paymentFailed?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(createXpBookingAction, initialState);
   const [seats, setSeats] = useState(1);
@@ -36,6 +40,7 @@ export function XpBookingPanel({
   const cancelAllowed = hoursUntilKickoff >= WANO_XP_REFUND_CUTOFF_HOURS;
 
   const activeBookings = myBookings.filter((b) => b.status === "confirmed");
+  const pendingBookings = myBookings.filter((b) => b.status === "pending");
 
   function handleCancel(bookingId: string) {
     setCancelError(null);
@@ -57,6 +62,32 @@ export function XpBookingPanel({
           confirmed seat is an automatic entry into the match-day prize draw.
         </p>
       </div>
+
+      {paymentJustConfirmed && (
+        <div className="rounded-xl bg-forest-500/20 px-3 py-2 text-sm font-medium text-white">
+          Payment confirmed — your seat is booked and entered into the prize draw.
+        </div>
+      )}
+      {paymentFailed && (
+        <div className="rounded-xl bg-red-500/20 px-3 py-2 text-sm font-medium text-white">
+          That payment didn&apos;t go through — no seat was booked. Feel free to try again.
+        </div>
+      )}
+
+      {pendingBookings.length > 0 && (
+        <div className="space-y-2 rounded-xl bg-white/10 p-3">
+          {pendingBookings.map((b) => (
+            <div key={b.id} className="flex items-center justify-between gap-3 text-sm">
+              <span>
+                {b.seats} seat{b.seats === 1 ? "" : "s"} · UGX {b.amountUgx.toLocaleString()}
+              </span>
+              <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white/80">
+                Payment pending
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {activeBookings.length > 0 && (
         <div className="space-y-2 rounded-xl bg-white/10 p-3">
@@ -105,7 +136,7 @@ export function XpBookingPanel({
         </form>
       )}
       {state.error && <p className="text-sm text-marigold-200">{state.error}</p>}
-      <p className="text-[11px] text-white/50">Payment is a demo step for now — no card is charged.</p>
+      <p className="text-[11px] text-white/50">You&apos;ll be redirected to Flutterwave to complete payment securely.</p>
     </div>
   );
 }

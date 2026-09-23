@@ -18,6 +18,7 @@ import { getMediaPostsFor } from "@/lib/data/social";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { getVendorProfileByUserId } from "@/lib/data/vendor";
 import { getMyXpBookingsForMatch, getSeatsRemainingForMatch } from "@/lib/data/xp";
+import { confirmXpPayment } from "@/lib/actions/xp-actions";
 import { computeBookingTotals, decodeBookingDraft } from "@/lib/booking-shared";
 import { buyEventTicketsAction } from "@/lib/actions/booking-actions";
 import { formatMinor } from "@/lib/currency";
@@ -48,7 +49,7 @@ export default async function EventDetailPage({
 }) {
   const { id } = await params;
   const rawSearchParams = await searchParams;
-  const { item: itemParam, tab: tabParam } = rawSearchParams;
+  const { item: itemParam, tab: tabParam, xpTxRef, status: flwStatus, transaction_id: flwTransactionId } = rawSearchParams;
   const isReviewMode = tabParam === "review";
   const row = await getEventById(id);
   if (!row) notFound();
@@ -64,9 +65,21 @@ export default async function EventDetailPage({
   let travellerDisplayName = "";
   let isOrganizer = false;
   const isMatchDay = event.category === MATCH_DAY_CATEGORY;
+  let xpPaymentJustConfirmed = false;
+  const xpPaymentFailed = isMatchDay && Boolean(xpTxRef) && flwStatus != null && flwStatus !== "successful";
   if (session?.role === "traveller") {
     const travellerProfile = await getTravellerProfileByUserId(session.userId);
     if (travellerProfile) {
+      // The checkout redirect back from Flutterwave — one of two
+      // independent confirmation paths alongside the webhook (see
+      // /api/webhooks/flutterwave); confirmXpPayment is idempotent, so
+      // this is a safe no-op if the webhook already confirmed it, or if
+      // the traveller refreshes this page.
+      if (isMatchDay && xpTxRef && flwStatus === "successful" && flwTransactionId) {
+        await confirmXpPayment(xpTxRef, flwTransactionId);
+        xpPaymentJustConfirmed = true;
+      }
+
       const [followed, claimable, myClaimed, xpBookings, existingBooking] = await Promise.all([
         getFollowedEventBookers(event.id, travellerProfile.id),
         getClaimableRewardsForTarget("event", event.id),
@@ -276,6 +289,8 @@ export default async function EventDetailPage({
                     matchStartAt={event.startAt.toISOString()}
                     seatsRemaining={seatsRemaining}
                     myBookings={myXpBookings}
+                    paymentJustConfirmed={xpPaymentJustConfirmed}
+                    paymentFailed={xpPaymentFailed}
                   />
                 ) : (
                   <div className="rounded-2xl border border-forest-900/10 bg-white p-5">

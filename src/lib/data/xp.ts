@@ -74,11 +74,15 @@ export async function getMatchesForAdmin() {
   if (matches.length === 0) return [];
 
   const matchIds = matches.map((m) => m.id);
-  const [allBookings, allDraws] = await Promise.all([
+  const [allBookings, allPendingBookings, allDraws] = await Promise.all([
     db
       .select()
       .from(xpBookings)
       .where(and(inArray(xpBookings.matchId, matchIds), eq(xpBookings.status, "confirmed"))),
+    db
+      .select({ matchId: xpBookings.matchId })
+      .from(xpBookings)
+      .where(and(inArray(xpBookings.matchId, matchIds), eq(xpBookings.status, "pending"))),
     db
       .select({ draw: xpDraws, winner: travellerProfiles })
       .from(xpDraws)
@@ -92,6 +96,9 @@ export async function getMatchesForAdmin() {
       .reduce((sum, b) => sum + b.seats, 0);
     const draw = allDraws.find((d) => d.draw.matchId === match.id) ?? null;
     const confirmedCount = allBookings.filter((b) => b.matchId === match.id).length;
-    return { match, seatsTaken, confirmedCount, draw };
+    // Awaiting a Flutterwave payment (or checkout link creation failed
+    // silently) — not yet a real booking, but useful for an admin to see.
+    const pendingCount = allPendingBookings.filter((b) => b.matchId === match.id).length;
+    return { match, seatsTaken, confirmedCount, pendingCount, draw };
   });
 }

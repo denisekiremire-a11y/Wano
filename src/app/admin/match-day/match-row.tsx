@@ -12,6 +12,7 @@ export function MatchRow({
   startAt,
   seatsTaken,
   confirmedCount,
+  pendingCount,
   drawWinnerName,
   drawPrizeTitle,
   prizeOptions,
@@ -22,6 +23,7 @@ export function MatchRow({
   startAt: string;
   seatsTaken: number;
   confirmedCount: number;
+  pendingCount: number;
   drawWinnerName: string | null;
   drawPrizeTitle: string | null;
   prizeOptions: PrizeOption[];
@@ -50,9 +52,16 @@ export function MatchRow({
             {location} · {new Date(startAt).toLocaleString()}
           </p>
         </div>
-        <span className="rounded-full bg-forest-100 px-3 py-1 text-xs font-semibold text-forest-800">
-          {seatsTaken}/{WANO_XP_SEAT_CAP} seats
-        </span>
+        <div className="flex flex-none flex-col items-end gap-1">
+          <span className="rounded-full bg-forest-100 px-3 py-1 text-xs font-semibold text-forest-800">
+            {seatsTaken}/{WANO_XP_SEAT_CAP} seats
+          </span>
+          {pendingCount > 0 && (
+            <span className="rounded-full bg-marigold-100 px-3 py-1 text-xs font-semibold text-marigold-800">
+              {pendingCount} awaiting payment
+            </span>
+          )}
+        </div>
       </div>
 
       {alreadyDrawn ? (

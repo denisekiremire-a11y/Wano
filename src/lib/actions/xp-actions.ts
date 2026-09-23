@@ -1,17 +1,26 @@
 "use server";
 
 import { and, eq, sql } from "drizzle-orm";
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
-import { events, rewards, xpBookings, xpDraws } from "@/db/schema";
+import { events, rewards, travellerProfiles, users, xpBookings, xpDraws } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
+import {
+  createFlutterwavePayment,
+  isFlutterwaveConfigured,
+  refundFlutterwaveTransaction,
+  verifyFlutterwaveTransaction,
+} from "@/lib/flutterwave";
 import { mintUserReward } from "@/lib/actions/reward-actions";
 import { getMatchById } from "@/lib/data/xp";
 import { getTravellerProfileById, getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { notifyAdmin, notifyUser } from "@/lib/notify";
 import { MATCH_DAY_CATEGORY, WANO_XP_PRICE_PER_SEAT_UGX, WANO_XP_REFUND_CUTOFF_HOURS, WANO_XP_SEAT_CAP } from "@/lib/xp-config";
 import type { ActionState } from "@/lib/validation";
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 function revalidateXpPaths(matchId: string) {
   revalidatePath(`/events/${matchId}`);
@@ -24,13 +33,31 @@ const bookingSchema = z.object({
   seats: z.coerce.number().int().min(1).max(WANO_XP_SEAT_CAP),
 });
 
-/** Books XP seats for a match. Payment is stubbed for the demo — in
- * production a Flutterwave checkout would sit between the capacity check
- * and this insert, and the booking would start "pending" until its
- * webhook confirms; here it goes straight to "confirmed" (paymentRef
- * stays null). The capacity check itself is real: a Postgres advisory
- * lock scoped to this matchId serializes concurrent bookings for the same
- * match so two travellers can never both take the last seat. */
+/** Emails the traveller + admin once a booking is actually confirmed —
+ * shared by the local-dev instant-confirm path and confirmXpPayment
+ * (real payment), so both send the exact same notification. */
+async function notifyXpBookingConfirmed(travellerEmail: string, travellerName: string, matchTitle: string, seats: number, amountUgx: number) {
+  await notifyUser(travellerEmail, "Wano XP seats booked", [
+    `You booked ${seats} seat(s) for <strong>${matchTitle}</strong> — UGX ${amountUgx.toLocaleString()}.`,
+    "Every confirmed seat is an entry in the match-day prize draw.",
+  ]);
+  await notifyAdmin("Wano XP booking", [
+    `<strong>${travellerName}</strong> booked ${seats} seat(s) for <strong>${matchTitle}</strong> — UGX ${amountUgx.toLocaleString()}.`,
+  ]);
+}
+
+/** Books XP seats for a match. The capacity check is a Postgres advisory
+ * lock scoped to this matchId, serializing concurrent bookings for the
+ * same match so two travellers can never both take the last seat — real,
+ * unaffected by any of the payment logic below it.
+ *
+ * Without FLUTTERWAVE_SECRET_KEY configured (local dev only — see
+ * .env.example), this falls back to the old instant-confirm behavior so
+ * development/demo isn't blocked on having real payment credentials. The
+ * moment a real key is set, anywhere, a booking starts "pending" and only
+ * becomes "confirmed" once confirmXpPayment verifies a real payment (via
+ * the webhook or the checkout redirect — see the /events/[id] page and
+ * /api/webhooks/flutterwave). */
 export async function createXpBookingAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const session = await requireRole("traveller");
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
@@ -46,6 +73,12 @@ export async function createXpBookingAction(_prev: ActionState, formData: FormDa
   if (!match) return { error: "Match not found." };
   if (match.startAt <= new Date()) return { error: "This match has already started." };
 
+  const paymentConfigured = isFlutterwaveConfigured();
+  if (!paymentConfigured) {
+    console.warn("FLUTTERWAVE_SECRET_KEY is not set — Wano XP booking is using the local-dev instant-confirm fallback, no real payment.");
+  }
+  const amountUgx = parsed.data.seats * WANO_XP_PRICE_PER_SEAT_UGX;
+
   const result = await db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${parsed.data.matchId}))`);
 
@@ -60,30 +93,96 @@ export async function createXpBookingAction(_prev: ActionState, formData: FormDa
       return { error: remaining <= 0 ? "This match is sold out." : `Only ${remaining} seat(s) left.` };
     }
 
-    await tx.insert(xpBookings).values({
-      travellerId: travellerProfile.id,
-      matchId: parsed.data.matchId,
-      seats: parsed.data.seats,
-      amountUgx: parsed.data.seats * WANO_XP_PRICE_PER_SEAT_UGX,
-      status: "confirmed",
-    });
+    const [booking] = await tx
+      .insert(xpBookings)
+      .values({
+        travellerId: travellerProfile.id,
+        matchId: parsed.data.matchId,
+        seats: parsed.data.seats,
+        amountUgx,
+        status: paymentConfigured ? "pending" : "confirmed",
+      })
+      .returning();
 
-    return {};
+    return { booking };
   });
 
-  if (result.error) return result;
+  if (result.error || !result.booking) return { error: result.error };
+  const { booking } = result;
 
-  const amountUgx = parsed.data.seats * WANO_XP_PRICE_PER_SEAT_UGX;
-  await notifyUser(session.email, "Wano XP seats booked", [
-    `You booked ${parsed.data.seats} seat(s) for <strong>${match.title}</strong> — UGX ${amountUgx.toLocaleString()}.`,
-    "Every confirmed seat is an entry in the match-day prize draw.",
-  ]);
-  await notifyAdmin("Wano XP booking", [
-    `<strong>${travellerProfile.displayName}</strong> booked ${parsed.data.seats} seat(s) for <strong>${match.title}</strong> — UGX ${amountUgx.toLocaleString()}.`,
-  ]);
+  if (!paymentConfigured) {
+    await notifyXpBookingConfirmed(session.email, travellerProfile.displayName, match.title, parsed.data.seats, amountUgx);
+    revalidateXpPaths(parsed.data.matchId);
+    return {};
+  }
 
-  revalidateXpPaths(parsed.data.matchId);
-  return {};
+  let checkoutLink: string;
+  try {
+    checkoutLink = await createFlutterwavePayment({
+      txRef: booking.id,
+      amountUgx,
+      customerEmail: session.email,
+      customerName: travellerProfile.displayName,
+      title: `${parsed.data.seats} seat(s) — ${match.title}`,
+      redirectUrl: `${APP_URL}/events/${parsed.data.matchId}?xpTxRef=${booking.id}`,
+    });
+  } catch (err) {
+    console.error("Failed to create Flutterwave payment for XP booking", booking.id, err);
+    await db.delete(xpBookings).where(eq(xpBookings.id, booking.id));
+    return { error: "Couldn't start payment — try again." };
+  }
+
+  redirect(checkoutLink);
+}
+
+/** Verifies a Flutterwave transaction and, if it genuinely paid for this
+ * booking, confirms it — called from both the webhook (async, works even
+ * if the traveller closes their browser) and the checkout redirect page
+ * (immediate, for the common case). Idempotent: the status transition only
+ * happens via an UPDATE ... WHERE status = 'pending', so whichever caller
+ * gets there first wins and the other is a safe no-op — no duplicate
+ * confirmation, no duplicate email. */
+export async function confirmXpPayment(bookingId: string, transactionId: string): Promise<void> {
+  const [booking] = await db.select().from(xpBookings).where(eq(xpBookings.id, bookingId)).limit(1);
+  if (!booking || booking.status !== "pending") return;
+
+  let verified;
+  try {
+    verified = await verifyFlutterwaveTransaction(transactionId);
+  } catch (err) {
+    console.error("Failed to verify Flutterwave transaction", transactionId, "for XP booking", bookingId, err);
+    return;
+  }
+
+  if (
+    verified.txRef !== bookingId ||
+    verified.currency !== "UGX" ||
+    verified.amount < booking.amountUgx ||
+    verified.status !== "successful"
+  ) {
+    console.error("Flutterwave verification mismatch for XP booking", bookingId, verified);
+    return;
+  }
+
+  const [updated] = await db
+    .update(xpBookings)
+    .set({ status: "confirmed", paymentRef: verified.id })
+    .where(and(eq(xpBookings.id, bookingId), eq(xpBookings.status, "pending")))
+    .returning();
+  if (!updated) return;
+
+  const match = await getMatchById(booking.matchId);
+  const [travellerRow] = await db
+    .select({ displayName: travellerProfiles.displayName, email: users.email })
+    .from(travellerProfiles)
+    .innerJoin(users, eq(users.id, travellerProfiles.userId))
+    .where(eq(travellerProfiles.id, booking.travellerId))
+    .limit(1);
+  if (match && travellerRow) {
+    await notifyXpBookingConfirmed(travellerRow.email, travellerRow.displayName, match.title, booking.seats, booking.amountUgx);
+  }
+
+  revalidateXpPaths(booking.matchId);
 }
 
 export async function cancelXpBookingAction(bookingId: string): Promise<ActionState> {
@@ -101,6 +200,16 @@ export async function cancelXpBookingAction(bookingId: string): Promise<ActionSt
   const hoursUntilKickoff = (match.startAt.getTime() - Date.now()) / (60 * 60 * 1000);
   if (hoursUntilKickoff < WANO_XP_REFUND_CUTOFF_HOURS) {
     return { error: `Too close to kick-off to cancel — refunds close ${WANO_XP_REFUND_CUTOFF_HOURS}h before.` };
+  }
+
+  // paymentRef is only set once a real Flutterwave payment was confirmed
+  // (see confirmXpPayment) — a local-dev-fallback booking never had real
+  // money move, so there's nothing to refund, same as before.
+  if (booking.paymentRef) {
+    const refunded = await refundFlutterwaveTransaction(booking.paymentRef, booking.amountUgx);
+    if (!refunded) {
+      return { error: "Couldn't process the refund — try again or contact support." };
+    }
   }
 
   await db.update(xpBookings).set({ status: "refunded" }).where(eq(xpBookings.id, bookingId));
