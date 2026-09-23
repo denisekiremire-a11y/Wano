@@ -2,7 +2,7 @@ import type { ListingItem } from "@/lib/data/listing-items";
 import type { ListingType } from "@/lib/listing-type";
 
 export type ClaimedRewardRow = {
-  userReward: { id: string };
+  userReward: { id: string; expiresAt: Date };
   reward: { title: string; discountType: "percent" | "fixed" | "freebie"; discountValue: string | null };
 };
 

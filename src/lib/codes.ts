@@ -10,3 +10,10 @@ export function generateShortCode(length = 8) {
   }
   return code;
 }
+
+/** Reward voucher codes specifically — a branded WANO-XXXX shape so a
+ * redemption code is recognizable at a glance against a plain referral or
+ * Fun Zone code. */
+export function generateVoucherCode() {
+  return `WANO-${generateShortCode(4)}`;
+}

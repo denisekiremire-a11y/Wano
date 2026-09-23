@@ -62,7 +62,11 @@ export function TargetRewardsSection({
                 {formatRewardDiscount(reward.discountType, reward.discountValue)}
               </p>
             </div>
-            <ClaimRewardButton rewardId={reward.id} />
+            <ClaimRewardButton
+              rewardId={reward.id}
+              title={reward.title}
+              discountLabel={formatRewardDiscount(reward.discountType, reward.discountValue)}
+            />
           </div>
         ))}
       </div>

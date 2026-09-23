@@ -18,7 +18,7 @@ import { getReviewableBookings } from "@/lib/data/reviews";
 import { getMyWallet, getRewardsSummary } from "@/lib/data/rewards";
 import { ShareReferralBlock } from "@/components/share-referral-block";
 import { VoucherCard } from "@/components/voucher-card";
-import { formatRewardDiscount } from "@/lib/reward-format";
+import { formatRewardDiscount, getPointsProgress } from "@/lib/reward-format";
 import {
   getCommentsForPost,
   getEngagementCounts,
@@ -409,7 +409,7 @@ function BookingGroup({
     <section className="space-y-3">
       <h3 className="font-display text-lg font-semibold text-forest-900">{title}</h3>
       {[...rows].reverse().map(({ booking, listing, event, journey }) => (
-        <div key={booking.id} className="rounded-2xl border border-forest-900/10 bg-white p-4">
+        <div key={booking.id} id={`booking-${booking.id}`} className="scroll-mt-20 rounded-2xl border border-forest-900/10 bg-white p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium text-forest-900">{listing?.title ?? event?.title}</p>
@@ -463,6 +463,21 @@ function RewardsTab({
       <div className="rounded-2xl bg-gradient-to-br from-forest-800 to-forest-600 p-6 text-white">
         <p className="text-xs font-medium uppercase tracking-wide text-white/70">Your points</p>
         <p className="mt-1 font-display text-4xl font-bold">{summary.totalPoints.toLocaleString()} pts</p>
+        {(() => {
+          const { next, percent } = getPointsProgress(summary.totalPoints);
+          return (
+            <div className="mt-4">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-white/20">
+                <div className="h-full rounded-full bg-marigold-400" style={{ width: `${percent}%` }} />
+              </div>
+              <p className="mt-1.5 text-xs text-white/70">
+                {percent >= 100
+                  ? `You've hit ${next.toLocaleString()} pts!`
+                  : `${summary.totalPoints.toLocaleString()} / ${next.toLocaleString()} pts to your next milestone`}
+              </p>
+            </div>
+          );
+        })()}
       </div>
 
       <section className="space-y-2">

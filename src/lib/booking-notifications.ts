@@ -48,6 +48,31 @@ export async function notifyTravellerOfBookingStatus(bookingId: string, status: 
   ]);
 }
 
+/** Emails the traveller a nudge to review, right after their booking is
+ * auto-completed — separate from notifyTravellerOfBookingStatus's generic
+ * "is marked completed" message, and only sent for listing-sourced
+ * bookings (reviews are listing-only, per the reviews schema). */
+export async function notifyTravellerToReview(bookingId: string) {
+  const [row] = await db
+    .select({
+      booking: bookings,
+      listingTitle: listings.title,
+      travellerEmail: users.email,
+    })
+    .from(bookings)
+    .innerJoin(listings, eq(listings.id, bookings.listingId))
+    .innerJoin(travellerProfiles, eq(travellerProfiles.id, bookings.travellerId))
+    .innerJoin(users, eq(users.id, travellerProfiles.userId))
+    .where(eq(bookings.id, bookingId))
+    .limit(1);
+  if (!row) return;
+
+  await notifyUser(row.travellerEmail, "How was your trip?", [
+    `Your booking for <strong>${row.listingTitle}</strong> is complete — tell other travellers how it went.`,
+    `<a href="${APP_URL}/passport?tab=bookings#booking-${bookingId}">Leave a review</a>.`,
+  ]);
+}
+
 /** Emails the vendor/organizer when a traveller makes a new booking request
  * against one of their listings or events. No-ops if there's no one to
  * notify (an unorganized event has no vendor account behind it). */

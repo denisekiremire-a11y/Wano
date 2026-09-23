@@ -592,6 +592,10 @@ export const bookings = pgTable("bookings", {
   // pickupOption.
   details: jsonb("details").$type<Record<string, string>>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  // Set when a vendor scans/enters this booking's ticket at the door —
+  // separate from status (confirmed/completed/cancelled), since a ticket
+  // can be checked in well before its auto-complete date passes.
+  checkedInAt: timestamp("checked_in_at", { withTimezone: true }),
 });
 
 // A line item actually selected for one booking — a chosen room, vehicle,

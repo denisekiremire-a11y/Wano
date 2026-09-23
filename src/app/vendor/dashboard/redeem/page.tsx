@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireRole } from "@/lib/auth";
 import { getVendorActiveCampaigns, getVendorRedemptionsToday } from "@/lib/data/rewards";
 import { getVendorProfileByUserId } from "@/lib/data/vendor";
@@ -23,6 +24,9 @@ export default async function VendorRedeemPage() {
           A traveller&apos;s camera opens their QR straight to this venue&apos;s verify page — or type
           their code in below if a scan fails. Either way, your PIN is required to mark it redeemed.
         </p>
+        <Link href="/vendor/dashboard/redeem/tickets" className="mt-2 inline-block text-sm text-nile-700 hover:underline">
+          Checking in event tickets instead? →
+        </Link>
       </div>
 
       <section className="space-y-3 rounded-2xl border border-forest-900/10 bg-white p-5">

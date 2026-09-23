@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, isNotNull, or } from "drizzle-orm";
 import { db } from "@/db";
 import {
   bookings,
@@ -248,4 +248,29 @@ export async function getVendorEventTicketBookings(vendorProfileId: string) {
     .leftJoin(rewards, eq(userRewards.rewardId, rewards.id))
     .where(inArray(bookings.eventId, eventIds))
     .orderBy(desc(bookings.createdAt));
+}
+
+/** Today's ticket check-ins for this vendor — covers both a standalone
+ * event they organize and their own "event"-type listing (ticket.QR check-
+ * in isn't restricted to one or the other, see ticket-actions.ts). */
+export async function getVendorTicketCheckInsToday(vendorProfileId: string) {
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const rows = await db
+    .select({ booking: bookings, listing: listings, event: events, traveller: travellerProfiles })
+    .from(bookings)
+    .leftJoin(listings, eq(listings.id, bookings.listingId))
+    .leftJoin(events, eq(events.id, bookings.eventId))
+    .innerJoin(travellerProfiles, eq(travellerProfiles.id, bookings.travellerId))
+    .where(
+      and(
+        isNotNull(bookings.checkedInAt),
+        gte(bookings.checkedInAt, startOfDay),
+        or(eq(listings.vendorProfileId, vendorProfileId), eq(events.organizerVendorProfileId, vendorProfileId)),
+      ),
+    )
+    .orderBy(desc(bookings.checkedInAt));
+
+  return rows;
 }

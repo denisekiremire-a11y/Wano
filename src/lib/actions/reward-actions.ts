@@ -8,7 +8,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { events, rewards, userRewards, vendorProfiles, vendorSubmissions } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
-import { generateShortCode } from "@/lib/codes";
+import { generateVoucherCode } from "@/lib/codes";
 import { getOwningVendorProfileId, getUserRewardById } from "@/lib/data/rewards";
 import { vendorRewardContentSchema } from "@/lib/actions/reward-shared";
 import { getPendingEditSubmission } from "@/lib/data/submissions";
@@ -29,7 +29,7 @@ function revalidateRewardPaths() {
 
 async function uniqueRedemptionCode() {
   for (let attempt = 0; attempt < 5; attempt++) {
-    const code = generateShortCode();
+    const code = generateVoucherCode();
     const [existing] = await db
       .select({ id: userRewards.id })
       .from(userRewards)
@@ -129,7 +129,7 @@ export async function generateRewardQrAction(userRewardId: string) {
   }
 
   const token = await signRewardToken(userRewardId);
-  const verifyUrl = `${APP_URL}/vendor/redeem/token/${token}`;
+  const verifyUrl = `${APP_URL}/vendor/dashboard/redeem/token/${token}`;
   const qrDataUrl = await QRCode.toDataURL(verifyUrl, { margin: 1, width: 240 });
 
   return { qrDataUrl, expiresInSeconds: 120 };
@@ -184,6 +184,17 @@ export async function verifyRewardTokenForVendor(token: string): Promise<RedeemC
   return { ...result, userRewardId: decoded.userRewardId };
 }
 
+/** Reward codes are shown as WANO-XXXX, but staff may type them without the
+ * hyphen or with stray spaces — normalize to the stored shape before
+ * comparing. Plain pre-existing (un-prefixed) codes pass through unchanged. */
+function normalizeRedemptionCode(input: string) {
+  const cleaned = input.trim().toUpperCase().replace(/[^A-Z0-9-]/g, "");
+  if (cleaned.startsWith("WANO") && !cleaned.startsWith("WANO-")) {
+    return `WANO-${cleaned.slice(4)}`;
+  }
+  return cleaned;
+}
+
 export async function lookupRewardByCodeForVendor(code: string): Promise<RedeemCheck & { userRewardId?: string }> {
   const session = await requireRole("vendor");
   const vendorProfile = await getVendorProfileByUserId(session.userId);
@@ -192,7 +203,7 @@ export async function lookupRewardByCodeForVendor(code: string): Promise<RedeemC
   const [row] = await db
     .select({ id: userRewards.id })
     .from(userRewards)
-    .where(eq(userRewards.redemptionCode, code.trim().toUpperCase()))
+    .where(eq(userRewards.redemptionCode, normalizeRedemptionCode(code)))
     .limit(1);
   if (!row) return { ok: false, reason: "invalid" };
 

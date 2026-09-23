@@ -1,10 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useState, useTransition } from "react";
+import { useToast } from "@/components/toast/toast-provider";
 import { submitReviewAction } from "@/lib/actions/review-actions";
-import type { ActionState } from "@/lib/validation";
-
-const initialState: ActionState = {};
 
 const categories = [
   { name: "safetyRating", label: "Safety" },
@@ -32,10 +30,31 @@ function StarPicker({ name, label }: { name: string; label: string }) {
 }
 
 export function ReviewForm({ bookingId, listingTitle }: { bookingId: string; listingTitle: string }) {
-  const [state, formAction, pending] = useActionState(submitReviewAction, initialState);
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const { push } = useToast();
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    startTransition(async () => {
+      // Called directly rather than via useActionState's form-submit
+      // lifecycle — a successful review removes this booking from
+      // getReviewableBookings, unmounting this form as part of the same
+      // revalidatePath, so a useEffect keyed to pending state would lose
+      // that race (see claim-reward-button.tsx for the same fix).
+      const result = await submitReviewAction({}, formData);
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setError(null);
+        push("Thanks for your review!");
+      }
+    });
+  }
 
   return (
-    <form action={formAction} className="mt-2 space-y-3 rounded-xl border border-forest-900/10 bg-forest-50/50 p-3">
+    <form onSubmit={handleSubmit} className="mt-2 space-y-3 rounded-xl border border-forest-900/10 bg-forest-50/50 p-3">
       <input type="hidden" name="bookingId" value={bookingId} />
       <p className="text-xs font-medium text-forest-800/70">Rate your stay at {listingTitle}</p>
       <div className="grid grid-cols-2 gap-3">
@@ -50,7 +69,7 @@ export function ReviewForm({ bookingId, listingTitle }: { bookingId: string; lis
         placeholder="Anything else other travellers should know? (optional)"
         className="w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
       />
-      {state.error && <p className="text-xs text-red-700">{state.error}</p>}
+      {error && <p className="text-xs text-red-700">{error}</p>}
       <button
         type="submit"
         disabled={pending}

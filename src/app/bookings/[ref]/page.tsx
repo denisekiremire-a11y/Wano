@@ -4,6 +4,7 @@ import { BookingThread } from "@/components/booking-thread";
 import { CheckCircleIcon } from "@/components/icons";
 import { CopyCodeButton } from "@/components/copy-code-button";
 import { ShareBookingButton } from "@/components/share-booking-button";
+import { TicketQrCard } from "@/components/ticket-qr-card";
 import { requireRole } from "@/lib/auth";
 import { formatMinor } from "@/lib/currency";
 import { getBookingByRef, getBookingItems, getTravellerProfileByUserId } from "@/lib/data/traveller";
@@ -49,6 +50,7 @@ export default async function BookingConfirmationPage({ params }: { params: Prom
     listing?.latitude && listing?.longitude
       ? `https://www.google.com/maps/search/?api=1&query=${listing.latitude},${listing.longitude}`
       : null;
+  const isTicket = (event != null || listing?.type === "event") && booking.status !== "cancelled";
 
   return (
     <main className="mx-auto max-w-lg px-4 py-10 md:px-6">
@@ -62,6 +64,12 @@ export default async function BookingConfirmationPage({ params }: { params: Prom
         <h1 className="mt-3 font-display text-2xl font-semibold text-forest-900">{status.label}</h1>
         <p className="mt-1 max-w-sm text-sm text-forest-800/70">{status.detail}</p>
       </div>
+
+      {isTicket && (
+        <div className="mt-6">
+          <TicketQrCard bookingId={booking.id} title={title} bookingRef={booking.bookingRef} />
+        </div>
+      )}
 
       <div className="mt-6 rounded-2xl border border-forest-900/10 bg-white p-6 text-center">
         <p className="text-xs font-semibold uppercase tracking-wide text-forest-800/50">Confirmation code</p>

@@ -15,6 +15,7 @@ import { SeasonRibbon } from "@/components/season/season-ribbon";
 import { ServiceWorkerInit } from "@/components/service-worker-init";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { ToastProvider } from "@/components/toast/toast-provider";
 import { getPendingAccreditationCount } from "@/lib/data/admin";
 import { getFixtures } from "@/lib/data/fixtures";
 import { getOpenReportsCount } from "@/lib/data/moderation";
@@ -118,20 +119,22 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       >
         <LiteModeInit />
         <ServiceWorkerInit />
-        <SeasonProvider enabled={AFCON_CLUB_ENABLED} fixtures={fixtures}>
-          <AnchorProvider>
-            <PreviewBanner />
-            <SiteHeader session={session} navBadges={navBadges} />
-            <SeasonRibbon />
-            <div className="has-bottom-nav flex-1">
-              {children}
-              <SiteFooter />
-            </div>
-            <BottomNav session={session} navBadges={navBadges} />
-          </AnchorProvider>
-          {showSeasonDemoSwitch && <SeasonDemoSwitch />}
-        </SeasonProvider>
-        <InstallPrompt />
+        <ToastProvider>
+          <SeasonProvider enabled={AFCON_CLUB_ENABLED} fixtures={fixtures}>
+            <AnchorProvider>
+              <PreviewBanner />
+              <SiteHeader session={session} navBadges={navBadges} />
+              <SeasonRibbon />
+              <div className="has-bottom-nav flex-1">
+                {children}
+                <SiteFooter />
+              </div>
+              <BottomNav session={session} navBadges={navBadges} />
+            </AnchorProvider>
+            {showSeasonDemoSwitch && <SeasonDemoSwitch />}
+          </SeasonProvider>
+          <InstallPrompt />
+        </ToastProvider>
       </body>
     </html>
   );
