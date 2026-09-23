@@ -26,6 +26,7 @@ export function SingleItemPicker({
   label,
   preselectedId,
   showQuantity,
+  required = true,
 }: {
   items: ListingItem[];
   itemImageIds: Map<string, string[]>;
@@ -34,11 +35,15 @@ export function SingleItemPicker({
   label: string;
   preselectedId?: string;
   showQuantity?: boolean;
+  required?: boolean;
 }) {
   if (items.length === 0) return null;
   return (
     <fieldset className="min-w-0 space-y-2">
-      <legend className="text-xs font-medium text-forest-900">{label}</legend>
+      <legend className="text-xs font-medium text-forest-900">
+        {label}
+        {!required && <span className="font-normal text-forest-800/50"> (optional)</span>}
+      </legend>
       {items.map((item) => (
         <label
           key={item.id}
@@ -49,7 +54,7 @@ export function SingleItemPicker({
             name={name}
             value={item.id}
             defaultChecked={preselectedId ? item.id === preselectedId : false}
-            required
+            required={required}
             className="ml-1 accent-nile-700"
           />
           <ItemThumb item={item} listingType={listingType} imageId={itemImageIds.get(item.id)?.[0]} />

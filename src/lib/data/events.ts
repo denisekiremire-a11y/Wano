@@ -1,6 +1,8 @@
 import { and, asc, count, eq, gte, ilike, inArray, or } from "drizzle-orm";
 import { db } from "@/db";
-import { eventAttendance, events, follows, travellerProfiles, users, vendorProfiles } from "@/db/schema";
+import { bookings, eventAttendance, events, follows, travellerProfiles, users, vendorProfiles } from "@/db/schema";
+
+const ACTIVE_BOOKING_STATUSES = ["pending", "confirmed"] as const;
 
 export async function searchEvents(query: string, limit = 10) {
   const q = query.trim();
@@ -125,6 +127,75 @@ export async function getEventAttendees(eventId: string) {
     .innerJoin(travellerProfiles, eq(travellerProfiles.id, eventAttendance.travellerId))
     .innerJoin(users, eq(users.id, travellerProfiles.userId))
     .where(and(eq(eventAttendance.eventId, eventId), eq(eventAttendance.visible, true)));
+}
+
+// The /events/[id] page's own "who's going" now comes from real bookings
+// rather than the lighter-weight eventAttendance table above (still used
+// elsewhere — clubs, AFCON venue pages) — a booking is the RSVP for a
+// standalone event now, not a separate click.
+
+/** Total attendee count per event (sum of partySize, defaulting to 1 for
+ * bookings that didn't set one) across pending+confirmed bookings. */
+export async function getEventBookingCounts(eventIds: string[]): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  if (eventIds.length === 0) return map;
+  const rows = await db
+    .select({ eventId: bookings.eventId, partySize: bookings.partySize })
+    .from(bookings)
+    .where(and(inArray(bookings.eventId, eventIds), inArray(bookings.status, ACTIVE_BOOKING_STATUSES)));
+  for (const row of rows) {
+    if (!row.eventId) continue;
+    map.set(row.eventId, (map.get(row.eventId) ?? 0) + (row.partySize ?? 1));
+  }
+  return map;
+}
+
+export async function getEventBookers(eventId: string) {
+  return db
+    .select({
+      displayName: travellerProfiles.displayName,
+      username: users.username,
+      partySize: bookings.partySize,
+    })
+    .from(bookings)
+    .innerJoin(travellerProfiles, eq(travellerProfiles.id, bookings.travellerId))
+    .innerJoin(users, eq(users.id, travellerProfiles.userId))
+    .where(and(eq(bookings.eventId, eventId), inArray(bookings.status, ACTIVE_BOOKING_STATUSES)));
+}
+
+/** Names of people the given traveller follows who've booked this event —
+ * the booking-based counterpart to getFollowedAttendees. */
+export async function getFollowedEventBookers(eventId: string, travellerId: string) {
+  const rows = await db
+    .select({ name: travellerProfiles.displayName })
+    .from(bookings)
+    .innerJoin(follows, eq(follows.followingId, bookings.travellerId))
+    .innerJoin(travellerProfiles, eq(travellerProfiles.id, bookings.travellerId))
+    .where(
+      and(
+        eq(bookings.eventId, eventId),
+        eq(follows.followerId, travellerId),
+        inArray(bookings.status, ACTIVE_BOOKING_STATUSES),
+      ),
+    );
+  return rows;
+}
+
+/** Has this traveller already got a booking against this event? Used to
+ * decide whether the page shows "Book" or "You're booked" state. */
+export async function getMyEventBooking(eventId: string, travellerId: string): Promise<typeof bookings.$inferSelect | null> {
+  const [row] = await db
+    .select()
+    .from(bookings)
+    .where(
+      and(
+        eq(bookings.eventId, eventId),
+        eq(bookings.travellerId, travellerId),
+        inArray(bookings.status, ACTIVE_BOOKING_STATUSES),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
 }
 
 export async function getDistinctEventCategories() {

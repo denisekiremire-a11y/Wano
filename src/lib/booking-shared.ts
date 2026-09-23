@@ -134,6 +134,45 @@ export function parseBookingDraft(
   };
 }
 
+/** A standalone event's booking form is looser than a listing's: no date
+ * to collect (the event has a fixed startAt), and ticket-tier selection is
+ * an optional add-on rather than a requirement — party size, a name, and
+ * notes are the only things every event needs from a booker. Kept separate
+ * from parseBookingDraft since the "event" *listing* type (a vendor's own
+ * ticketed product line) still requires a tier selection. */
+export function parseEventBookingDraft(
+  formData: FormData,
+  eventItems: ListingItem[],
+): { data: BookingDraft } | { error: string } {
+  const selectedItemId = str(formData, "selectedItemId");
+  const items: BookingItemSelection[] = selectedItemId
+    ? [{ itemId: selectedItemId, quantity: Math.max(1, num(formData, "itemQuantity") ?? 1) }]
+    : [];
+  for (const sel of items) {
+    if (!eventItems.some((i) => i.id === sel.itemId)) {
+      return { error: "That ticket type is no longer available." };
+    }
+  }
+
+  return {
+    data: {
+      bookingName: str(formData, "bookingName"),
+      visitDate: null,
+      visitTime: null,
+      endDate: null,
+      partySize: num(formData, "partySize"),
+      childrenCount: num(formData, "childrenCount"),
+      pickupLocation: null,
+      dropoffLocation: null,
+      notes: str(formData, "notes"),
+      userRewardId: str(formData, "userRewardId"),
+      journeyId: null,
+      details: {},
+      items,
+    },
+  };
+}
+
 export function encodeBookingDraft(draft: BookingDraft): URLSearchParams {
   const p = new URLSearchParams();
   p.set("tab", "review");

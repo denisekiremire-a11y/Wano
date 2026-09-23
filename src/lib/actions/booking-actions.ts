@@ -8,7 +8,13 @@ import { bookingItems, bookings, events, listingItems, listingJourneys, listings
 import { requireRole } from "@/lib/auth";
 import { logEvent } from "@/lib/analytics";
 import { notifyTravellerOfNewBooking, notifyVendorOfNewBooking } from "@/lib/booking-notifications";
-import { computeBookingTotals, decodeBookingDraft, encodeBookingDraft, parseBookingDraft } from "@/lib/booking-shared";
+import {
+  computeBookingTotals,
+  decodeBookingDraft,
+  encodeBookingDraft,
+  parseBookingDraft,
+  parseEventBookingDraft,
+} from "@/lib/booking-shared";
 import type { ListingType } from "@/lib/listing-type";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 
@@ -172,12 +178,13 @@ export async function bookListingFormAction(formData: FormData) {
   redirect(`/bookings/${booking.bookingRef}`);
 }
 
-/** The event-ticket counterpart to previewBookingAction/bookListingFormAction
+/** The event-booking counterpart to previewBookingAction/bookListingFormAction
  * — same draft encode/decode, same review-before-confirm shape, just keyed
- * by eventId instead of listingId. Reuses parseBookingDraft/
- * computeBookingTotals with type "event" since a standalone event's ticket
- * purchase has the exact same shape (a required ticket-tier selection with
- * quantity, no date/party fields) as the "event" listing type. */
+ * by eventId instead of listingId. Uses parseEventBookingDraft rather than
+ * parseBookingDraft: every event is bookable (party size + name + notes),
+ * with a ticket-tier selection as an optional add-on when the organizer has
+ * configured one — looser than the "event" listing type, which requires a
+ * tier. computeBookingTotals is still reused as-is. */
 export async function previewEventTicketAction(formData: FormData) {
   const eventId = formData.get("eventId");
   if (typeof eventId !== "string" || !eventId) throw new Error("Missing event.");
@@ -188,7 +195,7 @@ export async function previewEventTicketAction(formData: FormData) {
   if (!event || !event.active) throw new Error("This event is not available.");
 
   const items = await db.select().from(listingItems).where(eq(listingItems.eventId, eventId));
-  const parsed = parseBookingDraft(formData, "event", items, false);
+  const parsed = parseEventBookingDraft(formData, items);
   if ("error" in parsed) throw new Error(parsed.error);
 
   redirect(`/events/${eventId}?${encodeBookingDraft(parsed.data).toString()}`);
@@ -226,6 +233,9 @@ export async function buyEventTicketsAction(formData: FormData) {
       travellerId: travellerProfile.id,
       eventId: event.id,
       bookingName: draft.bookingName ?? travellerProfile.displayName,
+      partySize: draft.partySize,
+      childrenCount: draft.childrenCount,
+      notes: draft.notes,
       appliedUserRewardId: rewardRow?.userReward.id ?? null,
       status: "pending",
       bookingRef: generateBookingRef(),

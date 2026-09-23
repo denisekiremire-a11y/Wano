@@ -1,17 +1,16 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AttendanceButtons } from "@/components/attendance-buttons";
 import { CalendarIcon } from "@/components/icons";
 import { ListingItemCard } from "@/components/listing-item-card";
 import { ListingTypeIcon } from "@/components/listing-type-icon";
 import { EventTicketForm } from "@/components/booking/event-ticket-form";
 import { PostComposer } from "@/components/post-composer";
 import {
-  getAttendanceCounts,
-  getEventAttendees,
+  getEventBookers,
+  getEventBookingCounts,
   getEventById,
-  getFollowedAttendees,
-  getMyAttendance,
+  getFollowedEventBookers,
+  getMyEventBooking,
 } from "@/lib/data/events";
 import { getEventItems, getListingItemImageIds } from "@/lib/data/listing-items";
 import { getClaimableRewardsForTarget, getMyClaimedRewardsForTarget } from "@/lib/data/rewards";
@@ -19,7 +18,7 @@ import { getMediaPostsFor } from "@/lib/data/social";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { getVendorProfileByUserId } from "@/lib/data/vendor";
 import { getMyXpBookingsForMatch, getSeatsRemainingForMatch } from "@/lib/data/xp";
-import { bookingActionLabel, computeBookingTotals, decodeBookingDraft } from "@/lib/booking-shared";
+import { computeBookingTotals, decodeBookingDraft } from "@/lib/booking-shared";
 import { buyEventTicketsAction } from "@/lib/actions/booking-actions";
 import { formatMinor } from "@/lib/currency";
 import { getSession } from "@/lib/session";
@@ -55,38 +54,39 @@ export default async function EventDetailPage({
   if (!row) notFound();
   const { event, organizer } = row;
 
-  const [session, counts] = await Promise.all([getSession(), getAttendanceCounts([event.id])]);
-  const attendanceCounts = counts.get(event.id) ?? { going: 0, interested: 0, maybe: 0 };
+  const session = await getSession();
 
-  let myStatus = null;
-  let followedGoing: { name: string; status: string }[] = [];
+  let followedGoing: { name: string }[] = [];
   let claimableRewards: Awaited<ReturnType<typeof getClaimableRewardsForTarget>> = [];
   let myClaimedRewards: Awaited<ReturnType<typeof getMyClaimedRewardsForTarget>> = [];
   let myXpBookings: Awaited<ReturnType<typeof getMyXpBookingsForMatch>> = [];
+  let myEventBooking: Awaited<ReturnType<typeof getMyEventBooking>> = null;
+  let travellerDisplayName = "";
   let isOrganizer = false;
   const isMatchDay = event.category === MATCH_DAY_CATEGORY;
   if (session?.role === "traveller") {
     const travellerProfile = await getTravellerProfileByUserId(session.userId);
     if (travellerProfile) {
-      const [mine, followed, claimable, myClaimed, xpBookings] = await Promise.all([
-        getMyAttendance(event.id, travellerProfile.id),
-        getFollowedAttendees(event.id, travellerProfile.id),
+      const [followed, claimable, myClaimed, xpBookings, existingBooking] = await Promise.all([
+        getFollowedEventBookers(event.id, travellerProfile.id),
         getClaimableRewardsForTarget("event", event.id),
         getMyClaimedRewardsForTarget(travellerProfile.id, "event", event.id),
         isMatchDay ? getMyXpBookingsForMatch(travellerProfile.id, event.id) : Promise.resolve([]),
+        isMatchDay ? Promise.resolve(null) : getMyEventBooking(event.id, travellerProfile.id),
       ]);
-      myStatus = mine?.status ?? null;
       followedGoing = followed;
       claimableRewards = claimable;
       myClaimedRewards = myClaimed;
       myXpBookings = xpBookings;
+      myEventBooking = existingBooking;
+      travellerDisplayName = travellerProfile.displayName;
     }
   } else if (session?.role === "vendor" && event.organizerVendorProfileId) {
     const vendorProfile = await getVendorProfileByUserId(session.userId);
     isOrganizer = vendorProfile?.id === event.organizerVendorProfileId;
   }
 
-  const ticketItems = !isMatchDay && event.organizerVendorProfileId ? await getEventItems(event.id) : [];
+  const ticketItems = !isMatchDay ? await getEventItems(event.id) : [];
   const ticketImageIds = await getListingItemImageIds(ticketItems.map((i) => i.id));
   const selectedTicket = itemParam ? ticketItems.find((i) => i.id === itemParam) : undefined;
 
@@ -106,7 +106,12 @@ export default async function EventDetailPage({
     : null;
   const seatsRemaining = isMatchDay ? await getSeatsRemainingForMatch(event.id) : 0;
 
-  const [attendees, media] = await Promise.all([getEventAttendees(event.id), getMediaPostsFor({ eventId: event.id })]);
+  const [bookingCounts, bookers, media] = await Promise.all([
+    getEventBookingCounts([event.id]),
+    getEventBookers(event.id),
+    getMediaPostsFor({ eventId: event.id }),
+  ]);
+  const goingCount = bookingCounts.get(event.id) ?? 0;
 
   return (
     <main>
@@ -129,12 +134,19 @@ export default async function EventDetailPage({
         {isReviewMode && reviewDraft && reviewTotals ? (
           <div className="max-w-md">
             <Link href={`/events/${event.id}`} className="text-sm text-forest-800/60 hover:underline">
-              ← Edit tickets
+              ← Edit booking
             </Link>
-            <h2 className="mt-3 font-display text-xl font-semibold text-forest-900">Your tickets</h2>
+            <h2 className="mt-3 font-display text-xl font-semibold text-forest-900">Your booking</h2>
             <div className="mt-3 space-y-2 rounded-2xl border border-forest-900/10 bg-white p-4 text-sm">
               <p className="font-display text-lg font-semibold text-forest-900">{event.title}</p>
               <p className="text-forest-800/80">{formatEventWhen(new Date(event.startAt), event.endAt ? new Date(event.endAt) : null)}</p>
+              {reviewDraft.partySize != null && (
+                <p className="text-forest-800/80">
+                  {reviewDraft.partySize} {reviewDraft.partySize === 1 ? "guest" : "guests"}
+                  {reviewDraft.childrenCount ? ` + ${reviewDraft.childrenCount} children` : ""}
+                </p>
+              )}
+              {reviewDraft.notes && <p className="text-forest-800/60">“{reviewDraft.notes}”</p>}
 
               {reviewTotals.lineItems.length > 0 && (
                 <div className="border-t border-forest-900/10 pt-2">
@@ -149,26 +161,34 @@ export default async function EventDetailPage({
                 </div>
               )}
 
-              <div className="space-y-1 border-t border-forest-900/10 pt-2">
-                <p className="flex justify-between text-forest-800/80">
-                  <span>Subtotal</span>
-                  <span>{formatMinor(reviewTotals.subtotalMinor)}</span>
-                </p>
-                {reviewTotals.discountMinor > 0 && reviewAppliedReward && (
-                  <p className="flex justify-between text-nile-700">
-                    <span>{reviewAppliedReward.reward.title}</span>
-                    <span>-{formatMinor(reviewTotals.discountMinor)}</span>
+              {reviewTotals.subtotalMinor > 0 && (
+                <div className="space-y-1 border-t border-forest-900/10 pt-2">
+                  <p className="flex justify-between text-forest-800/80">
+                    <span>Subtotal</span>
+                    <span>{formatMinor(reviewTotals.subtotalMinor)}</span>
                   </p>
-                )}
-                <p className="flex justify-between text-base font-semibold text-forest-900">
-                  <span>Total</span>
-                  <span>{formatMinor(reviewTotals.totalMinor)}</span>
-                </p>
-              </div>
+                  {reviewTotals.discountMinor > 0 && reviewAppliedReward && (
+                    <p className="flex justify-between text-nile-700">
+                      <span>{reviewAppliedReward.reward.title}</span>
+                      <span>-{formatMinor(reviewTotals.discountMinor)}</span>
+                    </p>
+                  )}
+                  <p className="flex justify-between text-base font-semibold text-forest-900">
+                    <span>Total</span>
+                    <span>{formatMinor(reviewTotals.totalMinor)}</span>
+                  </p>
+                </div>
+              )}
             </div>
 
             <form action={buyEventTicketsAction} className="mt-4">
               <input type="hidden" name="eventId" value={event.id} />
+              <input type="hidden" name="bookingName" value={reviewDraft.bookingName ?? travellerDisplayName} />
+              {reviewDraft.partySize != null && <input type="hidden" name="partySize" value={reviewDraft.partySize} />}
+              {reviewDraft.childrenCount != null && (
+                <input type="hidden" name="childrenCount" value={reviewDraft.childrenCount} />
+              )}
+              {reviewDraft.notes && <input type="hidden" name="notes" value={reviewDraft.notes} />}
               {reviewDraft.userRewardId && <input type="hidden" name="userRewardId" value={reviewDraft.userRewardId} />}
               {reviewDraft.items.length > 0 && (
                 <input
@@ -181,201 +201,187 @@ export default async function EventDetailPage({
                 type="submit"
                 className="w-full rounded-full bg-forest-800 px-5 py-3 text-sm font-semibold text-white transition hover:bg-forest-700"
               >
-                {bookingActionLabel.event} →
+                Book →
               </button>
             </form>
           </div>
         ) : (
           <>
-        <p className="max-w-2xl text-forest-800/80">{event.description}</p>
-        {organizer && (
-          <p className="mt-2 text-sm text-forest-800/60">Hosted by {organizer.businessName}</p>
-        )}
-        {!isMatchDay && <p className="mt-2 font-medium text-nile-700">{event.priceHint ?? "Free to attend"}</p>}
-        {isOrganizer && (
-          <Link
-            href={`/vendor/dashboard/events/${event.id}/items`}
-            className="mt-2 inline-block text-sm font-medium text-nile-700 hover:underline"
-          >
-            Manage tickets →
-          </Link>
-        )}
+            <p className="max-w-2xl text-forest-800/80">{event.description}</p>
+            {organizer && <p className="mt-2 text-sm text-forest-800/60">Hosted by {organizer.businessName}</p>}
+            {!isMatchDay && <p className="mt-2 font-medium text-nile-700">{event.priceHint ?? "Free to attend"}</p>}
+            {isOrganizer && (
+              <Link
+                href={`/vendor/dashboard/events/${event.id}/items`}
+                className="mt-2 inline-block text-sm font-medium text-nile-700 hover:underline"
+              >
+                Manage tickets →
+              </Link>
+            )}
 
-        {ticketItems.length > 0 && (
-          <div className="mt-6">
-            <h2 className="font-display text-lg font-semibold text-forest-900">Tickets</h2>
-            {selectedTicket ? (
-              <div className="mt-3 overflow-hidden rounded-2xl border border-forest-900/10 bg-white">
-                {(ticketImageIds.get(selectedTicket.id) ?? []).length > 0 ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={`/api/listing-item-images/${ticketImageIds.get(selectedTicket.id)![0]}`}
-                    alt={selectedTicket.name}
-                    className="h-48 w-full object-cover"
-                  />
+            {!isMatchDay && ticketItems.length > 0 && (
+              <div className="mt-6">
+                <h2 className="font-display text-lg font-semibold text-forest-900">Tickets</h2>
+                {selectedTicket ? (
+                  <div className="mt-3 overflow-hidden rounded-2xl border border-forest-900/10 bg-white">
+                    {(ticketImageIds.get(selectedTicket.id) ?? []).length > 0 ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={`/api/listing-item-images/${ticketImageIds.get(selectedTicket.id)![0]}`}
+                        alt={selectedTicket.name}
+                        className="h-48 w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-32 items-center justify-center bg-gradient-to-br from-nile-900 via-marigold-600 to-marigold-300">
+                        <ListingTypeIcon type="event" className="h-8 w-8 text-white/70" />
+                      </div>
+                    )}
+                    <div className="p-4">
+                      <p className="font-display text-lg font-semibold text-forest-900">{selectedTicket.name}</p>
+                      {selectedTicket.description && (
+                        <p className="mt-1 text-sm text-forest-800/70">{selectedTicket.description}</p>
+                      )}
+                      {selectedTicket.priceMinor != null && (
+                        <p className="mt-2 text-lg font-semibold text-ember">
+                          {formatMinor(selectedTicket.priceMinor)}
+                          {selectedTicket.priceUnit ?? ""}
+                        </p>
+                      )}
+                      <Link href={`/events/${event.id}`} className="mt-3 inline-block text-sm text-forest-800/60 hover:underline">
+                        ← Back to tickets
+                      </Link>
+                    </div>
+                  </div>
                 ) : (
-                  <div className="flex h-32 items-center justify-center bg-gradient-to-br from-nile-900 via-marigold-600 to-marigold-300">
-                    <ListingTypeIcon type="event" className="h-8 w-8 text-white/70" />
+                  <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {ticketItems.map((item) => (
+                      <ListingItemCard
+                        key={item.id}
+                        item={item}
+                        listingType="event"
+                        coverImageId={ticketImageIds.get(item.id)?.[0]}
+                        href={`/events/${event.id}?item=${item.id}`}
+                      />
+                    ))}
                   </div>
                 )}
-                <div className="p-4">
-                  <p className="font-display text-lg font-semibold text-forest-900">{selectedTicket.name}</p>
-                  {selectedTicket.description && (
-                    <p className="mt-1 text-sm text-forest-800/70">{selectedTicket.description}</p>
-                  )}
-                  {selectedTicket.priceMinor != null && (
-                    <p className="mt-2 text-lg font-semibold text-ember">
-                      {formatMinor(selectedTicket.priceMinor)}
-                      {selectedTicket.priceUnit ?? ""}
-                    </p>
-                  )}
-                  <Link
-                    href={`/events/${event.id}`}
-                    className="mt-3 inline-block text-sm text-forest-800/60 hover:underline"
-                  >
-                    ← Back to tickets
-                  </Link>
-                </div>
               </div>
-            ) : (
-              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {ticketItems.map((item) => (
-                  <ListingItemCard
-                    key={item.id}
-                    item={item}
-                    listingType="event"
-                    coverImageId={ticketImageIds.get(item.id)?.[0]}
-                    href={`/events/${event.id}?item=${item.id}`}
+            )}
+
+            {isMatchDay ? (
+              <div className="mt-6">
+                {session?.role === "traveller" ? (
+                  <XpBookingPanel
+                    matchId={event.id}
+                    matchStartAt={event.startAt.toISOString()}
+                    seatsRemaining={seatsRemaining}
+                    myBookings={myXpBookings}
                   />
-                ))}
-              </div>
-            )}
-
-            {session?.role === "traveller" ? (
-              <div className="mt-4">
-                <EventTicketForm
-                  eventId={event.id}
-                  items={ticketItems}
-                  itemImageIds={ticketImageIds}
-                  preselectedItemId={itemParam}
-                  myClaimedRewards={myClaimedRewards}
-                />
-              </div>
-            ) : (
-              !session && (
-                <Link
-                  href={`/login?next=/events/${event.id}`}
-                  className="mt-4 inline-flex rounded-full bg-forest-800 px-5 py-2.5 text-sm font-semibold text-white"
-                >
-                  Log in to buy tickets
-                </Link>
-              )
-            )}
-          </div>
-        )}
-
-        {isMatchDay && (
-          <div className="mt-6">
-            {session?.role === "traveller" ? (
-              <XpBookingPanel
-                matchId={event.id}
-                matchStartAt={event.startAt.toISOString()}
-                seatsRemaining={seatsRemaining}
-                myBookings={myXpBookings}
-              />
-            ) : (
-              <div className="rounded-2xl border border-forest-900/10 bg-white p-5">
-                <p className="text-sm text-forest-800/70">
-                  {seatsRemaining} seat{seatsRemaining === 1 ? "" : "s"} left · {event.priceHint}
-                </p>
-                <Link
-                  href={`/login?next=/events/${event.id}`}
-                  className="mt-3 inline-flex rounded-full bg-forest-800 px-4 py-2 text-sm font-semibold text-white"
-                >
-                  Log in to book
-                </Link>
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="mt-6">
-          {session?.role === "traveller" ? (
-            <AttendanceButtons eventId={event.id} initialStatus={myStatus} />
-          ) : (
-            !isMatchDay && (
-              <Link
-                href={`/login?next=/events/${event.id}`}
-                className="inline-flex rounded-full bg-forest-800 px-4 py-2 text-sm font-semibold text-white"
-              >
-                Log in to RSVP
-              </Link>
-            )
-          )}
-        </div>
-
-        <div className="mt-8 rounded-2xl border border-forest-900/10 bg-white p-5">
-          <h2 className="font-display text-lg font-semibold text-forest-900">Who&apos;s going?</h2>
-          <p className="mt-1 text-sm text-forest-800/60">
-            {attendanceCounts.going} going · {attendanceCounts.interested} interested ·{" "}
-            {attendanceCounts.maybe} maybe
-          </p>
-          {followedGoing.length > 0 && (
-            <p className="mt-2 text-sm font-medium text-forest-800">
-              {followedGoing.length} people you follow are {followedGoing[0].status}
-            </p>
-          )}
-          {attendees.length > 0 && (
-            <ul className="mt-3 flex flex-wrap gap-2">
-              {attendees.slice(0, 20).map((a, i) => (
-                <li
-                  key={i}
-                  className="rounded-full bg-forest-50 px-3 py-1 text-xs font-medium capitalize text-forest-800"
-                >
-                  {a.displayName} · {a.status}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <TargetRewardsSection claimable={claimableRewards} claimed={myClaimedRewards} />
-
-        <section className="mt-8">
-          <h2 className="font-display text-lg font-semibold text-forest-900">What people are saying</h2>
-          <p className="mt-1 text-sm text-forest-800/60">Posts and moments shared by attendees.</p>
-          {session?.role === "traveller" && (
-            <div className="mt-3">
-              <PostComposer
-                presetContext={{ type: "event", id: event.id, label: event.title }}
-                placeholder={`Share something about ${event.title}…`}
-              />
-            </div>
-          )}
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {media.length === 0 ? (
-              <p className="col-span-full rounded-xl border border-forest-900/10 bg-white p-6 text-center text-sm text-forest-800/60">
-                No media yet.
-              </p>
-            ) : (
-              media.map(({ post, authorName, authorUsername }) => (
-                <div key={post.id} className="overflow-hidden rounded-xl border border-forest-900/10 bg-white">
-                  {post.imageUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={post.imageUrl} alt="" className="h-40 w-full object-cover" />
-                  )}
-                  <div className="p-3">
-                    <p className="text-sm text-forest-800/90">{post.content}</p>
-                    <p className="mt-1 text-xs text-forest-800/50">
-                      {authorName}
-                      {authorUsername ? ` · @${authorUsername}` : ""}
+                ) : (
+                  <div className="rounded-2xl border border-forest-900/10 bg-white p-5">
+                    <p className="text-sm text-forest-800/70">
+                      {seatsRemaining} seat{seatsRemaining === 1 ? "" : "s"} left · {event.priceHint}
                     </p>
+                    <Link
+                      href={`/login?next=/events/${event.id}`}
+                      className="mt-3 inline-flex rounded-full bg-forest-800 px-4 py-2 text-sm font-semibold text-white"
+                    >
+                      Log in to book
+                    </Link>
                   </div>
-                </div>
-              ))
+                )}
+              </div>
+            ) : (
+              <div className="mt-6">
+                {session?.role === "traveller" ? (
+                  myEventBooking ? (
+                    <div className="rounded-2xl border border-forest-900/10 bg-white p-4">
+                      <p className="text-sm font-medium text-forest-900">
+                        You&apos;re booked — ref {myEventBooking.bookingRef}
+                      </p>
+                      <Link href={`/bookings/${myEventBooking.bookingRef}`} className="mt-1 inline-block text-sm text-nile-700 hover:underline">
+                        View your booking →
+                      </Link>
+                    </div>
+                  ) : (
+                    <EventTicketForm
+                      eventId={event.id}
+                      items={ticketItems}
+                      itemImageIds={ticketImageIds}
+                      preselectedItemId={itemParam}
+                      travellerDisplayName={travellerDisplayName}
+                      myClaimedRewards={myClaimedRewards}
+                    />
+                  )
+                ) : (
+                  <Link
+                    href={`/login?next=/events/${event.id}`}
+                    className="inline-flex rounded-full bg-forest-800 px-5 py-2.5 text-sm font-semibold text-white"
+                  >
+                    Log in to book
+                  </Link>
+                )}
+              </div>
             )}
-          </div>
-        </section>
+
+            <div className="mt-8 rounded-2xl border border-forest-900/10 bg-white p-5">
+              <h2 className="font-display text-lg font-semibold text-forest-900">Who&apos;s going?</h2>
+              <p className="mt-1 text-sm text-forest-800/60">
+                {goingCount} {goingCount === 1 ? "person" : "people"} going
+              </p>
+              {followedGoing.length > 0 && (
+                <p className="mt-2 text-sm font-medium text-forest-800">
+                  {followedGoing.length} people you follow are going
+                </p>
+              )}
+              {bookers.length > 0 && (
+                <ul className="mt-3 flex flex-wrap gap-2">
+                  {bookers.slice(0, 20).map((a, i) => (
+                    <li key={i} className="rounded-full bg-forest-50 px-3 py-1 text-xs font-medium text-forest-800">
+                      {a.displayName}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <TargetRewardsSection claimable={claimableRewards} claimed={myClaimedRewards} />
+
+            <section className="mt-8">
+              <h2 className="font-display text-lg font-semibold text-forest-900">What people are saying</h2>
+              <p className="mt-1 text-sm text-forest-800/60">Posts and moments shared by attendees.</p>
+              {session?.role === "traveller" && (
+                <div className="mt-3">
+                  <PostComposer
+                    presetContext={{ type: "event", id: event.id, label: event.title }}
+                    placeholder={`Share something about ${event.title}…`}
+                  />
+                </div>
+              )}
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {media.length === 0 ? (
+                  <p className="col-span-full rounded-xl border border-forest-900/10 bg-white p-6 text-center text-sm text-forest-800/60">
+                    No media yet.
+                  </p>
+                ) : (
+                  media.map(({ post, authorName, authorUsername }) => (
+                    <div key={post.id} className="overflow-hidden rounded-xl border border-forest-900/10 bg-white">
+                      {post.imageUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={post.imageUrl} alt="" className="h-40 w-full object-cover" />
+                      )}
+                      <div className="p-3">
+                        <p className="text-sm text-forest-800/90">{post.content}</p>
+                        <p className="mt-1 text-xs text-forest-800/50">
+                          {authorName}
+                          {authorUsername ? ` · @${authorUsername}` : ""}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
           </>
         )}
       </section>
