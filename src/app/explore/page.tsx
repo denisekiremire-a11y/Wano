@@ -26,14 +26,18 @@ import { listingTypeLabels, type ListingType } from "@/lib/listing-type";
 import { getSession } from "@/lib/session";
 
 const validTypes: ListingType[] = ["hotel", "restaurant", "experience", "transport", "spa_salon"];
+const validViews = ["all", "places", "trending"] as const;
+type ExploreView = (typeof validViews)[number];
 
 export default async function ExplorePage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string; location?: string; q?: string }>;
+  searchParams: Promise<{ type?: string; location?: string; q?: string; view?: string; verified?: string }>;
 }) {
-  const { type, location, q } = await searchParams;
+  const { type, location, q, view, verified } = await searchParams;
   const session = await getSession();
+  const activeView: ExploreView = validViews.includes(view as ExploreView) ? (view as ExploreView) : "all";
+  const verifiedOnly = verified === "1";
 
   if (q) {
     await logEvent("search_performed", {
@@ -57,16 +61,47 @@ export default async function ExplorePage({
 
   const validType = validTypes.includes(type as ListingType) ? (type as ListingType) : undefined;
 
-  const [results, locations, journeyList] = await Promise.all([
+  const [rawResults, locations, journeyList] = await Promise.all([
     searchListings({ type: validType, location: location || undefined, query: q || undefined }),
     getDistinctListingLocations(),
     getJourneys(),
   ]);
 
+  // "Wano Verified" toggle: has a live discount/freebie — the same
+  // predicate /verified used to filter on (it was never a trust toggle;
+  // searchListings() already only ever returns trusted-vendor listings).
+  const dealFiltered = verifiedOnly
+    ? rawResults.filter((r) => r.offer && (r.offer.discountText || r.offer.freebieText))
+    : rawResults;
+  // "Trending": sorted by view count rather than a separate data source,
+  // so it stays the exact same result shape (with offer/promo joined)
+  // PartnerCard already expects.
+  const results =
+    activeView === "trending"
+      ? [...dealFiltered].sort((a, b) => b.listing.viewCount - a.listing.viewCount)
+      : dealFiltered;
+
   const journeyTagsByListing = await getJourneyTagsForListings(results.map((r) => r.listing.id));
   const ratings = await getRatingSummaries(results.map((r) => r.listing.id));
   const birthdayPerks = await getBirthdayPerksForListings(results.map((r) => r.listing.id));
   const imagesByListing = await getListingImageIds(results.map((r) => r.listing.id));
+
+  // Builds an /explore URL carrying every current filter forward except
+  // whatever this link means to change — so switching, say, the type tile
+  // doesn't silently reset the view/verified chips, and vice versa.
+  function buildHref(overrides: { type?: string; view?: ExploreView; verified?: boolean }) {
+    const params = new URLSearchParams();
+    const nextType = "type" in overrides ? overrides.type : validType;
+    const nextView = "view" in overrides ? overrides.view : activeView;
+    const nextVerified = "verified" in overrides ? overrides.verified : verifiedOnly;
+    if (nextType) params.set("type", nextType);
+    if (location) params.set("location", location);
+    if (q) params.set("q", q);
+    if (nextView && nextView !== "all") params.set("view", nextView);
+    if (nextVerified) params.set("verified", "1");
+    const qs = params.toString();
+    return qs ? `/explore?${qs}` : "/explore";
+  }
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-12 md:px-6">
@@ -85,21 +120,49 @@ export default async function ExplorePage({
         </div>
       )}
 
-      <section className="mt-8">
-        <div className="flex items-end justify-between gap-4">
-          <h2 className="font-display text-xl font-semibold text-forest-900">Wano Journeys</h2>
-          <Link href="/journeys" className="text-sm font-semibold text-nile-700">
-            View all →
+      <div className="mt-6 flex flex-wrap gap-1.5">
+        {(
+          [
+            { key: "all" as const, label: "All" },
+            { key: "places" as const, label: "Places" },
+            { key: "trending" as const, label: "Trending" },
+          ]
+        ).map((v) => (
+          <Link
+            key={v.key}
+            href={buildHref({ view: v.key })}
+            className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
+              activeView === v.key
+                ? "border-forest-800 bg-forest-800 text-white"
+                : "border-forest-900/15 text-forest-800 hover:bg-forest-50"
+            }`}
+          >
+            {v.label}
           </Link>
-        </div>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        ))}
+        <Link
+          href={buildHref({ verified: !verifiedOnly })}
+          className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
+            verifiedOnly
+              ? "border-forest-800 bg-forest-800 text-white"
+              : "border-forest-900/15 text-forest-800 hover:bg-forest-50"
+          }`}
+        >
+          Wano Verified · deals
+        </Link>
+      </div>
+
+      {activeView === "all" && (
+        <section className="mt-8 min-w-0">
+          <h2 className="font-display text-xl font-semibold text-forest-900">Curated journeys</h2>
+          <div className="mt-4 flex gap-4 overflow-x-auto pb-1">
           {journeyList.map((journey) => {
             const theme = journeyTheme(journey.slug);
             return (
               <Link
                 key={journey.id}
                 href={`/journeys/${journey.slug}`}
-                className="group overflow-hidden rounded-2xl border border-forest-900/10 bg-white transition hover:shadow-lg"
+                className="group w-40 flex-none overflow-hidden rounded-2xl border border-forest-900/10 bg-white transition hover:shadow-lg"
               >
                 <div className="relative h-20 overflow-hidden" style={{ backgroundColor: theme.hero }}>
                   {theme.image ? (
@@ -107,7 +170,7 @@ export default async function ExplorePage({
                       src={theme.image}
                       alt=""
                       fill
-                      sizes="(min-width: 1024px) 220px, 50vw"
+                      sizes="160px"
                       className="object-cover"
                     />
                   ) : (
@@ -122,14 +185,15 @@ export default async function ExplorePage({
             );
           })}
         </div>
-      </section>
+        </section>
+      )}
 
       <section className="mt-10">
         <h2 className="font-display text-xl font-semibold text-forest-900">Browse everything</h2>
 
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <Link
-            href="/explore"
+            href={buildHref({ type: undefined })}
             className={`flex flex-col items-center gap-2 rounded-2xl border p-4 text-center transition ${
               !validType
                 ? "border-forest-800 bg-forest-800 text-white"
@@ -146,7 +210,7 @@ export default async function ExplorePage({
             return (
               <Link
                 key={value}
-                href={`/explore?type=${value}`}
+                href={buildHref({ type: value })}
                 className={`flex flex-col items-center gap-2 rounded-2xl border p-4 text-center transition ${
                   active
                     ? "border-forest-800 bg-forest-800 text-white"

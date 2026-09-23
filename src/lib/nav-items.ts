@@ -1,4 +1,3 @@
-import { AFCON_CLUB_ENABLED } from "@/lib/feature-flags";
 import type { SessionPayload } from "@/lib/session";
 
 export type NavItem = {
@@ -24,20 +23,29 @@ export type NavItem = {
     | "ticket"
     | "trophy"
     | "map";
+  /** Extra pathname prefixes (besides `href` itself) that should also
+   * count as "on this tab" for active-link highlighting — for pages that
+   * keep their own route rather than living under `href` (e.g. Messages,
+   * folded into the Social tab but still served from /messages). */
+  matchPrefixes?: string[];
 };
 
+// Exactly 5 tabs, identical for every traveller and guest — Discover,
+// Journeys, Verified, Saved, Messages, and (for guests) Contact all fold
+// into these 5 rather than getting their own tab; see each route's
+// `redirect()` and the Social/Passport pages for where their content
+// actually lives now.
+const PRIMARY_NAV_ITEMS: NavItem[] = [
+  { href: "/explore", label: "Explore", icon: "compass" },
+  { href: "/events", label: "Events", icon: "calendar" },
+  { href: "/afcon", label: "AFCON 27", icon: "trophy" },
+  { href: "/social", label: "Social", icon: "chat", matchPrefixes: ["/messages"] },
+  { href: "/passport", label: "Passport", icon: "stamp" },
+];
+
 export function navItemsFor(role: SessionPayload["role"] | "guest"): NavItem[] {
-  if (role === "traveller") {
-    return [
-      { href: "/explore", label: "Explore", icon: "compass" },
-      { href: "/discover", label: "Discover", icon: "map" },
-      { href: "/events", label: "Events", icon: "calendar" },
-      { href: "/social", label: "Social", icon: "chat" },
-      { href: "/saved", label: "Saved", icon: "heart" },
-      { href: "/messages", label: "Messages", icon: "mail" },
-      { href: "/passport", label: "Passport", icon: "stamp" },
-      ...(AFCON_CLUB_ENABLED ? [{ href: "/afcon", label: "AFCON", icon: "trophy" } as const] : []),
-    ];
+  if (role === "traveller" || role === "guest") {
+    return PRIMARY_NAV_ITEMS;
   }
   if (role === "vendor") {
     return [
@@ -70,15 +78,9 @@ export function navItemsFor(role: SessionPayload["role"] | "guest"): NavItem[] {
       { href: "/admin/analytics", label: "Analytics", icon: "chart" },
     ];
   }
-  return [
-    { href: "/explore", label: "Explore", icon: "compass" },
-    { href: "/discover", label: "Discover", icon: "map" },
-    { href: "/journeys", label: "Journeys", icon: "flag" },
-    { href: "/events", label: "Events", icon: "calendar" },
-    ...(AFCON_CLUB_ENABLED ? [{ href: "/afcon", label: "AFCON 27", icon: "trophy" } as const] : []),
-    { href: "/verified", label: "Verified", icon: "tag" },
-    { href: "/contact", label: "Contact", icon: "mail" },
-  ];
+  // admin is the only remaining role — the traveller/guest branch above
+  // already returns before reaching here.
+  return PRIMARY_NAV_ITEMS;
 }
 
 export function mobileNavItemsFor(role: SessionPayload["role"] | "guest"): NavItem[] {

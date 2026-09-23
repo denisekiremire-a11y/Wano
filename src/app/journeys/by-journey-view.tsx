@@ -88,7 +88,7 @@ export function ByJourneyView({
                   >
                     <div>
                       <p className="font-medium text-forest-900">{listing.title}</p>
-                      <p className="text-sm text-forest-800/70">{vendor.businessName}</p>
+                      {vendor.location && <p className="text-sm text-forest-800/70">{vendor.location}</p>}
                       <p className="mt-1 text-xs text-forest-800/50">{formatListingPrice(listing)}</p>
                       <div className="mt-1">
                         <DistanceBadge id={listing.id} latitude={listing.latitude} longitude={listing.longitude} />

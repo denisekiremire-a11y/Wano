@@ -4,8 +4,12 @@ import { SESSION_COOKIE, verifySession } from "@/lib/session";
 // "/social" itself is deliberately absent — the feed is public and
 // indexable per the milestone brief, while its club sub-pages stay
 // member-gated (also enforced independently at the page level, and never
-// reached by this middleware at all per the matcher below).
-const MEMBER_PREFIXES = ["/dashboard", "/passport", "/saved", "/social/clubs", "/onboarding"];
+// reached by this middleware at all per the matcher below). "/passport"
+// and "/saved" are also deliberately absent — both are public now too
+// (a signed-out visitor sees a "create your Wano Passport" sign-up card
+// instead of the real tabs, soft-gated at the page level in
+// passport/page.tsx rather than a hard redirect here).
+const MEMBER_PREFIXES = ["/dashboard", "/social/clubs", "/onboarding"];
 
 const roleForPrefix = (pathname: string): "traveller" | "vendor" | "admin" | null => {
   if (MEMBER_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return "traveller";
@@ -43,8 +47,6 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     "/dashboard/:path*",
-    "/passport",
-    "/saved",
     "/social/clubs/:path*",
     "/onboarding/:path*",
     "/vendor/dashboard/:path*",

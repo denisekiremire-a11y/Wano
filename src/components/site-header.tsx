@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { HeaderLogoutButton } from "@/components/header-logout-button";
+import { HeaderMessagesLink } from "@/components/header-messages-link";
 import { HeaderNavLink } from "@/components/header-nav-link";
 import { HeaderSearch } from "@/components/header-search";
 import { Logo } from "@/components/logo";
@@ -24,14 +24,20 @@ export function SiteHeader({
 
         <nav className="hidden items-center gap-5 overflow-x-auto md:flex">
           {items.map((item) => (
-            <HeaderNavLink key={item.href} href={item.href} label={item.label} badge={navBadges[item.href]} />
+            <HeaderNavLink
+              key={item.href}
+              href={item.href}
+              label={item.label}
+              badge={navBadges[item.href]}
+              matchPrefixes={item.matchPrefixes}
+            />
           ))}
         </nav>
 
         <div className="flex items-center gap-3">
           <HeaderSearch />
           {session ? (
-            <HeaderLogoutButton />
+            <HeaderMessagesLink />
           ) : (
             <>
               <Link

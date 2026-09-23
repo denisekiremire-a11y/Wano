@@ -80,8 +80,7 @@ export function PartnerCard({
         >
           {listing.title}
         </Link>
-        <p className="text-sm text-forest-800/70">{vendor.businessName}</p>
-        <p className="text-xs text-forest-800/50">{vendor.location}</p>
+        {vendor.location && <p className="text-sm text-forest-800/70">{vendor.location}</p>}
         <div className="mt-1">
           <DistanceBadge id={listing.id} latitude={listing.latitude} longitude={listing.longitude} />
         </div>

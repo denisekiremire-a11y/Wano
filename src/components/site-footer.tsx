@@ -25,6 +25,9 @@ export function SiteFooter() {
         <Link href="/how-it-works" className="hover:underline">
           How it works
         </Link>
+        <Link href="/contact" className="hover:underline">
+          Contact
+        </Link>
       </p>
     </footer>
   );

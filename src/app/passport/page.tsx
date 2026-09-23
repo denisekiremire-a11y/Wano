@@ -4,14 +4,14 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { BirthdayEditor } from "@/components/birthday-editor";
 import { FeedActivityToggle } from "@/components/feed-activity-toggle";
-import { CameraIcon, TrophyIcon, UserIcon } from "@/components/icons";
+import { CameraIcon, StampIcon, TrophyIcon, UserIcon } from "@/components/icons";
 import { LiteModeToggle } from "@/components/lite-mode-toggle";
 import { LogoutButton } from "@/components/logout-button";
 import { PassportGrid } from "@/components/passport-grid";
 import { PassportTabs } from "@/components/passport-tabs";
 import { ReviewForm } from "@/components/review-form";
 import { PASSPORT_TABS, type PassportTabKey } from "@/lib/passport-tabs";
-import { requireRole } from "@/lib/auth";
+import { getSession, type SessionPayload } from "@/lib/session";
 import { claimDealFormAction } from "@/lib/actions/deal-actions";
 import { getAllActiveDeals, getClaimedDealIds } from "@/lib/data/deals";
 import { getReviewableBookings } from "@/lib/data/reviews";
@@ -30,17 +30,45 @@ import {
 } from "@/lib/data/social";
 import { resolvePostContexts, type PostContextType } from "@/lib/data/post-context";
 import { PostsTab } from "@/components/posts-tab";
-import { getPassportProgress, getTravellerBookings, getTravellerProfileByUserId } from "@/lib/data/traveller";
+import {
+  getPassportProgress,
+  getSavedListingsForTraveller,
+  getTravellerBookings,
+  getTravellerProfileByUserId,
+} from "@/lib/data/traveller";
 import { getMyBlockedList } from "@/lib/data/moderation";
 import { BlockedAccountsList } from "@/components/blocked-accounts-list";
+import { PartnerCard } from "@/components/partner-card";
+import { getBirthdayPerksForListings } from "@/lib/data/birthday";
+import { getJourneyTagsForListings, getListingById } from "@/lib/data/journeys";
+import { getListingImageIds } from "@/lib/data/listing-images";
+import { getRatingSummaries } from "@/lib/data/reviews";
 
 export default async function PassportPage({
   searchParams,
 }: {
   searchParams: Promise<{ tab?: string }>;
 }) {
-  const session = await requireRole("traveller");
+  const session = await getSession();
   const { tab } = await searchParams;
+
+  if (!session || session.role !== "traveller") {
+    return (
+      <main className="mx-auto flex max-w-4xl flex-col items-center justify-center px-4 py-16 text-center md:px-6">
+        <Link
+          href="/signup"
+          className="flex w-full max-w-md flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-forest-900/20 bg-white p-8 transition hover:bg-forest-50/40"
+        >
+          <StampIcon className="h-8 w-8 text-ember" />
+          <p className="font-display text-lg font-bold text-forest-900">Create your Wano Passport</p>
+          <p className="text-sm text-forest-800/60">
+            Collect stamps for every Wano Journey, save places, track bookings, and earn rewards —
+            free to start.
+          </p>
+        </Link>
+      </main>
+    );
+  }
 
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
   if (!travellerProfile) return null;
@@ -57,6 +85,7 @@ export default async function PassportPage({
     postRows,
     blockedList,
     myClubs,
+    savedListingRows,
   ] = await Promise.all([
     db.select().from(users).where(eq(users.id, session.userId)).limit(1).then((r) => r[0]),
     getPassportProgress(travellerProfile.id),
@@ -69,6 +98,7 @@ export default async function PassportPage({
     getPostsByTraveller(travellerProfile.id),
     getMyBlockedList(travellerProfile.id),
     getMyClubs(travellerProfile.id),
+    getSavedListingsForTraveller(travellerProfile.id),
   ]);
 
   const postIds = postRows.map((r) => r.post.id);
@@ -90,6 +120,18 @@ export default async function PassportPage({
 
   const reviewableBookingIds = new Set(reviewableRows.map((r) => r.booking.id));
   const { progress, stampCount, totalJourneys, grandPrizeQualified } = passportProgress;
+  const unlockedJourneyIds = new Set(progress.filter((p) => p.earned).map((p) => p.journey.id));
+
+  const savedItems = (
+    await Promise.all(savedListingRows.map((s) => getListingById(s.listing.id)))
+  ).filter((item) => item != null);
+  const savedListingIds = savedItems.map((i) => i.listing.id);
+  const [savedJourneyTags, savedRatings, savedBirthdayPerks, savedImages] = await Promise.all([
+    getJourneyTagsForListings(savedListingIds),
+    getRatingSummaries(savedListingIds),
+    getBirthdayPerksForListings(savedListingIds),
+    getListingImageIds(savedListingIds),
+  ]);
 
   const defaultTab: PassportTabKey = stampCount > 0 ? "stamps" : bookingRows.length > 0 ? "bookings" : "stamps";
   const activeTab: PassportTabKey = PASSPORT_TABS.some((t) => t.key === tab)
@@ -148,6 +190,17 @@ export default async function PassportPage({
             stampCount={stampCount}
             totalJourneys={totalJourneys}
             grandPrizeQualified={grandPrizeQualified}
+          />
+        )}
+        {activeTab === "saved" && (
+          <SavedTab
+            items={savedItems}
+            session={session}
+            journeyTagsByListing={savedJourneyTags}
+            ratings={savedRatings}
+            birthdayPerks={savedBirthdayPerks}
+            imagesByListing={savedImages}
+            unlockedJourneyIds={unlockedJourneyIds}
           />
         )}
         {activeTab === "bookings" && (
@@ -235,6 +288,66 @@ function StampsTab({
           </p>
         </div>
       </section>
+    </div>
+  );
+}
+
+function SavedTab({
+  items,
+  session,
+  journeyTagsByListing,
+  ratings,
+  birthdayPerks,
+  imagesByListing,
+  unlockedJourneyIds,
+}: {
+  items: NonNullable<Awaited<ReturnType<typeof getListingById>>>[];
+  session: SessionPayload;
+  journeyTagsByListing: Awaited<ReturnType<typeof getJourneyTagsForListings>>;
+  ratings: Awaited<ReturnType<typeof getRatingSummaries>>;
+  birthdayPerks: Awaited<ReturnType<typeof getBirthdayPerksForListings>>;
+  imagesByListing: Awaited<ReturnType<typeof getListingImageIds>>;
+  unlockedJourneyIds: Set<string>;
+}) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="font-display text-xl font-semibold text-forest-900">Saved places</h2>
+        <p className="mt-1 text-sm text-forest-800/60">
+          Everywhere you&apos;ve tapped the heart on, in one list.
+        </p>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {items.map((item) => {
+          const tags = journeyTagsByListing.get(item.listing.id) ?? [];
+          const unlocked = tags.length === 0 || tags.some((t) => unlockedJourneyIds.has(t.id));
+          return (
+            <PartnerCard
+              key={item.listing.id}
+              item={item}
+              tags={tags}
+              unlocked={unlocked}
+              session={session}
+              rating={ratings.get(item.listing.id)}
+              saved
+              birthdayPerk={birthdayPerks.get(item.listing.id)?.[0]}
+              coverImageId={imagesByListing.get(item.listing.id)?.[0]}
+            />
+          );
+        })}
+        {items.length === 0 && (
+          <div className="col-span-full rounded-2xl border border-forest-900/10 bg-white p-8 text-center">
+            <p className="text-forest-900">Nothing saved yet.</p>
+            <p className="mt-1 text-sm text-forest-800/60">Tap the heart on any place to add it here.</p>
+            <Link
+              href="/explore"
+              className="mt-4 inline-flex rounded-full bg-forest-800 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-forest-700"
+            >
+              Start exploring
+            </Link>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -10,13 +10,17 @@ export function HeaderNavLink({
   href,
   label,
   badge,
+  matchPrefixes,
 }: {
   href: string;
   label: string;
   badge?: number;
+  matchPrefixes?: string[];
 }) {
   const pathname = usePathname();
-  const isActive = href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
+  const matchesHref = href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
+  const isActive =
+    matchesHref || (matchPrefixes?.some((p) => pathname === p || pathname.startsWith(`${p}/`)) ?? false);
 
   return (
     <Link

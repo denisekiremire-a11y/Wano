@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { FollowButton } from "@/components/follow-button";
-import { TrophyIcon } from "@/components/icons";
+import { ChatIcon, TrophyIcon } from "@/components/icons";
 import { PeopleToFollowRail } from "@/components/people-to-follow-rail";
 import { PostComposer } from "@/components/post-composer";
 import { MatchCard } from "@/components/season/match-card";
@@ -92,7 +92,7 @@ export default async function SocialPage({
 
   return (
     <main className="mx-auto grid max-w-4xl gap-6 px-4 py-8 md:grid-cols-[1fr_260px] md:px-6">
-      <div className="space-y-4">
+      <div className="min-w-0 space-y-4">
         <div>
           <h1 className="font-display text-2xl font-semibold text-forest-900">Social</h1>
           <p className="mt-1 text-sm text-forest-800/60">
@@ -168,9 +168,40 @@ export default async function SocialPage({
           </div>
         )}
 
+        <Link
+          href="/contact"
+          className="block rounded-2xl border border-dashed border-forest-900/15 bg-white p-3 text-sm text-forest-800/70 transition hover:border-forest-900/30"
+        >
+          Own a business in Kampala?{" "}
+          <span className="font-semibold text-nile-700">List it on Wano →</span>
+        </Link>
+
         <MatchCard />
 
-        <SocialFeed entries={feed} followingIds={followingTravellerIds} now={now} />
+        {travellerProfile ? (
+          <SocialFeed entries={feed} followingIds={followingTravellerIds} now={now} />
+        ) : (
+          <div className="relative">
+            <div aria-hidden className="pointer-events-none select-none blur-sm">
+              <SocialFeed entries={feed} followingIds={followingTravellerIds} now={now} />
+            </div>
+            <div className="absolute inset-0 flex items-start justify-center pt-10">
+              <Link
+                href="/signup"
+                className="mx-4 flex max-w-sm flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-forest-900/20 bg-white/95 p-8 text-center shadow-lg backdrop-blur-sm transition hover:bg-forest-50/60"
+              >
+                <ChatIcon className="h-8 w-8 text-ember" />
+                <p className="font-display text-lg font-bold text-forest-900">
+                  Join Wano to follow people and chat
+                </p>
+                <p className="text-sm text-forest-800/60">
+                  See what members are sharing, follow the people and places you care about, and
+                  join the conversation — free.
+                </p>
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
 
       <aside className="space-y-3">

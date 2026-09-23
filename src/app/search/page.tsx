@@ -97,9 +97,9 @@ export default async function SearchPage({
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium text-forest-900">{listing.title}</p>
-                    <p className="truncate text-xs text-forest-800/50">
-                      {vendor.businessName} · {vendor.location}
-                    </p>
+                    {vendor.location && (
+                      <p className="truncate text-xs text-forest-800/50">{vendor.location}</p>
+                    )}
                   </div>
                   <p className="flex-none text-xs font-medium text-nile-700">{formatListingPrice(listing)}</p>
                 </Link>
