@@ -189,6 +189,14 @@
   --shadow-xl: 0 0 #0000;
   --shadow-2xl: 0 0 #0000;
   --shadow-inner: 0 0 #0000;
+
+  /* Tailwind v4's default rounded-full resolves to an astronomical
+     border-radius (~3.4e38px) meant to stand in for "infinity". Some
+     Android Chrome/Skia builds rasterize that with visible corner
+     artifacts on small circular avatars. 9999px clamps identically
+     (half the box's shorter side) but stays within normal float
+     precision, matching the value Tailwind used pre-v4. */
+  --radius-full: 9999px;
 }
 
 /* --- Editorial redesign utilities ---
