@@ -1056,7 +1056,7 @@ export async function seedDemoRewards() {
 // DEMO_LISTINGS above) don't carry coordinates at all. Matches by listing
 // title, so re-running never creates duplicates.
 const AFCON_VENUE_DEMO_LISTINGS: {
-  type: "hotel" | "restaurant" | "experience" | "transport";
+  type: "hotel" | "restaurant" | "experience" | "transport" | "attraction";
   businessName: string;
   location: string;
   vendorDescription: string;
@@ -1088,7 +1088,7 @@ const AFCON_VENUE_DEMO_LISTINGS: {
     restaurant: { cuisine: "Ugandan grill", priceRange: "Budget", hours: "11am–11pm daily" },
   },
   {
-    type: "experience", businessName: "Kira Heritage Walks", location: "Kira",
+    type: "attraction", businessName: "Kira Heritage Walks", location: "Kira",
     vendorDescription: "Short guided walks around Kira and Bweyogerere for fans with time before kickoff.",
     title: "Kira Pre-Match Heritage Walk",
     description: "A 2-hour guided walk through Kira's markets and history — a good way to fill the hours before a match.",

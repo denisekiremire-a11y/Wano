@@ -1,6 +1,7 @@
 import { and, desc, eq, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
 import {
+  bookingItems,
   bookings,
   challengeCompletions,
   challenges,
@@ -158,6 +159,12 @@ export async function getBookingByRef(bookingRef: string, travellerId: string) {
     .where(and(eq(bookings.bookingRef, bookingRef), eq(bookings.travellerId, travellerId)))
     .limit(1);
   return row ?? null;
+}
+
+/** The room/vehicle/service/tickets/pre-order lines snapshotted onto one
+ * booking at confirm time — used by the confirmation page's summary. */
+export async function getBookingItems(bookingId: string) {
+  return db.select().from(bookingItems).where(eq(bookingItems.bookingId, bookingId));
 }
 
 export async function getReferralStats(travellerId: string) {

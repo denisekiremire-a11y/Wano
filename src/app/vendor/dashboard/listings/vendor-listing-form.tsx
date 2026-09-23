@@ -38,7 +38,12 @@ export function VendorListingForm({
     freebieText: string;
     journeyIds: string[];
     hotel?: { roomTypes: string | null; amenities: string | null; checkInTime: string | null; checkOutTime: string | null } | null;
-    restaurant?: { cuisine: string | null; priceRange: string | null; hours: string | null } | null;
+    restaurant?: {
+      cuisine: string | null;
+      priceRange: string | null;
+      hours: string | null;
+      allowsPreorder: boolean;
+    } | null;
     experience?: { durationText: string | null; groupSizeText: string | null; whatsIncluded: string | null } | null;
   };
 }) {
@@ -254,6 +259,15 @@ export function VendorListingForm({
               className="rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
             />
           </div>
+          <label className="flex items-center gap-2 text-sm text-forest-800">
+            <input
+              type="checkbox"
+              name="restaurantAllowsPreorder"
+              defaultChecked={existing?.restaurant?.allowsPreorder ?? false}
+              className="h-4 w-4 rounded border-forest-900/30"
+            />
+            Allow menu pre-ordering
+          </label>
         </div>
       )}
 

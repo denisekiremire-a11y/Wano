@@ -44,6 +44,9 @@ export const listingTypeEnum = pgEnum("listing_type", [
   "experience",
   "transport",
   "spa_salon",
+  "attraction",
+  "event",
+  "rental",
 ]);
 export const vendorDocTypeEnum = pgEnum("vendor_doc_type", [
   "business_registration",
@@ -344,6 +347,41 @@ export const listingImages = pgTable("listing_images", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// A single sellable/selectable thing under a listing — a menu dish, a salon
+// service, a room type, a vehicle, an activity package, or a ticket tier.
+// One flexible table serves every listing type rather than five near-
+// duplicate ones, matching bookings' own one-table-for-every-type shape.
+// sectionLabel groups items on the listing page (e.g. "Starters", "Main
+// Courses", "Standard Package") — null renders ungrouped.
+export const listingItems = pgTable("listing_items", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  listingId: uuid("listing_id")
+    .notNull()
+    .references(() => listings.id, { onDelete: "cascade" }),
+  sectionLabel: text("section_label"),
+  name: text("name").notNull(),
+  description: text("description"),
+  priceMinor: integer("price_minor"),
+  priceUnit: text("price_unit"),
+  durationText: text("duration_text"),
+  capacityText: text("capacity_text"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Same bytea-in-Postgres pattern as listingImages, one level down.
+export const listingItemImages = pgTable("listing_item_images", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  itemId: uuid("item_id")
+    .notNull()
+    .references(() => listingItems.id, { onDelete: "cascade" }),
+  data: bytea("data").notNull(),
+  mimeType: text("mime_type").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Many-to-many: a listing can tag any number of the 5 campaign journeys (or
 // none at all, if it's a general discovery-only place with no journey tie-in).
 export const listingJourneys = pgTable(
@@ -382,6 +420,10 @@ export const restaurantDetails = pgTable("restaurant_details", {
   priceRange: text("price_range"),
   hours: text("hours"),
   reservationsRequired: boolean("reservations_required").notNull().default(false),
+  // Gates whether the booking form offers a menu pre-order step at all —
+  // some restaurants want the menu (listingItems) shown as informational
+  // only, not something bookable ahead of the visit.
+  allowsPreorder: boolean("allows_preorder").notNull().default(false),
 });
 
 export const experienceDetails = pgTable("experience_details", {
@@ -532,7 +574,40 @@ export const bookings = pgTable("bookings", {
   estimatedCommission: numeric("estimated_commission", { precision: 10, scale: 2 })
     .notNull()
     .default("0"),
+  // Hotel checkout / experience end date / rental return date — visitDate
+  // is the start (check-in / pickup / from-date) in all of those cases.
+  endDate: date("end_date"),
+  pickupLocation: text("pickup_location"),
+  dropoffLocation: text("dropoff_location"),
+  // partySize doubles as "adults" once a booking has children too.
+  childrenCount: integer("children_count"),
+  // Persisted at booking time so the confirmation/summary always matches
+  // what the traveller agreed to, even if item prices change later.
+  subtotalMinor: integer("subtotal_minor"),
+  totalMinor: integer("total_minor"),
+  // Catch-all for the long tail of one-off per-type fields that don't
+  // earn their own column: seatingPreference, occasion, transferType,
+  // flightNumber, meetingPoint, language, roomsCount, luggage, returnTime,
+  // pickupOption.
+  details: jsonb("details").$type<Record<string, string>>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// A line item actually selected for one booking — a chosen room, vehicle,
+// service, package tier, or (for a restaurant pre-order) one of several
+// dishes with a quantity. One shape handles both single-select and
+// multi-select-with-quantity types uniformly. Name/price are snapshotted
+// at booking time so a later vendor edit to the source listingItem doesn't
+// retroactively change a past booking's summary.
+export const bookingItems = pgTable("booking_items", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  bookingId: uuid("booking_id")
+    .notNull()
+    .references(() => bookings.id, { onDelete: "cascade" }),
+  listingItemId: uuid("listing_item_id").references(() => listingItems.id, { onDelete: "set null" }),
+  nameAtBooking: text("name_at_booking").notNull(),
+  priceMinorAtBooking: integer("price_minor_at_booking"),
+  quantity: integer("quantity").notNull().default(1),
 });
 
 // A booking's own message thread — the traveller who made it, the vendor
@@ -1370,6 +1445,21 @@ export const listingsRelations = relations(listings, ({ one, many }) => ({
     references: [experienceDetails.listingId],
   }),
   birthdayPerks: many(birthdayPerks),
+  items: many(listingItems),
+}));
+
+export const listingItemsRelations = relations(listingItems, ({ one, many }) => ({
+  listing: one(listings, { fields: [listingItems.listingId], references: [listings.id] }),
+  images: many(listingItemImages),
+}));
+
+export const listingItemImagesRelations = relations(listingItemImages, ({ one }) => ({
+  item: one(listingItems, { fields: [listingItemImages.itemId], references: [listingItems.id] }),
+}));
+
+export const bookingItemsRelations = relations(bookingItems, ({ one }) => ({
+  booking: one(bookings, { fields: [bookingItems.bookingId], references: [bookings.id] }),
+  listingItem: one(listingItems, { fields: [bookingItems.listingItemId], references: [listingItems.id] }),
 }));
 
 export const listingJourneysRelations = relations(listingJourneys, ({ one }) => ({
@@ -1429,7 +1519,7 @@ export const promoCodesRelations = relations(promoCodes, ({ one }) => ({
   listing: one(listings, { fields: [promoCodes.listingId], references: [listings.id] }),
 }));
 
-export const bookingsRelations = relations(bookings, ({ one }) => ({
+export const bookingsRelations = relations(bookings, ({ one, many }) => ({
   traveller: one(travellerProfiles, {
     fields: [bookings.travellerId],
     references: [travellerProfiles.id],
@@ -1437,6 +1527,7 @@ export const bookingsRelations = relations(bookings, ({ one }) => ({
   listing: one(listings, { fields: [bookings.listingId], references: [listings.id] }),
   journey: one(journeys, { fields: [bookings.journeyId], references: [journeys.id] }),
   event: one(events, { fields: [bookings.eventId], references: [events.id] }),
+  items: many(bookingItems),
 }));
 
 export const stampsRelations = relations(stamps, ({ one }) => ({

@@ -3,9 +3,13 @@ import { notFound } from "next/navigation";
 import { BookingThread } from "@/components/booking-thread";
 import { CheckCircleIcon } from "@/components/icons";
 import { CopyCodeButton } from "@/components/copy-code-button";
+import { ShareBookingButton } from "@/components/share-booking-button";
 import { requireRole } from "@/lib/auth";
-import { getBookingByRef, getTravellerProfileByUserId } from "@/lib/data/traveller";
+import { formatMinor } from "@/lib/currency";
+import { getBookingByRef, getBookingItems, getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { formatRewardDiscount } from "@/lib/reward-format";
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 const STATUS_COPY: Record<string, { label: string; detail: string }> = {
   pending: {
@@ -36,6 +40,11 @@ export default async function BookingConfirmationPage({ params }: { params: Prom
   if (!row) notFound();
   const { booking, listing, vendor, journey, appliedReward } = row;
   const status = STATUS_COPY[booking.status] ?? STATUS_COPY.pending;
+  const lineItems = await getBookingItems(booking.id);
+  const directionsUrl =
+    listing.latitude && listing.longitude
+      ? `https://www.google.com/maps/search/?api=1&query=${listing.latitude},${listing.longitude}`
+      : null;
 
   return (
     <main className="mx-auto max-w-lg px-4 py-10 md:px-6">
@@ -67,11 +76,22 @@ export default async function BookingConfirmationPage({ params }: { params: Prom
           {booking.bookingName && <p>Reservation name: {booking.bookingName}</p>}
           {booking.visitDate && (
             <p>
-              Visit date: {booking.visitDate}
+              {booking.endDate ? "From" : "Visit date:"} {booking.visitDate}
               {booking.visitTime ? ` at ${booking.visitTime}` : ""}
+              {booking.endDate ? ` → ${booking.endDate}` : ""}
             </p>
           )}
-          {booking.partySize && <p>Party size: {booking.partySize}</p>}
+          {booking.partySize && (
+            <p>
+              Party size: {booking.partySize}
+              {booking.childrenCount ? ` + ${booking.childrenCount} children` : ""}
+            </p>
+          )}
+          {(booking.pickupLocation || booking.dropoffLocation) && (
+            <p>
+              {booking.pickupLocation} {booking.dropoffLocation ? `→ ${booking.dropoffLocation}` : ""}
+            </p>
+          )}
           {booking.notes && <p>Notes: {booking.notes}</p>}
           {appliedReward && (
             <p>
@@ -80,11 +100,75 @@ export default async function BookingConfirmationPage({ params }: { params: Prom
               in person at the venue)
             </p>
           )}
-          {journey && <p>Part of your {journey.name} journey</p>}
+          {journey && (
+            <p>
+              Part of your{" "}
+              <Link href={`/journeys/${journey.slug}`} className="font-medium text-nile-700 hover:underline">
+                {journey.name}
+              </Link>{" "}
+              journey
+            </p>
+          )}
         </div>
+
+        {lineItems.length > 0 && (
+          <div className="mt-3 space-y-1 border-t border-forest-900/10 pt-3 text-sm">
+            {lineItems.map((li) => (
+              <p key={li.id} className="flex justify-between text-forest-800/80">
+                <span>
+                  {li.quantity} × {li.nameAtBooking}
+                </span>
+                {li.priceMinorAtBooking != null && <span>{formatMinor(li.priceMinorAtBooking * li.quantity)}</span>}
+              </p>
+            ))}
+          </div>
+        )}
+
+        {booking.totalMinor != null && (
+          <div className="mt-3 space-y-1 border-t border-forest-900/10 pt-3 text-sm">
+            {booking.subtotalMinor != null && booking.subtotalMinor !== booking.totalMinor && (
+              <p className="flex justify-between text-forest-800/70">
+                <span>Subtotal</span>
+                <span>{formatMinor(booking.subtotalMinor)}</span>
+              </p>
+            )}
+            <p className="flex justify-between text-base font-semibold text-forest-900">
+              <span>Total</span>
+              <span>{formatMinor(booking.totalMinor)}</span>
+            </p>
+          </div>
+        )}
       </div>
 
-      <div className="mt-4">
+      <div className="mt-4 flex flex-wrap justify-center gap-2">
+        {journey && (
+          <Link
+            href={`/journeys/${journey.slug}`}
+            className="rounded-full border border-forest-900/15 px-5 py-2.5 text-sm font-semibold text-forest-800 transition hover:bg-forest-900/5"
+          >
+            View your {journey.name} trip
+          </Link>
+        )}
+        {directionsUrl && (
+          <a
+            href={directionsUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-full border border-forest-900/15 px-5 py-2.5 text-sm font-semibold text-forest-800 transition hover:bg-forest-900/5"
+          >
+            Get directions
+          </a>
+        )}
+        <a
+          href="#message-provider"
+          className="rounded-full border border-forest-900/15 px-5 py-2.5 text-sm font-semibold text-forest-800 transition hover:bg-forest-900/5"
+        >
+          Contact provider
+        </a>
+        <ShareBookingButton title={`${listing.title} — Wano booking`} url={`${APP_URL}/bookings/${booking.bookingRef}`} />
+      </div>
+
+      <div id="message-provider" className="mt-4 scroll-mt-20">
         <BookingThread bookingId={booking.id} heading={`Message ${vendor.businessName}`} />
       </div>
 

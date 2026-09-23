@@ -125,6 +125,7 @@ export async function upsertVendorListingAction(
     restaurantCuisine: formData.get("restaurantCuisine") ?? "",
     restaurantPriceRange: formData.get("restaurantPriceRange") ?? "",
     restaurantHours: formData.get("restaurantHours") ?? "",
+    restaurantAllowsPreorder: formData.get("restaurantAllowsPreorder") === "on",
     experienceDuration: formData.get("experienceDuration") ?? "",
     experienceGroupSize: formData.get("experienceGroupSize") ?? "",
     experienceIncluded: formData.get("experienceIncluded") ?? "",

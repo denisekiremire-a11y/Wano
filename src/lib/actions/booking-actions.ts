@@ -4,40 +4,88 @@ import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import { bookings, listingJourneys, listings, userRewards } from "@/db/schema";
+import { bookingItems, bookings, listingItems, listingJourneys, listings, restaurantDetails, rewards, userRewards } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { logEvent } from "@/lib/analytics";
 import { notifyTravellerOfNewBooking, notifyVendorOfNewBooking } from "@/lib/booking-notifications";
+import { computeBookingTotals, decodeBookingDraft, encodeBookingDraft, parseBookingDraft } from "@/lib/booking-shared";
+import type { ListingType } from "@/lib/listing-type";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 
 function generateBookingRef() {
   return `PAM-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 }
 
+function formDataToRecord(formData: FormData): Record<string, string | undefined> {
+  const record: Record<string, string | undefined> = {};
+  for (const [key, value] of formData.entries()) {
+    if (typeof value === "string") record[key] = value;
+  }
+  return record;
+}
+
+async function resolveJourneyId(listingId: string, requestedJourneyId: string | null) {
+  if (!requestedJourneyId) return null;
+  const [tag] = await db
+    .select()
+    .from(listingJourneys)
+    .where(and(eq(listingJourneys.listingId, listingId), eq(listingJourneys.journeyId, requestedJourneyId)))
+    .limit(1);
+  return tag ? requestedJourneyId : null;
+}
+
+async function resolveReward(travellerId: string, listingId: string, userRewardId: string | null) {
+  if (!userRewardId) return null;
+  const [row] = await db
+    .select({ userReward: userRewards, reward: rewards })
+    .from(userRewards)
+    .innerJoin(rewards, eq(rewards.id, userRewards.rewardId))
+    .where(
+      and(
+        eq(userRewards.id, userRewardId),
+        eq(userRewards.travellerId, travellerId),
+        eq(userRewards.targetType, "listing"),
+        eq(userRewards.targetId, listingId),
+        eq(userRewards.status, "claimed"),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
+}
+
+/** Step 1 of booking: validates the type-specific form (item selection
+ * required for some types, a date for most), then redirects to a review
+ * screen with the draft encoded in the URL — nothing is written to the
+ * database yet, so an abandoned draft never shows up as a fake pending
+ * booking anywhere bookings are queried. */
+export async function previewBookingAction(formData: FormData) {
+  const listingId = formData.get("listingId");
+  if (typeof listingId !== "string" || !listingId) throw new Error("Missing listing.");
+
+  await requireRole("traveller");
+
+  const [listing] = await db.select().from(listings).where(eq(listings.id, listingId)).limit(1);
+  if (!listing || !listing.active) throw new Error("This listing is not available.");
+  const type = listing.type as ListingType;
+
+  const [items, [restaurantRow]] = await Promise.all([
+    db.select().from(listingItems).where(eq(listingItems.listingId, listingId)),
+    type === "restaurant"
+      ? db.select().from(restaurantDetails).where(eq(restaurantDetails.listingId, listingId)).limit(1)
+      : Promise.resolve([undefined]),
+  ]);
+
+  const parsed = parseBookingDraft(formData, type, items, restaurantRow?.allowsPreorder ?? false);
+  if ("error" in parsed) throw new Error(parsed.error);
+
+  redirect(`/explore/${listingId}?${encodeBookingDraft(parsed.data).toString()}`);
+}
+
+/** Step 2: the review screen's CONFIRM button re-posts the same fields
+ * (as hidden inputs) here, where the booking is actually created. */
 export async function bookListingFormAction(formData: FormData) {
   const listingId = formData.get("listingId");
-  if (typeof listingId !== "string" || !listingId) {
-    throw new Error("Missing listing.");
-  }
-  // The journey context the traveller booked *from* — a listing can be
-  // tagged to several journeys, so the stamp goes to whichever one they
-  // actually engaged with. Absent/invalid means a general (non-journey)
-  // booking that earns no stamp.
-  const requestedJourneyId = formData.get("journeyId");
-  const rawVisitDate = formData.get("visitDate");
-  const rawVisitTime = formData.get("visitTime");
-  const rawPartySize = formData.get("partySize");
-  const rawBookingName = formData.get("bookingName");
-  const rawNotes = formData.get("notes");
-  const rawUserRewardId = formData.get("userRewardId");
-  const visitDate =
-    typeof rawVisitDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(rawVisitDate) ? rawVisitDate : null;
-  const visitTime =
-    typeof rawVisitTime === "string" && /^\d{2}:\d{2}$/.test(rawVisitTime) ? rawVisitTime : null;
-  const partySize =
-    typeof rawPartySize === "string" && rawPartySize.trim() ? Number(rawPartySize) : null;
-  const bookingName = typeof rawBookingName === "string" && rawBookingName.trim() ? rawBookingName.trim() : null;
-  const notes = typeof rawNotes === "string" && rawNotes.trim() ? rawNotes.trim() : null;
+  if (typeof listingId !== "string" || !listingId) throw new Error("Missing listing.");
 
   const session = await requireRole("traveller");
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
@@ -48,41 +96,19 @@ export async function bookListingFormAction(formData: FormData) {
   const [listing] = await db.select().from(listings).where(eq(listings.id, listingId)).limit(1);
   if (!listing || !listing.active) throw new Error("This listing is not available.");
 
-  let journeyId: string | null = null;
-  if (typeof requestedJourneyId === "string" && requestedJourneyId) {
-    const [tag] = await db
-      .select()
-      .from(listingJourneys)
-      .where(
-        and(
-          eq(listingJourneys.listingId, listing.id),
-          eq(listingJourneys.journeyId, requestedJourneyId),
-        ),
-      )
-      .limit(1);
-    if (tag) journeyId = requestedJourneyId;
-  }
+  const draft = decodeBookingDraft(formDataToRecord(formData));
+  const [journeyId, rewardRow, listingItemRows] = await Promise.all([
+    resolveJourneyId(listing.id, draft.journeyId),
+    resolveReward(travellerProfile.id, listing.id, draft.userRewardId),
+    db.select().from(listingItems).where(eq(listingItems.listingId, listing.id)),
+  ]);
 
-  // Only attach a voucher the traveller actually owns, that's for this
-  // listing, and hasn't already been used elsewhere — silently ignored
-  // otherwise rather than failing the whole booking over it.
-  let appliedUserRewardId: string | null = null;
-  if (typeof rawUserRewardId === "string" && rawUserRewardId) {
-    const [voucher] = await db
-      .select({ id: userRewards.id })
-      .from(userRewards)
-      .where(
-        and(
-          eq(userRewards.id, rawUserRewardId),
-          eq(userRewards.travellerId, travellerProfile.id),
-          eq(userRewards.targetType, "listing"),
-          eq(userRewards.targetId, listing.id),
-          eq(userRewards.status, "claimed"),
-        ),
-      )
-      .limit(1);
-    if (voucher) appliedUserRewardId = voucher.id;
-  }
+  const { subtotalMinor, totalMinor, lineItems } = computeBookingTotals(
+    draft,
+    listingItemRows,
+    listing.priceMinor,
+    rewardRow ? { discountType: rewardRow.reward.discountType, discountValue: rewardRow.reward.discountValue } : null,
+  );
 
   // Bookings start "pending" — the accredited partner has real, finite
   // capacity, so a Passport stamp and a confirmed booking only happen once
@@ -93,17 +119,38 @@ export async function bookListingFormAction(formData: FormData) {
       travellerId: travellerProfile.id,
       listingId: listing.id,
       journeyId,
-      visitDate,
-      visitTime,
-      partySize,
-      bookingName: bookingName ?? travellerProfile.displayName,
-      notes,
-      appliedUserRewardId,
+      visitDate: draft.visitDate,
+      visitTime: draft.visitTime,
+      endDate: draft.endDate,
+      partySize: draft.partySize,
+      childrenCount: draft.childrenCount,
+      pickupLocation: draft.pickupLocation,
+      dropoffLocation: draft.dropoffLocation,
+      bookingName: draft.bookingName ?? travellerProfile.displayName,
+      notes: draft.notes,
+      details: Object.keys(draft.details).length > 0 ? draft.details : null,
+      appliedUserRewardId: rewardRow?.userReward.id ?? null,
       status: "pending",
       bookingRef: generateBookingRef(),
       estimatedCommission: "15.00",
+      subtotalMinor: subtotalMinor || null,
+      totalMinor: subtotalMinor ? totalMinor : null,
     })
     .returning();
+
+  if (lineItems.length > 0) {
+    await db.insert(bookingItems).values(
+      lineItems
+        .filter((li) => li.item)
+        .map((li) => ({
+          bookingId: booking.id,
+          listingItemId: li.item!.id,
+          nameAtBooking: li.item!.name,
+          priceMinorAtBooking: li.item!.priceMinor,
+          quantity: li.quantity,
+        })),
+    );
+  }
 
   await logEvent("booking_completed", {
     userId: session.userId,

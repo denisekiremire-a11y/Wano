@@ -17,7 +17,16 @@ import { generatePlaceAddedItem } from "@/lib/feed-generators";
 // vendor's proposed payload) — same field set either way, so both paths
 // stay in sync instead of drifting apart.
 export const listingContentSchema = z.object({
-  type: z.enum(["hotel", "restaurant", "experience", "transport", "spa_salon"]),
+  type: z.enum([
+    "hotel",
+    "restaurant",
+    "experience",
+    "transport",
+    "spa_salon",
+    "attraction",
+    "event",
+    "rental",
+  ]),
   title: z.string().min(2).max(150),
   description: z.string().min(10).max(1000),
   priceLabel: z.string().max(30).optional().or(z.literal("")),
@@ -37,6 +46,9 @@ export const listingContentSchema = z.object({
   restaurantCuisine: z.string().max(100).optional().or(z.literal("")),
   restaurantPriceRange: z.string().max(20).optional().or(z.literal("")),
   restaurantHours: z.string().max(100).optional().or(z.literal("")),
+  // Gates whether the booking form offers a menu pre-order step — see
+  // restaurantDetails.allowsPreorder.
+  restaurantAllowsPreorder: z.boolean().optional().default(false),
   experienceDuration: z.string().max(60).optional().or(z.literal("")),
   experienceGroupSize: z.string().max(60).optional().or(z.literal("")),
   experienceIncluded: z.string().max(300).optional().or(z.literal("")),
@@ -70,6 +82,7 @@ export function parseListingContentFromFormData(formData: FormData) {
     restaurantCuisine: formData.get("restaurantCuisine") ?? "",
     restaurantPriceRange: formData.get("restaurantPriceRange") ?? "",
     restaurantHours: formData.get("restaurantHours") ?? "",
+    restaurantAllowsPreorder: formData.get("restaurantAllowsPreorder") === "on",
     experienceDuration: formData.get("experienceDuration") ?? "",
     experienceGroupSize: formData.get("experienceGroupSize") ?? "",
     experienceIncluded: formData.get("experienceIncluded") ?? "",
@@ -144,6 +157,7 @@ export async function applyListingContent(
       cuisine: d.restaurantCuisine || null,
       priceRange: d.restaurantPriceRange || null,
       hours: d.restaurantHours || null,
+      allowsPreorder: d.restaurantAllowsPreorder ?? false,
     };
     const [existing] = await db.select().from(restaurantDetails).where(eq(restaurantDetails.listingId, id)).limit(1);
     if (existing) await db.update(restaurantDetails).set(values).where(eq(restaurantDetails.listingId, id));

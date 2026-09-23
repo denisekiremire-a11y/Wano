@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getJourneys } from "@/lib/data/journeys";
 import { getListingImageIdsFor } from "@/lib/data/listing-images";
 import { getPendingEditSubmission } from "@/lib/data/submissions";
 import { getVendorOwnListingFull, getVendorProfileByUserId } from "@/lib/data/vendor";
+import { listingItemSectionLabel } from "@/lib/listing-type";
 import { getSession } from "@/lib/session";
 import { VendorPhotoManager } from "@/components/vendor-photo-manager";
 import { VendorListingForm } from "../vendor-listing-form";
@@ -42,6 +44,13 @@ export default async function EditVendorListingPage({ params }: PageProps<"/vend
       )}
 
       <VendorPhotoManager listingId={listing.id} existingImages={existingImages} />
+
+      <Link
+        href={`/vendor/dashboard/listings/${listing.id}/items`}
+        className="inline-flex items-center rounded-full border border-forest-900/15 bg-white px-4 py-2 text-sm font-medium text-forest-900 hover:border-forest-900/30"
+      >
+        Manage {listingItemSectionLabel[listing.type]} →
+      </Link>
 
       <VendorListingForm
         journeys={journeys.map((j) => ({ id: j.id, name: j.name }))}
