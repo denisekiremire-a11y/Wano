@@ -171,6 +171,7 @@ export default async function ExplorePage({
                       alt=""
                       fill
                       sizes="160px"
+                      unoptimized
                       className="object-cover"
                     />
                   ) : (

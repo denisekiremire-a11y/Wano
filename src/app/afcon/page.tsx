@@ -155,6 +155,7 @@ export default async function AfconHubPage() {
                       alt=""
                       fill
                       sizes="(min-width: 1024px) 360px, 100vw"
+                      unoptimized
                       className="object-cover"
                     />
                   ) : (

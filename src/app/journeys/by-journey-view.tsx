@@ -51,6 +51,7 @@ export function ByJourneyView({
                     alt=""
                     fill
                     sizes="(min-width: 768px) 700px, 100vw"
+                    unoptimized
                     className="object-cover"
                   />
                 )}

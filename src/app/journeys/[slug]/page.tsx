@@ -64,6 +64,7 @@ export default async function JourneyDetailPage({
             fill
             sizes="100vw"
             priority
+            unoptimized
             className="object-cover"
           />
         ) : (

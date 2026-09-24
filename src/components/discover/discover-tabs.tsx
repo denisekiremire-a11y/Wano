@@ -140,7 +140,7 @@ export function DiscoverTabs({
                     >
                       <div className="relative h-24 w-40" style={{ backgroundColor: theme.hero }}>
                         {theme.image && (
-                          <Image src={theme.image} alt="" fill className="object-cover" sizes="160px" />
+                          <Image src={theme.image} alt="" fill unoptimized className="object-cover" sizes="160px" />
                         )}
                       </div>
                       <p className="w-40 truncate px-2.5 py-2 text-sm font-medium text-forest-900">{journey.name}</p>
