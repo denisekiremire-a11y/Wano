@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import { Geist } from "next/font/google";
 import { Fraunces } from "next/font/google";
 import { Anton } from "next/font/google";
@@ -135,6 +136,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           </SeasonProvider>
           <InstallPrompt />
         </ToastProvider>
+        <Analytics />
       </body>
     </html>
   );
