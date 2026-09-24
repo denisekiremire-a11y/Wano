@@ -50,7 +50,6 @@ const PERSONAS = [
 
 export default async function LandingPage() {
   const session = await getSession();
-  if (session?.role === "traveller") redirect("/passport");
   if (session?.role === "vendor") redirect("/vendor/dashboard");
   if (session?.role === "admin") redirect("/admin");
 
