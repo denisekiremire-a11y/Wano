@@ -25,7 +25,7 @@ import { logEvent } from "@/lib/analytics";
 import { listingTypeLabels, type ListingType } from "@/lib/listing-type";
 import { getSession } from "@/lib/session";
 
-const validTypes: ListingType[] = ["hotel", "restaurant", "experience", "transport", "spa_salon"];
+const validTypes = Object.keys(listingTypeLabels) as ListingType[];
 const validViews = ["all", "places", "trending"] as const;
 type ExploreView = (typeof validViews)[number];
 
