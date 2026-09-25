@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getAllJourneysForAdmin, journeyHasCostRange } from "@/lib/data/journeys";
 import { formatCostRange } from "@/lib/currency";
+import { requireAdminPage } from "@/lib/auth";
 
 const STATUS_STYLE: Record<string, string> = {
   draft: "bg-forest-100 text-forest-800",
@@ -11,6 +12,7 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 export default async function AdminJourneysPage() {
+  await requireAdminPage("/admin/journeys");
   const rows = await getAllJourneysForAdmin();
 
   return (

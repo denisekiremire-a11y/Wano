@@ -1,5 +1,6 @@
 import { checkBirthdayEligibility, getBirthdayPerksForListings } from "@/lib/data/birthday";
 import { getAllBookings, getVendorsWithRecentCancellations } from "@/lib/data/admin";
+import { requireAdminPage } from "@/lib/auth";
 import { BookingRow } from "./booking-row";
 
 const statusOptions = ["held", "pending", "confirmed", "completed", "cancelled", "expired"] as const;
@@ -9,6 +10,7 @@ export default async function AdminBookingsPage({
 }: {
   searchParams: Promise<{ status?: string; q?: string }>;
 }) {
+  await requireAdminPage("/admin/bookings");
   const { status, q } = await searchParams;
   const [allBookings, vendorsWithCancellations] = await Promise.all([
     getAllBookings(),

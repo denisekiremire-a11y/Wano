@@ -1,8 +1,10 @@
 import { JournalEditor } from "../journal-editor";
 import { createJournalPostAction } from "@/lib/actions/journal-actions";
+import { requireAdminPage } from "@/lib/auth";
 import { getAdminAuthors } from "@/lib/data/journal";
 
 export default async function NewJournalPostPage() {
+  await requireAdminPage("/admin/journal");
   const authors = await getAdminAuthors();
 
   return (

@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
 import { eventAttendance, events } from "@/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requireAdminLevel, requireRole } from "@/lib/auth";
 import { generateClubMeetupItem } from "@/lib/feed-generators";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 import type { ActionState } from "@/lib/validation";
@@ -25,7 +25,7 @@ const eventSchema = z.object({
 /** Admin creating an event — including a club's recurring meetup, which is
  * just an event with clubId set. There's no separate meetup system. */
 export async function createEventAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireRole("admin");
+  await requireAdminLevel("super"); // Match Day / Wano XP event creation
 
   const parsed = eventSchema.safeParse({
     title: formData.get("title"),

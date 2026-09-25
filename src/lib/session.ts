@@ -10,6 +10,13 @@ export type SessionPayload = {
   role: "traveller" | "vendor" | "admin";
   email: string;
   name: string;
+  // Only meaningful when role = "admin"; null otherwise. This is a
+  // convenience copy for nav display only — it can lag behind a level
+  // change until the admin's next login (JWTs are stateless, nothing
+  // invalidates an existing cookie). Actual enforcement never trusts this
+  // field: requireAdminLevel/requireAdminPage (src/lib/auth.ts) always
+  // re-read the live value from the database.
+  adminLevel: "support" | "ops" | "super" | null;
 };
 
 function getSecretKey() {

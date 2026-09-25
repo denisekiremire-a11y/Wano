@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getAllJournalPostsForAdmin } from "@/lib/data/journal";
+import { requireAdminPage } from "@/lib/auth";
 
 const STATUS_STYLE: Record<string, string> = {
   draft: "bg-forest-50 text-forest-800/60",
@@ -8,6 +9,7 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 export default async function AdminJournalPage() {
+  await requireAdminPage("/admin/journal");
   const rows = await getAllJournalPostsForAdmin();
 
   return (

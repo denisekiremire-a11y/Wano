@@ -7,9 +7,11 @@ import {
   LIKES_PER_EARNINGS_TIER,
   MONETIZABLE_POST_LIKE_THRESHOLD,
 } from "@/lib/influencer";
+import { requireAdminPage } from "@/lib/auth";
 import { SeedInfluencerButton } from "./seed-influencer-button";
 
 export default async function AdminInfluencersPage() {
+  await requireAdminPage("/admin/influencers");
   const influencers = await getInfluencersWithMonetizablePosts();
 
   return (

@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { getSupplyLeads } from "@/lib/data/journeys";
+import { requireAdminPage } from "@/lib/auth";
 import { LeadStatusSelect } from "./lead-status-select";
 
 export default async function SupplyLeadsPage() {
+  await requireAdminPage("/admin/supply-leads");
   const rows = await getSupplyLeads();
 
   return (

@@ -1,6 +1,7 @@
 import { adminCreateOneOffSlotAction, adminCreateRecurringSlotsAction, adminToggleSlotBlockedAction } from "@/lib/actions/slot-actions";
 import { getAllListingsForAdmin } from "@/lib/data/admin";
 import { getAllUpcomingSlots, getListingSlots } from "@/lib/data/slots";
+import { requireAdminPage } from "@/lib/auth";
 import { SlotRow } from "@/app/vendor/dashboard/listings/[id]/slots/slot-row";
 import { VendorSlotForm } from "@/app/vendor/dashboard/listings/[id]/slots/vendor-slot-form";
 import { ListingPicker } from "./listing-picker";
@@ -10,6 +11,7 @@ export default async function AdminSlotsPage({
 }: {
   searchParams: Promise<{ listingId?: string }>;
 }) {
+  await requireAdminPage("/admin/slots");
   const { listingId } = await searchParams;
   const [listingOptions, allUpcoming] = await Promise.all([getAllListingsForAdmin(), getAllUpcomingSlots()]);
   const selected = listingId ? listingOptions.find((l) => l.listing.id === listingId) : undefined;

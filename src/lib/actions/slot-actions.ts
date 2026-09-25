@@ -4,7 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { listings, slots } from "@/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requireAdminLevel, requireRole } from "@/lib/auth";
 import { getVendorProfileByUserId } from "@/lib/data/vendor";
 import type { ActionState } from "@/lib/validation";
 
@@ -162,7 +162,7 @@ export async function toggleSlotBlockedAction(slotId: string, blocked: boolean) 
 // not by ownership. The listing's own vendorId is still what gets stamped
 // onto every slot row, exactly as if that vendor created it themselves.
 export async function adminCreateOneOffSlotAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireRole("admin");
+  await requireAdminLevel("ops");
   const listingId = String(formData.get("listingId") ?? "");
   const [listing] = await db.select().from(listings).where(eq(listings.id, listingId)).limit(1);
   if (!listing) return { error: "Listing not found." };
@@ -170,7 +170,7 @@ export async function adminCreateOneOffSlotAction(_prev: ActionState, formData: 
 }
 
 export async function adminCreateRecurringSlotsAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireRole("admin");
+  await requireAdminLevel("ops");
   const listingId = String(formData.get("listingId") ?? "");
   const [listing] = await db.select().from(listings).where(eq(listings.id, listingId)).limit(1);
   if (!listing) return { error: "Listing not found." };
@@ -178,7 +178,7 @@ export async function adminCreateRecurringSlotsAction(_prev: ActionState, formDa
 }
 
 export async function adminToggleSlotBlockedAction(slotId: string, blocked: boolean) {
-  await requireRole("admin");
+  await requireAdminLevel("ops");
   const [slot] = await db.select().from(slots).where(eq(slots.id, slotId)).limit(1);
   if (!slot) throw new Error("Slot not found.");
 

@@ -1,7 +1,9 @@
 import { getVendorApprovalQueue } from "@/lib/data/admin";
+import { requireAdminPage } from "@/lib/auth";
 import { VendorRow } from "./vendor-row";
 
 export default async function AdminVendorsPage() {
+  await requireAdminPage("/admin/vendors");
   const rows = await getVendorApprovalQueue();
 
   return (

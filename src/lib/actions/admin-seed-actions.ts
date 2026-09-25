@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireRole } from "@/lib/auth";
+import { requireAdminLevel } from "@/lib/auth";
 import { backfillFeedItems } from "@/lib/feed-generators";
 import {
   backfillEditorialJourneysJ1,
@@ -20,7 +20,7 @@ import {
  * seeded, plus real listings/reviews/promo codes/posts that predate the
  * feed generator and were never retroactively picked up. */
 export async function runMilestoneSBackfillAction() {
-  const session = await requireRole("admin");
+  const session = await requireAdminLevel("super");
 
   const journal = await seedJournalPosts(session.userId);
   const clubsResult = await seedLaunchClubs(session.userId);
@@ -33,7 +33,7 @@ export async function runMilestoneSBackfillAction() {
  * J1: backfills cost range/region/duration and day-by-day stops for the 5
  * editorial journeys, then publishes each once it has both. */
 export async function runJourneysJ1BackfillAction() {
-  await requireRole("admin");
+  await requireAdminLevel("super");
   return backfillEditorialJourneysJ1();
 }
 
@@ -43,7 +43,7 @@ export async function runJourneysJ1BackfillAction() {
  * launch category) with a scheduled meetup each — enough breadth to click
  * through the whole app live. */
 export async function runDemoInventoryBackfillAction() {
-  const session = await requireRole("admin");
+  const session = await requireAdminLevel("super");
   return seedDemoInventory(session.userId);
 }
 
@@ -53,7 +53,7 @@ export async function runDemoInventoryBackfillAction() {
  * 500-like earning threshold, so /admin/influencers has something to show
  * without needing real follower/like activity. */
 export async function runDemoInfluencerBackfillAction() {
-  await requireRole("admin");
+  await requireAdminLevel("super");
   const result = await seedDemoInfluencer();
   revalidatePath("/admin/influencers");
   return result;
@@ -63,7 +63,7 @@ export async function runDemoInfluencerBackfillAction() {
  * prizes: a Fun Zone win at Le Chateau Brasserie, and the XP draw grand
  * prize at Jinja Riverside Hotel. */
 export async function runDemoRewardsBackfillAction() {
-  await requireRole("admin");
+  await requireAdminLevel("super");
   const result = await seedDemoRewards();
   revalidatePath("/admin/rewards");
   revalidatePath("/admin/funzone");
@@ -76,7 +76,7 @@ export async function runDemoRewardsBackfillAction() {
  * Hoima, with real coordinates so the /afcon/[venue] distance sort has
  * something to show. */
 export async function runAfconVenueVendorsSeedAction() {
-  await requireRole("admin");
+  await requireAdminLevel("super");
   const result = await seedAfconVenueVendors();
   revalidatePath("/afcon");
   revalidatePath("/afcon/namboole");

@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/db";
 import { journalPosts } from "@/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requireAdminLevel } from "@/lib/auth";
 import { generateJournalPublishedItem } from "@/lib/feed-generators";
 import { slugify, uniqueSlug } from "@/lib/slug";
 import type { ActionState } from "@/lib/validation";
@@ -65,7 +65,7 @@ function resolvePublishedAt(status: string, publishedAtInput: string) {
 }
 
 export async function createJournalPostAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireRole("admin");
+  await requireAdminLevel("super");
   const parsed = readForm(formData);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Please check the post fields." };
   const d = parsed.data;
@@ -107,7 +107,7 @@ export async function updateJournalPostAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireRole("admin");
+  await requireAdminLevel("super");
   const parsed = readForm(formData);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Please check the post fields." };
   const d = parsed.data;
@@ -148,7 +148,7 @@ export async function updateJournalPostAction(
 }
 
 export async function deleteJournalPostAction(postId: string) {
-  await requireRole("admin");
+  await requireAdminLevel("super");
   await db.delete(journalPosts).where(eq(journalPosts.id, postId));
   revalidatePath("/admin/journal");
   revalidatePath("/journal");

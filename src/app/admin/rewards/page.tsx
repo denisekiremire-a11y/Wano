@@ -1,10 +1,12 @@
 import { getAllEventsForAdmin, getAllListingsForAdmin } from "@/lib/data/admin";
 import { getAllRewardsForAdmin } from "@/lib/data/rewards";
+import { requireAdminPage } from "@/lib/auth";
 import { RewardForm } from "./reward-form";
 import { RewardRow } from "./reward-row";
 import { SeedRewardsButton } from "./seed-rewards-button";
 
 export default async function AdminRewardsPage() {
+  await requireAdminPage("/admin/rewards");
   const [rewardsList, listingOptions, eventOptions] = await Promise.all([
     getAllRewardsForAdmin(),
     getAllListingsForAdmin(),

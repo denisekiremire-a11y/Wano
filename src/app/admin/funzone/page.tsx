@@ -1,7 +1,9 @@
 import { getActiveRewardsBySource } from "@/lib/data/rewards";
+import { requireAdminPage } from "@/lib/auth";
 import { IssueForm } from "./issue-form";
 
 export default async function AdminFunzonePage() {
+  await requireAdminPage("/admin/funzone");
   const rewardsList = await getActiveRewardsBySource("funzone");
 
   return (

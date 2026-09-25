@@ -1,6 +1,8 @@
+import { requireAdminPage } from "@/lib/auth";
 import { BackfillButton } from "./backfill-button";
 
-export default function SeedMilestoneSPage() {
+export default async function SeedMilestoneSPage() {
+  await requireAdminPage("/admin/seed-milestone-s");
   return (
     <div className="space-y-4">
       <div>

@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { getCampaignMetrics } from "@/lib/data/admin";
+import { requireAdminPage } from "@/lib/auth";
 
 export default async function AdminOverviewPage() {
+  await requireAdminPage("/admin");
   const metrics = await getCampaignMetrics();
 
   const cards = [

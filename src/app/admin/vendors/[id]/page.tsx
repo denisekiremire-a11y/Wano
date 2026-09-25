@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getVendorDetail } from "@/lib/data/admin";
 import { getListingImageIdsFor } from "@/lib/data/listing-images";
+import { requireAdminPage } from "@/lib/auth";
 import { AccreditationPanel } from "./accreditation-panel";
 import { DocumentReviewRow } from "./document-review-row";
 import { ListingForm } from "./listing-form";
@@ -11,6 +12,7 @@ export default async function AdminVendorDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requireAdminPage("/admin/vendors");
   const { id } = await params;
   const detail = await getVendorDetail(id);
   if (!detail) notFound();

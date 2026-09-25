@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
 import { events, pointRedemptions, rewards, userRewards, vendorProfiles, vendorSubmissions } from "@/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requireAdminLevel, requireRole } from "@/lib/auth";
 import { generateVoucherCode } from "@/lib/codes";
 import { getOwningVendorProfileId, getRewardsSummary, getUserRewardById } from "@/lib/data/rewards";
 import { vendorRewardContentSchema } from "@/lib/actions/reward-shared";
@@ -335,7 +335,7 @@ const rewardSchema = z.object({
 });
 
 export async function createRewardAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireRole("admin");
+  await requireAdminLevel("super");
 
   const parsed = rewardSchema.safeParse({
     title: formData.get("title"),
@@ -461,7 +461,7 @@ export async function withdrawRewardSubmissionAction(submissionId: string) {
 }
 
 export async function toggleRewardActiveAction(rewardId: string, active: boolean) {
-  await requireRole("admin");
+  await requireAdminLevel("super");
 
   await db.update(rewards).set({ active }).where(eq(rewards.id, rewardId));
 

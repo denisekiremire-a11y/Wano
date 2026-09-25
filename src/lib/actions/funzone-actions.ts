@@ -4,7 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { funzoneClaims, rewards } from "@/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requireAdminLevel } from "@/lib/auth";
 import { generateShortCode } from "@/lib/codes";
 import { mintUserReward } from "@/lib/actions/reward-actions";
 
@@ -32,7 +32,7 @@ export async function issueFunzoneClaimAction(
   phone: string,
   rewardId: string,
 ): Promise<{ error: string } | { claimUrl: string; claimCode: string }> {
-  const session = await requireRole("admin");
+  const session = await requireAdminLevel("super");
 
   if (!phone.trim()) return { error: "Enter the winner's phone number." };
 

@@ -1,7 +1,9 @@
 import { getPendingSubmissions } from "@/lib/data/submissions";
+import { requireAdminPage } from "@/lib/auth";
 import { SubmissionRow } from "./submission-row";
 
 export default async function AdminSubmissionsPage() {
+  await requireAdminPage("/admin/submissions");
   const rows = await getPendingSubmissions();
 
   return (

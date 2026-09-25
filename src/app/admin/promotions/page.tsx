@@ -1,9 +1,11 @@
 import { getAllListingsForAdmin, getAllPromoCodes } from "@/lib/data/admin";
 import { getJourneys } from "@/lib/data/journeys";
+import { requireAdminPage } from "@/lib/auth";
 import { PromoForm } from "./promo-form";
 import { PromoRow } from "./promo-row";
 
 export default async function AdminPromotionsPage() {
+  await requireAdminPage("/admin/promotions");
   const [promos, journeys, listingOptions] = await Promise.all([
     getAllPromoCodes(),
     getJourneys(),

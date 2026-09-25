@@ -1,3 +1,4 @@
+import { ADMIN_MIN_LEVEL, levelMeets, type AdminLevel } from "@/lib/admin-permissions";
 import type { SessionPayload } from "@/lib/session";
 
 export type NavItem = {
@@ -43,7 +44,26 @@ const PRIMARY_NAV_ITEMS: NavItem[] = [
   { href: "/passport", label: "Passport", icon: "stamp" },
 ];
 
-export function navItemsFor(role: SessionPayload["role"] | "guest"): NavItem[] {
+const ADMIN_NAV_ITEMS: (NavItem & { minLevelKey: keyof typeof ADMIN_MIN_LEVEL })[] = [
+  { href: "/admin", label: "Overview", icon: "gauge", minLevelKey: "/admin" },
+  { href: "/admin/vendors", label: "Vendors", icon: "users", minLevelKey: "/admin/vendors" },
+  { href: "/admin/submissions", label: "Submissions", icon: "mail", minLevelKey: "/admin/submissions" },
+  { href: "/admin/bookings", label: "Bookings", icon: "ticket", minLevelKey: "/admin/bookings" },
+  { href: "/admin/slots", label: "Slots", icon: "calendar", minLevelKey: "/admin/slots" },
+  { href: "/admin/travellers", label: "Members", icon: "grid", minLevelKey: "/admin/travellers" },
+  { href: "/admin/promotions", label: "Deals", icon: "tag", minLevelKey: "/admin/promotions" },
+  { href: "/admin/rewards", label: "Rewards", icon: "ticket", minLevelKey: "/admin/rewards" },
+  { href: "/admin/funzone", label: "Fun Zone", icon: "megaphone", minLevelKey: "/admin/funzone" },
+  { href: "/admin/match-day", label: "Match Day", icon: "calendar", minLevelKey: "/admin/match-day" },
+  { href: "/admin/clubs", label: "Clubs", icon: "chat", minLevelKey: "/admin/clubs" },
+  { href: "/admin/journal", label: "Journal", icon: "file", minLevelKey: "/admin/journal" },
+  { href: "/admin/moderation", label: "Moderation", icon: "flag", minLevelKey: "/admin/moderation" },
+  { href: "/admin/influencers", label: "Influencers", icon: "trophy", minLevelKey: "/admin/influencers" },
+  { href: "/admin/analytics", label: "Analytics", icon: "chart", minLevelKey: "/admin/analytics" },
+  { href: "/admin/accounts", label: "Accounts", icon: "user", minLevelKey: "/admin/accounts" },
+];
+
+export function navItemsFor(role: SessionPayload["role"] | "guest", adminLevel?: AdminLevel | null): NavItem[] {
   if (role === "traveller" || role === "guest") {
     return PRIMARY_NAV_ITEMS;
   }
@@ -61,29 +81,20 @@ export function navItemsFor(role: SessionPayload["role"] | "guest"): NavItem[] {
     ];
   }
   if (role === "admin") {
-    return [
-      { href: "/admin", label: "Overview", icon: "gauge" },
-      { href: "/admin/vendors", label: "Vendors", icon: "users" },
-      { href: "/admin/submissions", label: "Submissions", icon: "mail" },
-      { href: "/admin/bookings", label: "Bookings", icon: "ticket" },
-      { href: "/admin/slots", label: "Slots", icon: "calendar" },
-      { href: "/admin/travellers", label: "Members", icon: "grid" },
-      { href: "/admin/promotions", label: "Deals", icon: "tag" },
-      { href: "/admin/rewards", label: "Rewards", icon: "ticket" },
-      { href: "/admin/funzone", label: "Fun Zone", icon: "megaphone" },
-      { href: "/admin/match-day", label: "Match Day", icon: "calendar" },
-      { href: "/admin/clubs", label: "Clubs", icon: "chat" },
-      { href: "/admin/journal", label: "Journal", icon: "file" },
-      { href: "/admin/moderation", label: "Moderation", icon: "flag" },
-      { href: "/admin/influencers", label: "Influencers", icon: "trophy" },
-      { href: "/admin/analytics", label: "Analytics", icon: "chart" },
-    ];
+    // Purely a UI convenience — hides items the viewer can't reach so the
+    // nav isn't cluttered with dead ends. The actual access control lives
+    // server-side in requireAdminPage/requireAdminLevel (src/lib/auth.ts),
+    // which re-check the live level on every request regardless of what
+    // this filter decided.
+    return ADMIN_NAV_ITEMS.filter(({ minLevelKey }) => levelMeets(adminLevel, ADMIN_MIN_LEVEL[minLevelKey])).map(
+      ({ href, label, icon, matchPrefixes }) => ({ href, label, icon, matchPrefixes }),
+    );
   }
   // admin is the only remaining role — the traveller/guest branch above
   // already returns before reaching here.
   return PRIMARY_NAV_ITEMS;
 }
 
-export function mobileNavItemsFor(role: SessionPayload["role"] | "guest"): NavItem[] {
-  return navItemsFor(role);
+export function mobileNavItemsFor(role: SessionPayload["role"] | "guest", adminLevel?: AdminLevel | null): NavItem[] {
+  return navItemsFor(role, adminLevel);
 }

@@ -1,9 +1,11 @@
 import { getAllVendorProfilesForAdmin } from "@/lib/data/admin";
 import { getAllClubsForAdmin, getAllInterests } from "@/lib/data/social";
+import { requireAdminPage } from "@/lib/auth";
 import { AdminClubForm } from "./admin-club-form";
 import { ClubReviewRow } from "./club-review-row";
 
 export default async function AdminClubsPage() {
+  await requireAdminPage("/admin/clubs");
   const [clubRows, interests, vendors] = await Promise.all([
     getAllClubsForAdmin(),
     getAllInterests(),

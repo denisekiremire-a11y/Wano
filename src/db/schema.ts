@@ -24,6 +24,10 @@ const bytea = customType<{ data: Buffer }>({
 });
 
 export const userRoleEnum = pgEnum("user_role", ["traveller", "vendor", "admin"]);
+// Only meaningful when role = "admin" — null for travellers/vendors.
+// support ⊂ ops ⊂ super, enforced as an ordinal rank (see
+// src/lib/admin-permissions.ts), not just three unrelated buckets.
+export const adminLevelEnum = pgEnum("admin_level", ["support", "ops", "super"]);
 export const accreditationStatusEnum = pgEnum("accreditation_status", [
   "pending",
   "trusted",
@@ -128,6 +132,7 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   name: text("name").notNull(),
   role: userRoleEnum("role").notNull(),
+  adminLevel: adminLevelEnum("admin_level"),
   username: text("username").unique(),
   bio: text("bio"),
   avatarUrl: text("avatar_url"),

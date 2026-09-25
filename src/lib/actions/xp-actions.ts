@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
 import { events, rewards, travellerProfiles, users, xpBookings, xpDraws } from "@/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requireAdminLevel, requireRole } from "@/lib/auth";
 import {
   createFlutterwavePayment,
   isFlutterwaveConfigured,
@@ -231,7 +231,7 @@ const matchSchema = z.object({
  * general createEventAction) so a match always gets an endAt — reward
  * vouchers tied to a match expire at that endAt, not a generic default. */
 export async function createMatchAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireRole("admin");
+  await requireAdminLevel("super");
 
   const parsed = matchSchema.safeParse({
     title: formData.get("title"),
@@ -276,7 +276,7 @@ export async function runXpDrawAction(
   matchId: string,
   prizeRewardId: string,
 ): Promise<ActionState & { winnerName?: string }> {
-  await requireRole("admin");
+  await requireAdminLevel("super");
 
   const [existingDraw] = await db.select().from(xpDraws).where(eq(xpDraws.matchId, matchId)).limit(1);
   if (existingDraw?.drawnAt) return { error: "This match has already been drawn." };

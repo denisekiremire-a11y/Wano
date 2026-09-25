@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getJourneyById, getJourneyStops, getListingOptions, journeyHasCostRange } from "@/lib/data/journeys";
 import { formatMinor } from "@/lib/currency";
+import { requireAdminPage } from "@/lib/auth";
 import { JourneyDetailsForm } from "./journey-details-form";
 import { StopForm } from "./stop-form";
 import { PublishControls } from "./publish-controls";
@@ -16,6 +17,7 @@ const STOP_TYPE_LABEL: Record<string, string> = {
 };
 
 export default async function AdminJourneyDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdminPage("/admin/journeys");
   const { id } = await params;
   const journey = await getJourneyById(id);
   if (!journey) notFound();

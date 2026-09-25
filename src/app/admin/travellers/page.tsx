@@ -1,8 +1,12 @@
 import { getAllTravellersWithProgress } from "@/lib/data/admin";
+import { ADMIN_MIN_LEVEL, levelMeets } from "@/lib/admin-permissions";
+import { requireAdminPage } from "@/lib/auth";
 import { TrophyIcon } from "@/components/icons";
 import { TravellerNameEditor } from "./traveller-name-editor";
 
 export default async function AdminTravellersPage() {
+  const session = await requireAdminPage("/admin/travellers");
+  const canEditTravellers = levelMeets(session.adminLevel, ADMIN_MIN_LEVEL["travellers:write"]);
   const travellers = await getAllTravellersWithProgress();
   const qualifiers = travellers.filter((t) => t.grandPrizeQualified);
 
@@ -43,7 +47,7 @@ export default async function AdminTravellersPage() {
             className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-forest-900/10 bg-white p-4"
           >
             <div>
-              <TravellerNameEditor travellerId={t.traveller.id} initialName={t.user.name} />
+              <TravellerNameEditor travellerId={t.traveller.id} initialName={t.user.name} canEdit={canEditTravellers} />
               <p className="text-sm text-forest-800/60">{t.user.email}</p>
             </div>
             <div className="flex flex-wrap gap-4 text-sm text-forest-800/70">

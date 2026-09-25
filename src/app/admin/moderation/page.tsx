@@ -6,10 +6,12 @@ import {
   getPostForModeration,
   getUserForModeration,
 } from "@/lib/data/moderation";
+import { requireAdminPage } from "@/lib/auth";
 import { ModerationQueueRow } from "./moderation-queue-row";
 import { PendingPostRow } from "./pending-post-row";
 
 export default async function AdminModerationPage() {
+  await requireAdminPage("/admin/moderation");
   const [reportRows, pendingPosts, log] = await Promise.all([
     getOpenReports(),
     getPendingReviewPosts(),

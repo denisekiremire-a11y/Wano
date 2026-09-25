@@ -2,11 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getHostCandidates } from "@/lib/data/admin";
 import { getClubById, getClubMeetups } from "@/lib/data/social";
+import { requireAdminPage } from "@/lib/auth";
 import { ClubDetailsForm } from "./club-details-form";
 import { ScheduleMeetupForm } from "./schedule-meetup-form";
 import { ApproveRejectRow } from "../club-review-row";
 
 export default async function AdminClubDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdminPage("/admin/clubs");
   const { id } = await params;
   const [row, hosts, meetups] = await Promise.all([getClubById(id), getHostCandidates(), getClubMeetups(id)]);
   if (!row) notFound();

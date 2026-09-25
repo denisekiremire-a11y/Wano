@@ -3,7 +3,18 @@
 import { useState, useTransition } from "react";
 import { updateTravellerNameAction } from "@/lib/actions/admin-actions";
 
-export function TravellerNameEditor({ travellerId, initialName }: { travellerId: string; initialName: string }) {
+export function TravellerNameEditor({
+  travellerId,
+  initialName,
+  canEdit = true,
+}: {
+  travellerId: string;
+  initialName: string;
+  /** support-level admins can view Members but not edit — the server
+   * action rejects it either way (see updateTravellerNameAction), this
+   * just keeps the UI from offering something that would just error. */
+  canEdit?: boolean;
+}) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(initialName);
   const [pending, startTransition] = useTransition();
@@ -13,13 +24,15 @@ export function TravellerNameEditor({ travellerId, initialName }: { travellerId:
     return (
       <div className="flex items-center gap-2">
         <p className="font-medium text-forest-900">{name}</p>
-        <button
-          type="button"
-          onClick={() => setEditing(true)}
-          className="text-xs font-medium text-nile-700 hover:underline"
-        >
-          Edit name
-        </button>
+        {canEdit && (
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="text-xs font-medium text-nile-700 hover:underline"
+          >
+            Edit name
+          </button>
+        )}
       </div>
     );
   }

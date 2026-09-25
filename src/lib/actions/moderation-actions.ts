@@ -4,7 +4,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { blocks, moderationActions, posts, reports } from "@/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requireAdminLevel, requireRole } from "@/lib/auth";
 import { generateUserPostItem } from "@/lib/feed-generators";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { countInLastHour, RATE_LIMITS } from "@/lib/rate-limit";
@@ -98,7 +98,7 @@ export async function resolveReportAction(
   reportId: string,
   action: "dismiss" | "hide" | "remove" | "warn" | "suspend",
 ) {
-  const session = await requireRole("admin");
+  const session = await requireAdminLevel("support");
 
   const [report] = await db.select().from(reports).where(eq(reports.id, reportId)).limit(1);
   if (!report) throw new Error("Report not found.");
@@ -155,7 +155,7 @@ export async function resolveReportAction(
 /** Approve or remove a post sitting in pending_review (new-account
  * auto-flag) — separate from report resolution since it has no report row. */
 export async function reviewPendingPostAction(postId: string, decision: "approve" | "remove") {
-  const session = await requireRole("admin");
+  const session = await requireAdminLevel("support");
   const [post] = await db.select().from(posts).where(eq(posts.id, postId)).limit(1);
   if (!post) throw new Error("Post not found.");
 

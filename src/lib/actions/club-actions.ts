@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
 import { clubs } from "@/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requireAdminLevel, requireRole } from "@/lib/auth";
 import { hasUpcomingMeetup } from "@/lib/data/social";
 import { getVendorProfileByUserId } from "@/lib/data/vendor";
 import { notifyAdmin } from "@/lib/notify";
@@ -119,7 +119,7 @@ const adminClubSchema = clubSchema.extend({
 });
 
 export async function createClubAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const session = await requireRole("admin");
+  const session = await requireAdminLevel("ops");
 
   const parsed = adminClubSchema.safeParse({
     name: formData.get("name"),
@@ -171,7 +171,7 @@ export async function updateClubDetailsAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireRole("admin");
+  await requireAdminLevel("ops");
   const parsed = detailsSchema.safeParse({
     hostUserId: formData.get("hostUserId") ?? "",
     coverImage: formData.get("coverImage") ?? "",
@@ -198,7 +198,7 @@ export async function updateClubDetailsAction(
 }
 
 export async function reviewClubAction(clubId: string, status: "approved" | "rejected", notes?: string) {
-  const session = await requireRole("admin");
+  const session = await requireAdminLevel("ops");
 
   if (status === "approved") {
     const [club] = await db.select().from(clubs).where(eq(clubs.id, clubId)).limit(1);

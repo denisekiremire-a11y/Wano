@@ -1,10 +1,12 @@
 import { getMatchesForAdmin } from "@/lib/data/xp";
 import { getActiveRewardsBySource } from "@/lib/data/rewards";
+import { requireAdminPage } from "@/lib/auth";
 import { MatchForm } from "./match-form";
 import { MatchRow } from "./match-row";
 import { SeedVenueVendorsButton } from "./seed-venue-vendors-button";
 
 export default async function AdminMatchDayPage() {
+  await requireAdminPage("/admin/match-day");
   const [matches, prizePool] = await Promise.all([getMatchesForAdmin(), getActiveRewardsBySource("xp_draw")]);
 
   const prizeOptions = prizePool.map((r) => ({

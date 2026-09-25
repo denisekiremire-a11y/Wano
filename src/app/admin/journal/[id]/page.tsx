@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { JournalEditor } from "../journal-editor";
 import { deleteJournalPostAction, updateJournalPostAction } from "@/lib/actions/journal-actions";
+import { requireAdminPage } from "@/lib/auth";
 import { getAdminAuthors, getJournalPostById } from "@/lib/data/journal";
 
 function toDatetimeLocal(date: Date | null) {
@@ -12,6 +13,7 @@ function toDatetimeLocal(date: Date | null) {
 }
 
 export default async function EditJournalPostPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdminPage("/admin/journal");
   const { id } = await params;
   const [post, authors] = await Promise.all([getJournalPostById(id), getAdminAuthors()]);
   if (!post) notFound();

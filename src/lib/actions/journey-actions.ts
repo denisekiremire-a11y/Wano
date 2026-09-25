@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
 import { journeys, journeyStops, supplyLeads } from "@/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requireAdminLevel } from "@/lib/auth";
 import { journeyHasCostRange } from "@/lib/data/journeys";
 import type { ActionState } from "@/lib/validation";
 
@@ -33,7 +33,7 @@ export async function updateJourneyDetailsAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireRole("admin");
+  await requireAdminLevel("ops");
   const parsed = journeyDetailsSchema.safeParse({
     region: formData.get("region") ?? "",
     city: formData.get("city") ?? "",
@@ -73,7 +73,7 @@ export async function updateJourneyDetailsAction(
 /** Publishing requires a real cost range and at least one stop — "what does
  * this cost" is the question the main brief says locals ask first. */
 export async function publishJourneyAction(journeyId: string): Promise<ActionState> {
-  await requireRole("admin");
+  await requireAdminLevel("ops");
   const [journey] = await db.select().from(journeys).where(eq(journeys.id, journeyId)).limit(1);
   if (!journey) return { error: "Journey not found." };
   if (!journeyHasCostRange(journey)) {
@@ -95,7 +95,7 @@ export async function publishJourneyAction(journeyId: string): Promise<ActionSta
 }
 
 export async function unpublishJourneyAction(journeyId: string) {
-  await requireRole("admin");
+  await requireAdminLevel("ops");
   const [journey] = await db.select().from(journeys).where(eq(journeys.id, journeyId)).limit(1);
   if (!journey) return;
 
@@ -130,7 +130,7 @@ async function upsertSupplyLead(stopId: string, customName: string, customAddres
 }
 
 export async function addStopAction(journeyId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireRole("admin");
+  await requireAdminLevel("ops");
   const parsed = stopSchema.safeParse({
     dayNumber: formData.get("dayNumber"),
     orderIndex: formData.get("orderIndex") ?? "0",
@@ -177,7 +177,7 @@ export async function addStopAction(journeyId: string, _prev: ActionState, formD
 }
 
 export async function deleteStopAction(journeyId: string, stopId: string) {
-  await requireRole("admin");
+  await requireAdminLevel("ops");
   await db.delete(journeyStops).where(eq(journeyStops.id, stopId));
   revalidatePath(`/admin/journeys/${journeyId}`);
   revalidatePath("/admin/supply-leads");
@@ -187,7 +187,7 @@ export async function updateSupplyLeadStatusAction(
   leadId: string,
   status: "open" | "contacted" | "listed" | "dismissed",
 ) {
-  await requireRole("admin");
+  await requireAdminLevel("ops");
   await db.update(supplyLeads).set({ status }).where(eq(supplyLeads.id, leadId));
   revalidatePath("/admin/supply-leads");
 }

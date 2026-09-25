@@ -83,6 +83,7 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
     role: user.role,
     email: user.email,
     name: user.name,
+    adminLevel: user.adminLevel,
   });
 
   // Skip notifying on the admin's own logins — the point is visibility into
@@ -242,6 +243,8 @@ export async function signupAction(_prev: ActionState, formData: FormData): Prom
     role: user.role,
     email: user.email,
     name: user.name,
+    // Signup never creates admin accounts (see requireAdminLevel).
+    adminLevel: null,
   });
 
   redirect(parsed.data.role === "vendor" ? "/vendor/dashboard" : "/onboarding");

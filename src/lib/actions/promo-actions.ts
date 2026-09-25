@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
 import { promoCodes } from "@/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requireAdminLevel } from "@/lib/auth";
 import { generatePerkAddedItem } from "@/lib/feed-generators";
 import type { ActionState } from "@/lib/validation";
 
@@ -34,7 +34,7 @@ export async function createPromoCodeAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireRole("admin");
+  await requireAdminLevel("super");
 
   const parsed = promoSchema.safeParse({
     code: formData.get("code"),
@@ -83,7 +83,7 @@ export async function createPromoCodeAction(
 }
 
 export async function togglePromoCodeAction(promoId: string, active: boolean) {
-  await requireRole("admin");
+  await requireAdminLevel("super");
 
   await db.update(promoCodes).set({ active }).where(eq(promoCodes.id, promoId));
 

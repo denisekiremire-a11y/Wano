@@ -15,7 +15,8 @@ import {
   vendorDocuments,
   vendorProfiles,
 } from "@/db/schema";
-import { requireRole } from "@/lib/auth";
+import { ADMIN_MIN_LEVEL } from "@/lib/admin-permissions";
+import { requireAdminLevel } from "@/lib/auth";
 import { generatePlaceAddedItemsForVendor } from "@/lib/feed-generators";
 import { applyListingContent, applyVendorSocialLinks, listingContentSchema } from "@/lib/actions/listing-shared";
 import { notifyTravellerOfBookingStatus } from "@/lib/booking-notifications";
@@ -31,7 +32,7 @@ export async function setAccreditationStatusAction(
   status: "trusted" | "rejected" | "pending",
   notes?: string,
 ) {
-  const session = await requireRole("admin");
+  const session = await requireAdminLevel(ADMIN_MIN_LEVEL["/admin/vendors"]);
 
   await db
     .update(vendorProfiles)
@@ -79,7 +80,7 @@ export async function reviewVendorDocumentAction(
   documentId: string,
   status: "approved" | "rejected",
 ) {
-  const session = await requireRole("admin");
+  const session = await requireAdminLevel(ADMIN_MIN_LEVEL["/admin/vendors"]);
 
   await db
     .update(vendorDocuments)
@@ -99,7 +100,7 @@ export async function upsertVendorListingAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireRole("admin");
+  await requireAdminLevel(ADMIN_MIN_LEVEL["/admin/vendors"]);
 
   const parsed = adminListingSchema.safeParse({
     vendorProfileId: formData.get("vendorProfileId"),
@@ -178,7 +179,7 @@ export async function upsertVendorListingAction(
 }
 
 export async function deleteListingImageAction(imageId: string, vendorProfileId: string) {
-  await requireRole("admin");
+  await requireAdminLevel(ADMIN_MIN_LEVEL["/admin/vendors"]);
   await db.delete(listingImages).where(eq(listingImages.id, imageId));
 
   revalidatePath(`/admin/vendors/${vendorProfileId}`);
@@ -192,7 +193,7 @@ export async function adminSetBookingStatusAction(
   bookingId: string,
   status: "pending" | "confirmed" | "completed" | "cancelled",
 ) {
-  await requireRole("admin");
+  await requireAdminLevel(ADMIN_MIN_LEVEL["/admin/bookings"]);
 
   const [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
   if (!booking) throw new Error("Booking not found.");
@@ -235,7 +236,7 @@ export async function adminSetBookingStatusAction(
  * on profile/social/feed) and users.name (shown in admin lists and emails)
  * in sync, since nothing else updates both together. */
 export async function updateTravellerNameAction(travellerId: string, name: string) {
-  await requireRole("admin");
+  await requireAdminLevel(ADMIN_MIN_LEVEL["travellers:write"]);
   const trimmed = name.trim();
   if (!trimmed) throw new Error("Name can't be empty.");
 

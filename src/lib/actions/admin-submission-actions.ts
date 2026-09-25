@@ -6,7 +6,7 @@ import { db } from "@/db";
 import { vendorSubmissions } from "@/db/schema";
 import { applyListingContent, applyVendorSocialLinks, listingContentSchema } from "@/lib/actions/listing-shared";
 import { applyVendorRewardContent, vendorRewardContentSchema } from "@/lib/actions/reward-shared";
-import { requireRole } from "@/lib/auth";
+import { requireAdminLevel } from "@/lib/auth";
 import { getSubmissionById, getVendorUserEmail } from "@/lib/data/submissions";
 import { notifyUser } from "@/lib/notify";
 
@@ -20,7 +20,7 @@ function revalidateSubmissionPaths() {
 }
 
 export async function approveSubmissionAction(submissionId: string) {
-  const session = await requireRole("admin");
+  const session = await requireAdminLevel("ops");
 
   const submission = await getSubmissionById(submissionId);
   if (!submission || submission.status !== "pending") throw new Error("Submission not found.");
@@ -58,7 +58,7 @@ export async function approveSubmissionAction(submissionId: string) {
 }
 
 export async function rejectSubmissionAction(submissionId: string, notes: string) {
-  const session = await requireRole("admin");
+  const session = await requireAdminLevel("ops");
 
   const submission = await getSubmissionById(submissionId);
   if (!submission || submission.status !== "pending") throw new Error("Submission not found.");

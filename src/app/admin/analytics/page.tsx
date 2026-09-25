@@ -1,6 +1,8 @@
 import { getEventCounts, getRecentDocumentAccess, getRecentEvents } from "@/lib/data/admin-analytics";
+import { requireAdminPage } from "@/lib/auth";
 
 export default async function AdminAnalyticsPage() {
+  await requireAdminPage("/admin/analytics");
   const [counts, recent, docAccess] = await Promise.all([
     getEventCounts(),
     getRecentEvents(50),

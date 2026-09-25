@@ -29,6 +29,20 @@ import {
   vendorDocumentListColumns,
 } from "./vendor";
 
+export async function getAllAdmins() {
+  return db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      adminLevel: users.adminLevel,
+      createdAt: users.createdAt,
+    })
+    .from(users)
+    .where(eq(users.role, "admin"))
+    .orderBy(users.createdAt);
+}
+
 export async function getVendorDetail(vendorProfileId: string) {
   const vendorProfile = await getVendorProfileById(vendorProfileId);
   if (!vendorProfile) return null;
