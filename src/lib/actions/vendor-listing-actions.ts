@@ -97,6 +97,24 @@ export async function setListingActiveAction(listingId: string, active: boolean)
   revalidatePath("/explore");
 }
 
+// Operational, not editorial content — unlike VendorListingForm's edits,
+// switching a listing to instant mode doesn't go through admin review. A
+// vendor should only actually do this once they've set up slots for it
+// (see /vendor/dashboard/listings/[id]/slots) — instant mode with no
+// slots configured just means nothing shows as bookable.
+export async function setListingBookingModeAction(listingId: string, bookingMode: "instant" | "request") {
+  const session = await requireRole("vendor");
+  const vendorProfile = await getVendorProfileByUserId(session.userId);
+  if (!vendorProfile) throw new Error("Vendor profile not found.");
+  const owned = await getVendorOwnListingFull(vendorProfile.id, listingId);
+  if (!owned) throw new Error("You can only edit your own listings.");
+
+  await db.update(listings).set({ bookingMode }).where(eq(listings.id, listingId));
+  revalidatePath("/vendor/dashboard/listings");
+  revalidatePath(`/vendor/dashboard/listings/${listingId}`);
+  revalidatePath(`/explore/${listingId}`);
+}
+
 export async function uploadListingPhotosAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const session = await requireRole("vendor");
   const listingId = await requireOwnListing(session.userId, String(formData.get("listingId") ?? ""));

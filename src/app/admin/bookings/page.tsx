@@ -1,8 +1,8 @@
 import { checkBirthdayEligibility, getBirthdayPerksForListings } from "@/lib/data/birthday";
-import { getAllBookings } from "@/lib/data/admin";
+import { getAllBookings, getVendorsWithRecentCancellations } from "@/lib/data/admin";
 import { BookingRow } from "./booking-row";
 
-const statusOptions = ["pending", "confirmed", "completed", "cancelled"] as const;
+const statusOptions = ["held", "pending", "confirmed", "completed", "cancelled", "expired"] as const;
 
 export default async function AdminBookingsPage({
   searchParams,
@@ -10,7 +10,10 @@ export default async function AdminBookingsPage({
   searchParams: Promise<{ status?: string; q?: string }>;
 }) {
   const { status, q } = await searchParams;
-  const allBookings = await getAllBookings();
+  const [allBookings, vendorsWithCancellations] = await Promise.all([
+    getAllBookings(),
+    getVendorsWithRecentCancellations(),
+  ]);
   const perksByListing = await getBirthdayPerksForListings(allBookings.map((r) => r.listing.id));
 
   function birthdayInfoFor(row: (typeof allBookings)[number]) {
@@ -27,10 +30,12 @@ export default async function AdminBookingsPage({
   }
 
   const counts = {
+    held: allBookings.filter((b) => b.booking.status === "held").length,
     pending: allBookings.filter((b) => b.booking.status === "pending").length,
     confirmed: allBookings.filter((b) => b.booking.status === "confirmed").length,
     completed: allBookings.filter((b) => b.booking.status === "completed").length,
     cancelled: allBookings.filter((b) => b.booking.status === "cancelled").length,
+    expired: allBookings.filter((b) => b.booking.status === "expired").length,
   };
 
   const query = (q ?? "").toLowerCase().trim();
@@ -56,7 +61,21 @@ export default async function AdminBookingsPage({
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {vendorsWithCancellations.length > 0 && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
+          <p className="text-sm font-semibold text-red-800">Vendors with recent cancellations</p>
+          <ul className="mt-2 space-y-1 text-sm text-red-900">
+            {vendorsWithCancellations.map((v) => (
+              <li key={v.id} className="flex items-center justify-between">
+                <span>{v.businessName}</span>
+                <span className="font-semibold">{v.vendorCancellationCount} cancelled</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
         {statusOptions.map((s) => (
           <a
             key={s}
@@ -122,6 +141,7 @@ export default async function AdminBookingsPage({
               notes={row.booking.notes}
               appliedReward={row.appliedReward}
               birthdayInfo={birthdayInfoFor(row)}
+              flaggedForSupport={row.booking.flaggedForSupport}
             />
           ))
         )}

@@ -11,6 +11,7 @@ import {
   pgEnum,
   pgTable,
   text,
+  time,
   timestamp,
   unique,
   uuid,
@@ -30,10 +31,20 @@ export const accreditationStatusEnum = pgEnum("accreditation_status", [
 ]);
 export const bookingStatusEnum = pgEnum("booking_status", [
   "pending",
+  "held",
   "confirmed",
   "completed",
   "cancelled",
+  "expired",
 ]);
+// Whether a listing's bookings are confirmed instantly against real slot
+// capacity (see slots below) or go through the old vendor-approval flow —
+// "request" is for private hire / large groups / custom experiences,
+// still resolved by respondToBookingAction. Existing listings are moved to
+// "request" by the migration (they have no slots configured yet); new
+// listings default to "instant" per this column default, but only take
+// effect once a vendor actually creates slots for them.
+export const bookingModeEnum = pgEnum("booking_mode", ["instant", "request"]);
 export const challengeCompletionStatusEnum = pgEnum("challenge_completion_status", [
   "pending",
   "verified",
@@ -296,6 +307,10 @@ export const vendorProfiles = pgTable("vendor_profiles", {
   // in plain text.
   staffPinHash: text("staff_pin_hash"),
   pinRotatedAt: timestamp("pin_rotated_at", { withTimezone: true }),
+  // Incremented every time vendorCancelConfirmedBookingAction cancels one
+  // of this vendor's already-confirmed bookings — surfaced on the admin
+  // dashboard so support can spot a vendor who's cancelling a lot.
+  vendorCancellationCount: integer("vendor_cancellation_count").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -323,6 +338,9 @@ export const listings = pgTable("listings", {
   latitude: numeric("latitude", { precision: 9, scale: 6 }),
   longitude: numeric("longitude", { precision: 9, scale: 6 }),
   active: boolean("active").notNull().default(true),
+  // Instant (slot capacity, no vendor approval) vs request (old
+  // pending/vendor-approves flow) — see bookingModeEnum above.
+  bookingMode: bookingModeEnum("booking_mode").notNull().default("instant"),
   // Platform-level publish gate, separate from the vendor's own active
   // toggle — see listingMeetsPublishBar. Defaults true; a listing missing
   // real content (description/price/location) is filtered out regardless
@@ -332,6 +350,39 @@ export const listings = pgTable("listings", {
   viewCount: integer("view_count").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// One bookable time window for an instant-mode listing — a vendor (or
+// admin acting for them) creates these ahead of time, either as one-off
+// rows or a batch expanded from a "every Saturday 10am/12pm/2pm" recurring
+// request (see createRecurringSlotsAction). bookedCount is capacity spent
+// by held+confirmed bookings against this slot — reserveSlotHold is the
+// only place that increments it, always inside a pg_advisory_xact_lock on
+// this row's id, so two travellers can never both take the last spot (see
+// src/lib/slot-booking.ts). isBlocked hides it from travellers without
+// deleting it (a vendor closing one Saturday, not cancelling the series).
+export const slots = pgTable(
+  "slots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    vendorId: uuid("vendor_id")
+      .notNull()
+      .references(() => vendorProfiles.id, { onDelete: "cascade" }),
+    listingId: uuid("listing_id")
+      .notNull()
+      .references(() => listings.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    startTime: time("start_time").notNull(),
+    endTime: time("end_time").notNull(),
+    capacity: integer("capacity").notNull(),
+    bookedCount: integer("booked_count").notNull().default(0),
+    isBlocked: boolean("is_blocked").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("slots_listing_date_idx").on(table.listingId, table.date),
+    index("slots_vendor_idx").on(table.vendorId),
+  ],
+);
 
 // A listing's photos — same bytea-in-Postgres approach as postImages, kept
 // consistent rather than introducing a separate blob-storage dependency.
@@ -596,6 +647,27 @@ export const bookings = pgTable("bookings", {
   // separate from status (confirmed/completed/cancelled), since a ticket
   // can be checked in well before its auto-complete date passes.
   checkedInAt: timestamp("checked_in_at", { withTimezone: true }),
+  // Set only for an instant-mode booking against a real slot (see slots
+  // above) — null for request-mode and every pre-existing booking.
+  slotId: uuid("slot_id").references(() => slots.id, { onDelete: "set null" }),
+  // status="held" only: reserveSlotHold sets this ~10 minutes out:
+  // confirmBookingPayment (payment success) or expireStaleHolds (cron +
+  // lazy check) resolve it one way or the other. Null once resolved.
+  heldUntil: timestamp("held_until", { withTimezone: true }),
+  // status="pending" (request mode) only: respondToBookingAction (vendor
+  // accept/decline) or expirePendingRequests resolve it. Null once
+  // resolved or for any instant-mode booking.
+  requestExpiresAt: timestamp("request_expires_at", { withTimezone: true }),
+  // Flutterwave transaction reference — same role as xpBookings.paymentRef.
+  // Only set for instant-mode bookings that actually went through
+  // checkout; null for request-mode (no in-app payment) and local-dev's
+  // no-Flutterwave-configured fallback.
+  paymentRef: text("payment_ref"),
+  // Set when a vendor cancels a booking that was already confirmed —
+  // surfaces it in the admin dashboard's support queue (see
+  // vendorCancelConfirmedBookingAction). Never set for a traveller's own
+  // cancellation, which needs no follow-up.
+  flaggedForSupport: boolean("flagged_for_support").notNull().default(false),
 });
 
 // A line item actually selected for one booking — a chosen room, vehicle,
@@ -1557,7 +1629,13 @@ export const bookingsRelations = relations(bookings, ({ one, many }) => ({
   listing: one(listings, { fields: [bookings.listingId], references: [listings.id] }),
   journey: one(journeys, { fields: [bookings.journeyId], references: [journeys.id] }),
   event: one(events, { fields: [bookings.eventId], references: [events.id] }),
+  slot: one(slots, { fields: [bookings.slotId], references: [slots.id] }),
   items: many(bookingItems),
+}));
+
+export const slotsRelations = relations(slots, ({ one }) => ({
+  vendor: one(vendorProfiles, { fields: [slots.vendorId], references: [vendorProfiles.id] }),
+  listing: one(listings, { fields: [slots.listingId], references: [listings.id] }),
 }));
 
 export const stampsRelations = relations(stamps, ({ one }) => ({

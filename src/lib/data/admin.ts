@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, gt, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import {
   accreditationReviews,
@@ -89,6 +89,18 @@ export async function getVendorApprovalQueue() {
       };
     }),
   );
+}
+
+/** Vendors with at least one confirmed-booking cancellation, worst first —
+ * surfaced on the admin bookings dashboard alongside flagged bookings so
+ * support can spot a vendor pattern, not just a one-off complaint. */
+export async function getVendorsWithRecentCancellations() {
+  const rows = await db
+    .select({ vendor: vendorProfiles })
+    .from(vendorProfiles)
+    .where(gt(vendorProfiles.vendorCancellationCount, 0))
+    .orderBy(desc(vendorProfiles.vendorCancellationCount));
+  return rows.map((r) => r.vendor);
 }
 
 export async function getAllBookings() {

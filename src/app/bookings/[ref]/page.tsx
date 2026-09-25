@@ -1,25 +1,33 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BookingThread } from "@/components/booking-thread";
+import { CancelBookingButton } from "@/components/cancel-booking-button";
 import { CheckCircleIcon } from "@/components/icons";
 import { CopyCodeButton } from "@/components/copy-code-button";
 import { ShareBookingButton } from "@/components/share-booking-button";
 import { TicketQrCard } from "@/components/ticket-qr-card";
 import { requireRole } from "@/lib/auth";
+import { CANCELLATION_CUTOFF_HOURS } from "@/lib/booking-config";
 import { formatMinor } from "@/lib/currency";
 import { getBookingByRef, getBookingItems, getTravellerProfileByUserId } from "@/lib/data/traveller";
+import { verifyFlutterwaveTransaction } from "@/lib/flutterwave";
 import { formatRewardDiscount } from "@/lib/reward-format";
+import { confirmBookingPayment, hoursUntilVisit } from "@/lib/slot-booking";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 const STATUS_COPY: Record<string, { label: string; detail: string }> = {
+  held: {
+    label: "Finishing payment…",
+    detail: "Your spot is reserved for a few minutes while checkout completes. Refresh once you've paid.",
+  },
   pending: {
     label: "Booking request sent",
     detail: "This is confirmed on our end — we've passed it to the partner, who'll accept it from their dashboard shortly.",
   },
   confirmed: {
     label: "Booking confirmed",
-    detail: "The partner has accepted your request. Show this code when you arrive.",
+    detail: "Show this code when you arrive.",
   },
   completed: {
     label: "Booking completed",
@@ -29,16 +37,43 @@ const STATUS_COPY: Record<string, { label: string; detail: string }> = {
     label: "Booking cancelled",
     detail: "This booking was cancelled and is no longer active.",
   },
+  expired: {
+    label: "Booking expired",
+    detail: "This reservation wasn't completed in time and the spot was released. Book again if it's still available.",
+  },
 };
 
-export default async function BookingConfirmationPage({ params }: { params: Promise<{ ref: string }> }) {
+export default async function BookingConfirmationPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ ref: string }>;
+  searchParams: Promise<{ bookingTxRef?: string; status?: string; transaction_id?: string }>;
+}) {
   const { ref } = await params;
+  const { bookingTxRef, status: flwStatus, transaction_id: flwTransactionId } = await searchParams;
   const session = await requireRole("traveller");
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
   if (!travellerProfile) return null;
 
-  const row = await getBookingByRef(ref, travellerProfile.id);
+  let row = await getBookingByRef(ref, travellerProfile.id);
   if (!row) notFound();
+
+  // The checkout redirect back from Flutterwave — one of two independent
+  // confirmation paths alongside the webhook (see
+  // /api/webhooks/flutterwave); confirmBookingPayment is idempotent, so
+  // this is a safe no-op if the webhook already confirmed it.
+  let capacityLost = false;
+  if (bookingTxRef === row.booking.id && flwStatus === "successful" && flwTransactionId) {
+    const result = await confirmBookingPayment(row.booking.id, flwTransactionId, verifyFlutterwaveTransaction);
+    if (result.outcome === "capacity_lost") capacityLost = true;
+    if (result.outcome === "confirmed" || result.outcome === "capacity_lost") {
+      row = await getBookingByRef(ref, travellerProfile.id);
+      if (!row) notFound();
+    }
+  }
+  const paymentFailed = bookingTxRef === row.booking.id && flwStatus != null && flwStatus !== "successful";
+
   const { booking, listing, event, vendor, journey, appliedReward } = row;
   const status = STATUS_COPY[booking.status] ?? STATUS_COPY.pending;
   const lineItems = await getBookingItems(booking.id);
@@ -52,8 +87,31 @@ export default async function BookingConfirmationPage({ params }: { params: Prom
       : null;
   const isTicket = (event != null || listing?.type === "event") && booking.status !== "cancelled";
 
+  const hoursUntilSlot = booking.visitDate ? hoursUntilVisit(booking.visitDate, booking.visitTime) : null;
+  const canCancelForFree = hoursUntilSlot == null || hoursUntilSlot >= CANCELLATION_CUTOFF_HOURS;
+  // held/pending: always cancellable, never a refund (nothing was charged
+  // yet — see cancelBooking). confirmed: only cancellable outside the free
+  // window, and refunds when it is; inside the window, cancelBooking
+  // itself would just reject it, so the button isn't offered at all.
+  const canCancel =
+    booking.status === "held" ||
+    booking.status === "pending" ||
+    (booking.status === "confirmed" && canCancelForFree);
+  const cancelRefunds = booking.status === "confirmed";
+
   return (
     <main className="mx-auto max-w-lg px-4 py-10 md:px-6">
+      {paymentFailed && booking.status !== "confirmed" && (
+        <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          Payment didn&apos;t go through, so this spot wasn&apos;t reserved. Try booking again.
+        </div>
+      )}
+      {capacityLost && (
+        <div className="mb-4 rounded-2xl border border-marigold-300 bg-marigold-50 p-4 text-sm text-marigold-900">
+          Your payment went through, but this slot filled up before we could confirm it — you&apos;ve been
+          refunded automatically. Sorry about that; try another time slot.
+        </div>
+      )}
       <div className="flex flex-col items-center text-center">
         <span className="flex h-14 w-14 items-center justify-center rounded-full bg-forest-100 text-forest-700">
           <CheckCircleIcon className="h-8 w-8" />
@@ -160,6 +218,28 @@ export default async function BookingConfirmationPage({ params }: { params: Prom
           </div>
         )}
       </div>
+
+      {(canCancel || booking.status === "confirmed") && (
+        <div className="mt-4 rounded-2xl border border-forest-900/10 bg-white p-4 text-center text-sm">
+          {canCancel ? (
+            <>
+              <p className="text-forest-800/70">
+                {cancelRefunds
+                  ? `Free cancellation up to ${CANCELLATION_CUTOFF_HOURS} hours before your slot — you'll be refunded automatically.`
+                  : "This hasn't been paid for yet, so you can cancel anytime with nothing to refund."}
+              </p>
+              <div className="mt-3 flex justify-center">
+                <CancelBookingButton bookingId={booking.id} refunds={cancelRefunds} />
+              </div>
+            </>
+          ) : (
+            <p className="text-forest-800/70">
+              This booking is now within {CANCELLATION_CUTOFF_HOURS} hours of the slot, so it&apos;s no longer
+              eligible for free cancellation.
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="mt-4 flex flex-wrap justify-center gap-2">
         {journey && (
