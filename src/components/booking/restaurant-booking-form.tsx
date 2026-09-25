@@ -15,19 +15,25 @@ export function RestaurantBookingForm({
   birthdayPerks,
   hasBirthdaySet,
   allowsPreorder,
+  slotPicker,
 }: BookingFormProps) {
   return (
     <BookingFormShell listingId={listingId} journeyId={journeyId} submitLabel={bookingActionLabel.restaurant}>
       <Field label="Name for the reservation" htmlFor="bookingName" className="block">
         <TextInput id="bookingName" name="bookingName" defaultValue={travellerDisplayName} required />
       </Field>
+      {slotPicker}
       <div className="flex gap-2">
-        <Field label="Date" htmlFor="visitDate">
-          <TextInput id="visitDate" type="date" name="visitDate" required />
-        </Field>
-        <Field label="Time" htmlFor="visitTime">
-          <TextInput id="visitTime" type="time" name="visitTime" required />
-        </Field>
+        {!slotPicker && (
+          <>
+            <Field label="Date" htmlFor="visitDate">
+              <TextInput id="visitDate" type="date" name="visitDate" required />
+            </Field>
+            <Field label="Time" htmlFor="visitTime">
+              <TextInput id="visitTime" type="time" name="visitTime" required />
+            </Field>
+          </>
+        )}
         <Field label="Guests" htmlFor="partySize" className="w-20">
           <TextInput id="partySize" type="number" name="partySize" min={1} defaultValue={1} required />
         </Field>

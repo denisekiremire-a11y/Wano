@@ -7,13 +7,15 @@ import { formatCommission } from "@/lib/currency";
 import { formatRewardDiscount } from "@/lib/reward-format";
 
 const statusStyles: Record<string, string> = {
+  held: "bg-nile-100 text-nile-800",
   pending: "bg-marigold-100 text-marigold-800",
   confirmed: "bg-forest-100 text-forest-800",
   completed: "bg-nile-100 text-nile-800",
   cancelled: "bg-red-100 text-red-700",
+  expired: "bg-forest-50 text-forest-800/50",
 };
 
-type Status = "pending" | "confirmed" | "completed" | "cancelled";
+type Status = "held" | "pending" | "confirmed" | "completed" | "cancelled" | "expired";
 
 export function BookingRow({
   bookingId,
@@ -33,6 +35,7 @@ export function BookingRow({
   notes,
   appliedReward,
   birthdayInfo,
+  flaggedForSupport,
 }: {
   bookingId: string;
   bookingRef: string;
@@ -51,11 +54,13 @@ export function BookingRow({
   notes?: string | null;
   appliedReward?: { title: string; discountType: "percent" | "fixed" | "freebie"; discountValue: string | null } | null;
   birthdayInfo?: { perkTitle: string; eligible: boolean; reason: string } | null;
+  flaggedForSupport?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const [showThread, setShowThread] = useState(false);
 
-  const setStatus = (next: Status) => startTransition(() => adminSetBookingStatusAction(bookingId, next));
+  const setStatus = (next: "confirmed" | "completed" | "cancelled") =>
+    startTransition(() => adminSetBookingStatusAction(bookingId, next));
 
   return (
     <div className="rounded-2xl border border-forest-900/10 bg-white p-4">
@@ -93,9 +98,16 @@ export function BookingRow({
             </p>
           )}
         </div>
-        <span className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${statusStyles[status]}`}>
-          {status}
-        </span>
+        <div className="flex flex-col items-end gap-1.5">
+          <span className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${statusStyles[status]}`}>
+            {status}
+          </span>
+          {flaggedForSupport && (
+            <span className="rounded-full bg-red-100 px-2.5 py-1 text-[11px] font-semibold text-red-700">
+              ⚑ Flagged — vendor cancelled
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-forest-900/5 pt-3">
@@ -108,15 +120,16 @@ export function BookingRow({
         <div className="flex flex-wrap gap-1.5">
           <button
             type="button"
-            disabled={pending || status === "confirmed"}
+            disabled={pending || status === "confirmed" || status === "held" || status === "expired"}
             onClick={() => setStatus("confirmed")}
             className="rounded-full bg-forest-800 px-2.5 py-1 text-[11px] font-semibold text-white disabled:opacity-40"
+            title={status === "held" ? "Still mid-checkout — wait for payment to confirm it, or let it expire" : undefined}
           >
             Confirm
           </button>
           <button
             type="button"
-            disabled={pending || status === "completed"}
+            disabled={pending || status === "completed" || status === "held" || status === "expired"}
             onClick={() => setStatus("completed")}
             className="rounded-full bg-nile-700 px-2.5 py-1 text-[11px] font-semibold text-white disabled:opacity-40"
           >
@@ -124,7 +137,7 @@ export function BookingRow({
           </button>
           <button
             type="button"
-            disabled={pending || status === "cancelled"}
+            disabled={pending || status === "cancelled" || status === "expired"}
             onClick={() => setStatus("cancelled")}
             className="rounded-full border border-red-300 px-2.5 py-1 text-[11px] font-semibold text-red-700 disabled:opacity-40"
           >

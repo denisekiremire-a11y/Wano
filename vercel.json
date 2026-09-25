@@ -15,6 +15,10 @@
     {
       "path": "/api/cron/xp-payment-expiry",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/booking-holds-expiry",
+      "schedule": "0 9 * * *"
     }
   ]
 }

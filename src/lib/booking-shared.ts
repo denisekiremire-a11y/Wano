@@ -3,6 +3,10 @@ import type { ListingType } from "@/lib/listing-type";
 
 export type BookingItemSelection = { itemId: string; quantity: number };
 
+export function generateBookingRef() {
+  return `PAM-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+}
+
 export const bookingActionLabel: Record<ListingType, string> = {
   restaurant: "Reserve table",
   hotel: "Reserve room",
@@ -26,6 +30,12 @@ export type BookingDraft = {
   notes: string | null;
   userRewardId: string | null;
   journeyId: string | null;
+  // Set only when booking an instant-mode listing's real slot (see
+  // slots in schema.ts) — visitDate/visitTime above are still populated
+  // too (derived from the slot when it's picked), purely for display; the
+  // actual reservation always re-reads the authoritative slot row by this
+  // id, never trusts these draft fields for capacity/timing.
+  slotId: string | null;
   details: Record<string, string>;
   items: BookingItemSelection[];
 };
@@ -128,6 +138,7 @@ export function parseBookingDraft(
       notes: str(formData, "notes"),
       userRewardId: str(formData, "userRewardId"),
       journeyId: str(formData, "journeyId"),
+      slotId: str(formData, "slotId"),
       details,
       items,
     },
@@ -167,6 +178,7 @@ export function parseEventBookingDraft(
       notes: str(formData, "notes"),
       userRewardId: str(formData, "userRewardId"),
       journeyId: null,
+      slotId: null,
       details: {},
       items,
     },
@@ -187,6 +199,7 @@ export function encodeBookingDraft(draft: BookingDraft): URLSearchParams {
   if (draft.notes) p.set("notes", draft.notes);
   if (draft.userRewardId) p.set("userRewardId", draft.userRewardId);
   if (draft.journeyId) p.set("journeyId", draft.journeyId);
+  if (draft.slotId) p.set("slotId", draft.slotId);
   if (Object.keys(draft.details).length > 0) p.set("details", JSON.stringify(draft.details));
   if (draft.items.length > 0) {
     p.set("items", draft.items.map((i) => `${i.itemId}:${i.quantity}`).join(","));
@@ -225,6 +238,7 @@ export function decodeBookingDraft(sp: Record<string, string | undefined>): Book
     notes: sp.notes ?? null,
     userRewardId: sp.userRewardId ?? null,
     journeyId: sp.journeyId ?? null,
+    slotId: sp.slotId ?? null,
     details,
     items,
   };

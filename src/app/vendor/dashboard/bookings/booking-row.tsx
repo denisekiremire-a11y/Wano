@@ -2,14 +2,18 @@
 
 import { useState, useTransition } from "react";
 import { BookingThread } from "@/components/booking-thread";
-import { respondToBookingAction } from "@/lib/actions/vendor-booking-actions";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { useToast } from "@/components/toast/toast-provider";
+import { respondToBookingAction, vendorCancelConfirmedBookingAction } from "@/lib/actions/vendor-booking-actions";
 import { formatRewardDiscount } from "@/lib/reward-format";
 
 const statusStyles: Record<string, string> = {
+  held: "bg-nile-100 text-nile-800",
   pending: "bg-marigold-100 text-marigold-800",
   confirmed: "bg-forest-100 text-forest-800",
   completed: "bg-forest-100 text-forest-800",
   cancelled: "bg-red-100 text-red-700",
+  expired: "bg-forest-50 text-forest-800/50",
 };
 
 export function BookingRow({
@@ -34,7 +38,7 @@ export function BookingRow({
   subjectLabel?: string;
   journeyName: string | null;
   bookingRef: string;
-  status: "pending" | "confirmed" | "completed" | "cancelled";
+  status: "held" | "pending" | "confirmed" | "completed" | "cancelled" | "expired";
   bookingName?: string | null;
   visitDate?: string | null;
   visitTime?: string | null;
@@ -45,6 +49,20 @@ export function BookingRow({
 }) {
   const [pending, startTransition] = useTransition();
   const [showThread, setShowThread] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const { push } = useToast();
+
+  function doVendorCancel() {
+    startTransition(async () => {
+      const result = await vendorCancelConfirmedBookingAction(bookingId);
+      if (result.error) {
+        setCancelError(result.error);
+      } else {
+        setCancelError(null);
+        push("Booking cancelled and traveller notified.");
+      }
+    });
+  }
 
   return (
     <div className="rounded-2xl border border-forest-900/10 bg-white p-4">
@@ -113,8 +131,32 @@ export function BookingRow({
               </button>
             </>
           )}
+          {status === "confirmed" && (
+            <ConfirmDialog
+              title="Cancel this booking?"
+              body={
+                <p>
+                  The traveller will be refunded and notified, and this will be flagged for Wano support. This
+                  can&apos;t be undone.
+                </p>
+              }
+              confirmLabel="Cancel booking"
+              onConfirm={doVendorCancel}
+              trigger={(open) => (
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={open}
+                  className="rounded-full border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-50"
+                >
+                  {pending ? "Cancelling…" : "Cancel booking"}
+                </button>
+              )}
+            />
+          )}
         </div>
       </div>
+      {cancelError && <p className="mt-2 text-right text-xs text-red-700">{cancelError}</p>}
       {showThread && (
         <div className="mt-3">
           <BookingThread bookingId={bookingId} heading={`Messages with ${travellerName}`} />

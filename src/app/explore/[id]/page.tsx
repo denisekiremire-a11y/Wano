@@ -9,6 +9,7 @@ import { SaveButton } from "@/components/save-button";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { GettingThere, type TransportOption } from "@/components/afcon/getting-there";
 import { getBirthdayPerksForListing } from "@/lib/data/birthday";
+import { CANCELLATION_CUTOFF_HOURS } from "@/lib/booking-config";
 import { formatListingPrice, formatMinor } from "@/lib/currency";
 import { AFCON_CLUB_ENABLED } from "@/lib/feature-flags";
 import {
@@ -20,9 +21,11 @@ import {
 } from "@/lib/data/journeys";
 import { getListingImageIdsFor } from "@/lib/data/listing-images";
 import { getListingItemImageIds, getListingItems } from "@/lib/data/listing-items";
+import { getListingSlots } from "@/lib/data/slots";
 import { getRatingSummary, getReviewsForListing } from "@/lib/data/reviews";
 import { getClaimableRewardsForTarget, getMyClaimedRewardsForTarget } from "@/lib/data/rewards";
 import { BookingForm } from "@/components/booking/booking-form";
+import { SlotPicker } from "@/components/booking/slot-picker";
 import { bookingActionLabel, computeBookingTotals, decodeBookingDraft } from "@/lib/booking-shared";
 import {
   getCommentsForPost,
@@ -114,7 +117,7 @@ export default async function ListingDetailPage({
     }
   }
 
-  const [tags, birthdayPerks, rating, reviews, interested, media, typeDetails, imageIds, transportListings, items] =
+  const [tags, birthdayPerks, rating, reviews, interested, media, typeDetails, imageIds, transportListings, items, slots] =
     await Promise.all([
       getJourneysFeaturingListing(listing.id),
       getBirthdayPerksForListing(listing.id),
@@ -126,7 +129,9 @@ export default async function ListingDetailPage({
       getListingImageIdsFor(listing.id),
       AFCON_CLUB_ENABLED ? searchListings({ type: "transport" }) : Promise.resolve([]),
       getListingItems(listing.id),
+      listing.bookingMode === "instant" ? getListingSlots(listing.id) : Promise.resolve([]),
     ]);
+  const slotPickerElement = listing.bookingMode === "instant" ? <SlotPicker slots={slots} /> : undefined;
 
   const itemImageIdsMap = await getListingItemImageIds(items.map((i) => i.id));
   const itemsBySection = new Map<string, typeof items>();
@@ -166,7 +171,9 @@ export default async function ListingDetailPage({
   const bookingJourneyId = tags.some((j) => j.id === requestedJourneyId) ? requestedJourneyId : null;
 
   const activeSocials = socialLinks.filter((s) => vendor[s.key]);
-  const myUpcoming = myBookings.filter((b) => b.booking.status === "pending" || b.booking.status === "confirmed");
+  const myUpcoming = myBookings.filter(
+    (b) => b.booking.status === "pending" || b.booking.status === "held" || b.booking.status === "confirmed",
+  );
   const myPast = myBookings.filter((b) => b.booking.status === "completed" || b.booking.status === "cancelled");
 
   const reviewDraft = isReviewMode ? decodeBookingDraft(rawSearchParams) : null;
@@ -298,6 +305,13 @@ export default async function ListingDetailPage({
               </div>
             </div>
 
+            {listing.bookingMode === "instant" && (
+              <p className="mt-4 rounded-xl bg-forest-50 p-3 text-xs text-forest-800/70">
+                Free cancellation up to {CANCELLATION_CUTOFF_HOURS} hours before your slot. After that, this
+                booking is non-refundable.
+              </p>
+            )}
+
             <form action={bookListingFormAction} className="mt-4">
               <input type="hidden" name="listingId" value={listing.id} />
               <input type="hidden" name="bookingName" value={reviewDraft.bookingName ?? travellerDisplayName} />
@@ -313,6 +327,7 @@ export default async function ListingDetailPage({
               {reviewDraft.notes && <input type="hidden" name="notes" value={reviewDraft.notes} />}
               {reviewDraft.userRewardId && <input type="hidden" name="userRewardId" value={reviewDraft.userRewardId} />}
               {reviewDraft.journeyId && <input type="hidden" name="journeyId" value={reviewDraft.journeyId} />}
+              {reviewDraft.slotId && <input type="hidden" name="slotId" value={reviewDraft.slotId} />}
               {Object.keys(reviewDraft.details).length > 0 && (
                 <input type="hidden" name="details" value={JSON.stringify(reviewDraft.details)} />
               )}
@@ -448,6 +463,7 @@ export default async function ListingDetailPage({
                   birthdayPerks={birthdayPerks}
                   hasBirthdaySet={hasBirthdaySet}
                   allowsPreorder={typeDetails.restaurant?.allowsPreorder ?? false}
+                  slotPicker={slotPickerElement}
                 />
               ) : (
                 <Link
