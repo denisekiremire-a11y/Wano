@@ -15,7 +15,7 @@ export default function PrivacyPage() {
           <p className="mt-2">
             Account details you give us (name, email, password), booking and review activity, and
             for accredited business partners, KYC documents submitted for verification. We collect
-            only what's needed to run bookings, verification, and rewards — not more.
+            only what’s needed to run bookings, verification, and rewards — not more.
           </p>
         </section>
         <section>
@@ -29,8 +29,8 @@ export default function PrivacyPage() {
         <section>
           <h2 className="font-display text-lg font-semibold text-forest-900">Your rights</h2>
           <p className="mt-2">
-            Under Uganda's Data Protection and Privacy Act, 2019, you can request a copy of your
-            data, ask us to correct or delete it, and object to how it's used. [ASSUMPTION — add a
+            Under Uganda’s Data Protection and Privacy Act, 2019, you can request a copy of your
+            data, ask us to correct or delete it, and object to how it’s used. [ASSUMPTION — add a
             real contact address/email once one exists.]
           </p>
         </section>

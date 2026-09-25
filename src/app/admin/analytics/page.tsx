@@ -49,7 +49,7 @@ export default async function AdminAnalyticsPage() {
       <section className="rounded-2xl border border-forest-900/10 bg-white p-5">
         <h2 className="font-display text-lg font-semibold text-forest-900">KYC document access log</h2>
         <p className="mt-1 text-xs text-forest-800/60">
-          Every fetch of a sensitive vendor document's actual bytes, audited.
+          Every fetch of a sensitive vendor document’s actual bytes, audited.
         </p>
         <div className="mt-3 space-y-1 text-sm">
           {docAccess.length === 0 ? (

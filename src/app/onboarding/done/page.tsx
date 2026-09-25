@@ -31,7 +31,7 @@ export default async function OnboardingDonePage() {
 
   return (
     <main className="mx-auto flex min-h-[70vh] max-w-lg flex-col justify-center px-4 py-12 text-center md:px-6">
-      <p className="text-xs font-medium uppercase tracking-wide text-nile-700">You're all set</p>
+      <p className="text-xs font-medium uppercase tracking-wide text-nile-700">You’re all set</p>
       <h1 className="mt-2 font-display text-2xl font-semibold text-forest-900">{action.title}</h1>
       <p className="mt-2 text-sm text-forest-800/70">{action.body}</p>
 
