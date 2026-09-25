@@ -13,7 +13,7 @@ export default async function OnboardingCityPage() {
         Where are you based?
       </h1>
       <p className="mt-1 text-sm text-forest-800/70">
-        We'll prioritize places and events near you first.
+        We’ll prioritize places and events near you first.
       </p>
 
       <form action={saveCityAction} className="mt-6 space-y-4">

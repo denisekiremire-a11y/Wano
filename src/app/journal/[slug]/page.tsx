@@ -67,7 +67,6 @@ export default async function JournalPostPage({ params }: { params: Promise<{ sl
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-8 md:px-6">
-      {/* eslint-disable-next-line react/no-danger */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       <p className="text-xs font-medium uppercase tracking-wide text-nile-700">{post.category}</p>

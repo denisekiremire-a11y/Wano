@@ -14,7 +14,7 @@ export function NewsletterForm({ source }: { source: string }) {
       <input type="hidden" name="source" value={source} />
       <p className="text-sm font-semibold text-forest-900">Get the Journal in your inbox</p>
       <p className="mt-0.5 text-xs text-forest-800/60">
-        One email when there's a new guide worth reading. No spam.
+        One email when there’s a new guide worth reading. No spam.
       </p>
       <div className="mt-3 flex flex-col gap-2 sm:flex-row">
         <input
