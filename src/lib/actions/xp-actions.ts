@@ -10,6 +10,7 @@ import { requireRole } from "@/lib/auth";
 import {
   createFlutterwavePayment,
   isFlutterwaveConfigured,
+  missingFlutterwaveEnv,
   refundFlutterwaveTransaction,
   verifyFlutterwaveTransaction,
 } from "@/lib/flutterwave";
@@ -51,10 +52,11 @@ async function notifyXpBookingConfirmed(travellerEmail: string, travellerName: s
  * same match so two travellers can never both take the last seat — real,
  * unaffected by any of the payment logic below it.
  *
- * Without FLUTTERWAVE_SECRET_KEY configured (local dev only — see
- * .env.example), this falls back to the old instant-confirm behavior so
- * development/demo isn't blocked on having real payment credentials. The
- * moment a real key is set, anywhere, a booking starts "pending" and only
+ * Outside of `next dev`, both Flutterwave keys must be set or the booking
+ * is refused outright — seats are never confirmed without real payment.
+ * Under `next dev` with no FLUTTERWAVE_SECRET_KEY, this falls back to the
+ * old instant-confirm behavior so local development isn't blocked on
+ * having real payment credentials. With a real key set, a booking starts "pending" and only
  * becomes "confirmed" once confirmXpPayment verifies a real payment (via
  * the webhook or the checkout redirect — see the /events/[id] page and
  * /api/webhooks/flutterwave). */
@@ -72,6 +74,12 @@ export async function createXpBookingAction(_prev: ActionState, formData: FormDa
   const match = await getMatchById(parsed.data.matchId);
   if (!match) return { error: "Match not found." };
   if (match.startAt <= new Date()) return { error: "This match has already started." };
+
+  const missingPaymentEnv = missingFlutterwaveEnv();
+  if (missingPaymentEnv.length > 0 && process.env.NODE_ENV !== "development") {
+    console.error(`Refusing Wano XP booking — missing ${missingPaymentEnv.join(", ")}.`);
+    return { error: "Paid seats aren't available right now — please try again later." };
+  }
 
   const paymentConfigured = isFlutterwaveConfigured();
   if (!paymentConfigured) {
