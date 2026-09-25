@@ -17,7 +17,7 @@ export default function TermsPage() {
         <section>
           <h2 className="font-display text-lg font-semibold text-forest-900">Verification</h2>
           <p className="mt-2">
-            A "Wano Verified" badge means the business passed our KYC review (registration, ID, and
+            A “Wano Verified” badge means the business passed our KYC review (registration, ID, and
             supporting documents). It is not a guarantee of the quality of any specific booking, and
             it is not a refund or insurance policy.
           </p>
@@ -27,7 +27,7 @@ export default function TermsPage() {
           <p className="mt-2">
             Cancellation and refund terms are set by the individual business, not Wano. If something
             goes wrong, contact the business directly first; Wano support can help mediate but
-            doesn't guarantee a specific outcome. [ASSUMPTION — replace once a real resolution
+            doesn’t guarantee a specific outcome. [ASSUMPTION — replace once a real resolution
             process exists.]
           </p>
         </section>
