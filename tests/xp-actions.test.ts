@@ -70,6 +70,7 @@ afterEach(() => {
 
 describe("createXpBookingAction", () => {
   it("confirms instantly with no payment when Flutterwave isn't configured (local dev)", async () => {
+    vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("FLUTTERWAVE_SECRET_KEY", "");
     fake.current.queue("select", []); // no seats taken yet
 
@@ -87,8 +88,23 @@ describe("createXpBookingAction", () => {
     expect(notify.notifyUser).toHaveBeenCalledOnce();
   });
 
+  it.each([
+    ["no Flutterwave keys", { FLUTTERWAVE_SECRET_KEY: "", FLUTTERWAVE_WEBHOOK_SECRET_HASH: "" }],
+    ["no webhook hash", { FLUTTERWAVE_SECRET_KEY: "FLWSECK_TEST-123", FLUTTERWAVE_WEBHOOK_SECRET_HASH: "" }],
+  ])("refuses the booking outside local dev with %s", async (_label, env) => {
+    vi.stubEnv("NODE_ENV", "production");
+    for (const [k, v] of Object.entries(env)) vi.stubEnv(k, v);
+
+    const result = await createXpBookingAction({}, seatsForm(2));
+
+    expect(result).toEqual({ error: "Paid seats aren't available right now — please try again later." });
+    expect(fake.current.inserted).toHaveLength(0);
+    expect(flutterwave.createFlutterwavePayment).not.toHaveBeenCalled();
+  });
+
   it("holds the booking as pending and sends the traveller to checkout when Flutterwave is configured", async () => {
     vi.stubEnv("FLUTTERWAVE_SECRET_KEY", "FLWSECK_TEST-123");
+    vi.stubEnv("FLUTTERWAVE_WEBHOOK_SECRET_HASH", "test-webhook-hash");
     fake.current.queue("select", []);
     fake.current.queue("insert", [{ id: "xp-booking-1" }]);
     flutterwave.createFlutterwavePayment.mockResolvedValue("https://checkout.flutterwave.test/pay/abc");
@@ -106,6 +122,7 @@ describe("createXpBookingAction", () => {
 
   it("deletes the pending booking if checkout can't be started", async () => {
     vi.stubEnv("FLUTTERWAVE_SECRET_KEY", "FLWSECK_TEST-123");
+    vi.stubEnv("FLUTTERWAVE_WEBHOOK_SECRET_HASH", "test-webhook-hash");
     fake.current.queue("select", []);
     fake.current.queue("insert", [{ id: "xp-booking-1" }]);
     flutterwave.createFlutterwavePayment.mockRejectedValue(new Error("Flutterwave down"));
@@ -117,6 +134,7 @@ describe("createXpBookingAction", () => {
   });
 
   it("refuses more seats than remain", async () => {
+    vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("FLUTTERWAVE_SECRET_KEY", "");
     fake.current.queue("select", [{ seats: WANO_XP_SEAT_CAP - 1 }]);
 
