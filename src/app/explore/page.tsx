@@ -2,7 +2,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { AfconPromoCard } from "@/components/afcon/afcon-promo-card";
 import { JourneyArt } from "@/components/journey-art";
-import { ListingTypeIcon } from "@/components/listing-type-icon";
 import { PartnerCard } from "@/components/partner-card";
 import { PartnerSearchForm } from "@/components/partner-search-form";
 import { getBirthdayPerksForListings } from "@/lib/data/birthday";
@@ -103,136 +102,156 @@ export default async function ExplorePage({
     return qs ? `/explore?${qs}` : "/explore";
   }
 
+  const viewTabs = [
+    { key: "all" as const, label: "All" },
+    { key: "places" as const, label: "Places" },
+    { key: "trending" as const, label: "Trending" },
+  ];
+
   return (
-    <main className="mx-auto max-w-6xl px-4 py-12 md:px-6">
-      <p className="text-xs font-medium uppercase tracking-wide text-nile-700">Explore Wano</p>
-      <h1 className="mt-2 font-display text-3xl font-semibold text-forest-900 md:text-4xl">
-        Places, experiences and journeys near you.
-      </h1>
-      <p className="mt-3 max-w-2xl text-forest-800/75">
-        Every place here is Wano-verified. Browse by type below, or dive into one of the five
-        curated Wano Journeys.
-      </p>
+    <main className="font-editorial-body bg-paper">
+      {/* Header — a functional filter bar, so it keeps a real hero's
+          asymmetry (heavy serif left, controls staggered right at the
+          baseline) without pretending to be marketing copy: the tabs and
+          verified toggle are underline-on-active text, never pill
+          buttons. */}
+      <section className="border-b border-ink/10">
+        <div className="mx-auto max-w-6xl px-4 py-12 md:px-6 md:py-16">
+          <div className="grid gap-8 lg:grid-cols-12 lg:items-end">
+            <div className="lg:col-span-7">
+              <p className="eyebrow text-ember">Explore Wano</p>
+              <h1 className="font-serif-editorial mt-3 text-4xl leading-[0.98] text-ink md:text-5xl">
+                Places, experiences and journeys near you.
+              </h1>
+              <p className="mt-4 max-w-md text-ink/60">
+                Every place here is Wano-verified. Browse by type below, or dive into one of the
+                five curated Wano Journeys.
+              </p>
+            </div>
 
-      {AFCON_CLUB_ENABLED && (
-        <div className="mt-6">
-          <AfconPromoCard />
+            <nav className="flex flex-wrap items-center gap-x-6 gap-y-3 lg:col-span-5 lg:justify-end">
+              {viewTabs.map((v) => (
+                <Link
+                  key={v.key}
+                  href={buildHref({ view: v.key })}
+                  className={`eyebrow border-b-2 pb-1 transition-colors ${
+                    activeView === v.key
+                      ? "border-ember text-ink"
+                      : "border-transparent text-ink/40 hover:text-ink"
+                  }`}
+                >
+                  {v.label}
+                </Link>
+              ))}
+              <span className="hidden h-3.5 w-px bg-ink/15 sm:block" />
+              <Link
+                href={buildHref({ verified: !verifiedOnly })}
+                className={`eyebrow border-b-2 pb-1 transition-colors ${
+                  verifiedOnly ? "border-ember text-ink" : "border-transparent text-ink/40 hover:text-ink"
+                }`}
+              >
+                Verified · deals
+              </Link>
+            </nav>
+          </div>
+
+          {AFCON_CLUB_ENABLED && (
+            <div className="mt-10">
+              <AfconPromoCard />
+            </div>
+          )}
         </div>
-      )}
-
-      <div className="mt-6 flex flex-wrap gap-1.5">
-        {(
-          [
-            { key: "all" as const, label: "All" },
-            { key: "places" as const, label: "Places" },
-            { key: "trending" as const, label: "Trending" },
-          ]
-        ).map((v) => (
-          <Link
-            key={v.key}
-            href={buildHref({ view: v.key })}
-            className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
-              activeView === v.key
-                ? "border-forest-800 bg-forest-800 text-white"
-                : "border-forest-900/15 text-forest-800 hover:bg-forest-50"
-            }`}
-          >
-            {v.label}
-          </Link>
-        ))}
-        <Link
-          href={buildHref({ verified: !verifiedOnly })}
-          className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
-            verifiedOnly
-              ? "border-forest-800 bg-forest-800 text-white"
-              : "border-forest-900/15 text-forest-800 hover:bg-forest-50"
-          }`}
-        >
-          Wano Verified · deals
-        </Link>
-      </div>
+      </section>
 
       {activeView === "all" && (
-        <section className="mt-8 min-w-0">
-          <h2 className="font-display text-xl font-semibold text-forest-900">Curated journeys</h2>
-          <div className="mt-4 flex gap-4 overflow-x-auto pb-1">
-          {journeyList.map((journey) => {
-            const theme = journeyTheme(journey.slug);
-            return (
-              <Link
-                key={journey.id}
-                href={`/journeys/${journey.slug}`}
-                className="group w-40 flex-none overflow-hidden rounded-2xl border border-forest-900/10 bg-white transition hover:shadow-lg"
-              >
-                <div className="relative h-20 overflow-hidden" style={{ backgroundColor: theme.hero }}>
-                  {theme.image ? (
-                    <Image
-                      src={theme.image}
-                      alt=""
-                      fill
-                      sizes="160px"
-                      unoptimized
-                      className="object-cover"
-                    />
-                  ) : (
-                    <JourneyArt slug={journey.slug} className="h-full w-full opacity-35" />
-                  )}
-                </div>
-                <div className="p-3">
-                  <h3 className="font-display text-sm font-semibold text-forest-900">{journey.name}</h3>
-                  <p className="mt-0.5 text-xs text-forest-800/60">{journey.location}</p>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
+        <section className="border-b border-ink/10">
+          <div className="mx-auto max-w-6xl px-4 py-12 md:px-6">
+            <p className="eyebrow text-ember">Five itineraries</p>
+            <h2 className="font-serif-editorial mt-2 text-2xl text-ink md:text-3xl">Curated journeys</h2>
+            <div className="mt-6 flex gap-5 overflow-x-auto pb-1">
+              {journeyList.map((journey) => {
+                const theme = journeyTheme(journey.slug);
+                return (
+                  <Link
+                    key={journey.id}
+                    href={`/journeys/${journey.slug}`}
+                    className="group w-44 flex-none"
+                  >
+                    <div
+                      className="relative aspect-[4/3] overflow-hidden border border-ink/10"
+                      style={{ backgroundColor: theme.hero }}
+                    >
+                      {theme.image ? (
+                        <Image
+                          src={theme.image}
+                          alt=""
+                          fill
+                          sizes="176px"
+                          unoptimized
+                          className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.02]"
+                        />
+                      ) : (
+                        <JourneyArt slug={journey.slug} className="h-full w-full opacity-35" />
+                      )}
+                    </div>
+                    <h3 className="font-serif-editorial mt-3 text-lg text-ink transition-colors group-hover:text-ember">
+                      {journey.name}
+                    </h3>
+                    <p className="eyebrow mt-1 text-ink/40">{journey.location}</p>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
         </section>
       )}
 
-      <section className="mt-10">
-        <h2 className="font-display text-xl font-semibold text-forest-900">Browse everything</h2>
+      <section className="border-b border-ink/10">
+        <div className="mx-auto max-w-6xl px-4 py-12 md:px-6">
+          <p className="eyebrow text-ember">By type</p>
+          <h2 className="font-serif-editorial mt-2 text-2xl text-ink md:text-3xl">Browse everything</h2>
 
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          <Link
-            href={buildHref({ type: undefined })}
-            className={`flex flex-col items-center gap-2 rounded-2xl border p-4 text-center transition ${
-              !validType
-                ? "border-forest-800 bg-forest-800 text-white"
-                : "border-forest-900/10 bg-white text-forest-900 hover:border-forest-800/40"
-            }`}
-          >
-            <span className="text-2xl" aria-hidden>
-              ✨
-            </span>
-            <span className="text-sm font-semibold">All places</span>
-          </Link>
-          {Object.entries(listingTypeLabels).map(([value, label]) => {
-            const active = validType === value;
-            return (
-              <Link
-                key={value}
-                href={buildHref({ type: value })}
-                className={`flex flex-col items-center gap-2 rounded-2xl border p-4 text-center transition ${
-                  active
-                    ? "border-forest-800 bg-forest-800 text-white"
-                    : "border-forest-900/10 bg-white text-forest-900 hover:border-forest-800/40"
-                }`}
-              >
-                <ListingTypeIcon type={value as ListingType} className="h-6 w-6" />
-                <span className="text-sm font-semibold">{label}</span>
-              </Link>
-            );
-          })}
-        </div>
+          {/* A typography table, not a row of icon tiles — active state
+              reads as ink-on-white with an underline, not a filled box. */}
+          <div className="mt-6 flex flex-wrap gap-x-8 gap-y-3 border-t border-ink/10 pt-6">
+            <Link
+              href={buildHref({ type: undefined })}
+              className={`text-lg transition-colors ${
+                !validType ? "border-b-2 border-ember text-ink" : "border-b-2 border-transparent text-ink/40 hover:text-ink"
+              }`}
+            >
+              All places
+            </Link>
+            {Object.entries(listingTypeLabels).map(([value, label]) => {
+              const active = validType === value;
+              return (
+                <Link
+                  key={value}
+                  href={buildHref({ type: value })}
+                  className={`text-lg transition-colors ${
+                    active ? "border-b-2 border-ember text-ink" : "border-b-2 border-transparent text-ink/40 hover:text-ink"
+                  }`}
+                >
+                  {label}
+                </Link>
+              );
+            })}
+          </div>
 
-        <div className="mt-4">
-          <PartnerSearchForm
-            locations={locations}
-            filters={{ type: validType, location, q }}
-            showTypeFilter={false}
-          />
+          <div className="mt-8">
+            <PartnerSearchForm
+              locations={locations}
+              filters={{ type: validType, location, q }}
+              showTypeFilter={false}
+            />
+          </div>
 
-          <p className="mt-4 text-sm text-forest-800/60">
+          {/* Results — a dense, evenly-spaced grid on purpose: it's the
+              one part of this page that's an actual search-results list
+              rather than curated editorial content, so a tight, scannable
+              layout is the honest choice against the generous whitespace
+              above, not a shortcut. */}
+          <p className="eyebrow mt-8 text-ink/40">
             {results.length} Wano-verified {results.length === 1 ? "place" : "places"} found
           </p>
 
@@ -257,7 +276,7 @@ export default async function ExplorePage({
               );
             })}
             {results.length === 0 && (
-              <p className="col-span-full rounded-xl border border-forest-900/10 bg-white p-6 text-center text-sm text-forest-800/60">
+              <p className="col-span-full border border-ink/10 bg-white p-6 text-center text-sm text-ink/50">
                 No places match those filters yet.
               </p>
             )}
