@@ -225,6 +225,42 @@
   letter-spacing: -0.01em;
 }
 
+/* .font-serif-editorial: Fraunces — loaded sitewide since the original
+   rebrand but, until the homepage's editorial pass, never actually
+   applied anywhere. Reserved for a handful of major headings that want a
+   warmer, literary counterpoint to Anton's poster-condensed voice —
+   optical sizing + a slight negative tracking keep large sizes tight
+   rather than loose the way serif faces can read at display scale. */
+@utility font-serif-editorial {
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-optical-sizing: auto;
+  letter-spacing: -0.01em;
+}
+
+/* Homepage category marquee (see CategoryMarquee in app/page.tsx) — a
+   continuous leftward scroll of a doubled list, translating exactly -50%
+   so the seam between the two copies is invisible. Paused on hover via
+   the component's own [animation-play-state] utility, and skipped
+   entirely for reduced-motion, where the strip just sits static (still
+   fully readable/clickable — motion here is decoration, never how the
+   content is reached). */
+@keyframes wano-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@utility animate-marquee {
+  animation: wano-marquee 30s linear infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
 @utility font-editorial-body {
   font-family: var(--font-editorial-body), system-ui, sans-serif;
 }
