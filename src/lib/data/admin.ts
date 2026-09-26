@@ -32,6 +32,117 @@ import {
   vendorDocumentListColumns,
 } from "./vendor";
 
+export type DashboardMetrics = {
+  commissionAllTime: number;
+  commissionLast7: number;
+  commissionPrev7: number;
+  commissionLast30: number;
+  commissionPrev30: number;
+  funnel: { won: number; pending: number; lost: number };
+  /** Oldest-first, one entry per calendar day (UTC), zero-filled — the last
+   * 30 days regardless of whether a given day had any bookings at all. */
+  dailyBookings: { date: string; count: number }[];
+  topVendors: { vendorProfileId: string; businessName: string; commission: number }[];
+};
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const WON_STATUSES = new Set(["confirmed", "completed"]);
+const LOST_STATUSES = new Set(["cancelled", "expired"]);
+
+/** Stage 2's actual business metrics — commission earned, the booking
+ * funnel, a 30-day trend, and who's driving revenue — none of which
+ * getCampaignMetrics (a pure headcount tally) surfaces. Fetches full rows
+ * and reduces in JS, same style as getCampaignMetrics/
+ * getAllTravellersWithProgress below: booking volume here is small enough
+ * that a SQL aggregation buys nothing but a second query shape to maintain.
+ * Vendor attribution only follows the listing-booking path (bookings ->
+ * listings -> vendorProfiles) — event-ticket bookings have no listing row
+ * to join through and are a small minority of the estimatedCommission
+ * total, so they're included in every total above but not attributed to
+ * a specific vendor in the leaderboard. */
+export async function getDashboardMetrics(): Promise<DashboardMetrics> {
+  const { rows, vendorRows } = await withRlsContext({ role: "admin" }, async (tx) => {
+    const rows = await tx
+      .select({
+        status: bookings.status,
+        commission: bookings.estimatedCommission,
+        createdAt: bookings.createdAt,
+        listingId: bookings.listingId,
+      })
+      .from(bookings);
+    const vendorRows = await tx
+      .select({ listingId: listings.id, vendorProfileId: listings.vendorProfileId, businessName: vendorProfiles.businessName })
+      .from(listings)
+      .innerJoin(vendorProfiles, eq(vendorProfiles.id, listings.vendorProfileId));
+    return { rows, vendorRows };
+  });
+  const vendorByListing = new Map(vendorRows.map((v) => [v.listingId, v]));
+
+  const now = Date.now();
+  const dailyCounts = new Map<string, number>();
+  for (let i = 0; i < 30; i++) {
+    dailyCounts.set(new Date(now - i * DAY_MS).toISOString().slice(0, 10), 0);
+  }
+
+  let commissionAllTime = 0;
+  let commissionLast7 = 0;
+  let commissionPrev7 = 0;
+  let commissionLast30 = 0;
+  let commissionPrev30 = 0;
+  let won = 0;
+  let lost = 0;
+  let pending = 0;
+  const vendorCommission = new Map<string, { businessName: string; commission: number }>();
+
+  for (const row of rows) {
+    const isWon = WON_STATUSES.has(row.status);
+    if (isWon) won++;
+    else if (LOST_STATUSES.has(row.status)) lost++;
+    else pending++;
+
+    const ageMs = now - row.createdAt.getTime();
+    if (isWon) {
+      const commission = Number(row.commission);
+      commissionAllTime += commission;
+      if (ageMs <= 7 * DAY_MS) commissionLast7 += commission;
+      else if (ageMs <= 14 * DAY_MS) commissionPrev7 += commission;
+      if (ageMs <= 30 * DAY_MS) commissionLast30 += commission;
+      else if (ageMs <= 60 * DAY_MS) commissionPrev30 += commission;
+
+      const vendor = row.listingId ? vendorByListing.get(row.listingId) : undefined;
+      if (vendor) {
+        const entry = vendorCommission.get(vendor.vendorProfileId) ?? { businessName: vendor.businessName, commission: 0 };
+        entry.commission += commission;
+        vendorCommission.set(vendor.vendorProfileId, entry);
+      }
+    }
+
+    if (ageMs >= 0 && ageMs < 30 * DAY_MS) {
+      const key = row.createdAt.toISOString().slice(0, 10);
+      if (dailyCounts.has(key)) dailyCounts.set(key, (dailyCounts.get(key) ?? 0) + 1);
+    }
+  }
+
+  const dailyBookings = [...dailyCounts.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, dayCount]) => ({ date, count: dayCount }));
+  const topVendors = [...vendorCommission.entries()]
+    .map(([vendorProfileId, v]) => ({ vendorProfileId, businessName: v.businessName, commission: v.commission }))
+    .sort((a, b) => b.commission - a.commission)
+    .slice(0, 5);
+
+  return {
+    commissionAllTime,
+    commissionLast7,
+    commissionPrev7,
+    commissionLast30,
+    commissionPrev30,
+    funnel: { won, pending, lost },
+    dailyBookings,
+    topVendors,
+  };
+}
+
 /** Most recent entries in the Stage 1.3 admin action log, newest first —
  * powers /admin/action-log. Capped rather than paginated for now; revisit
  * if the list ever gets too long to scan usefully at a glance. */
