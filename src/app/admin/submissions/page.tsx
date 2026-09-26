@@ -1,10 +1,11 @@
 import { getPendingSubmissions } from "@/lib/data/submissions";
 import { requireAdminPage } from "@/lib/auth";
+import { withRlsContext } from "@/lib/db-context";
 import { SubmissionRow } from "./submission-row";
 
 export default async function AdminSubmissionsPage() {
-  await requireAdminPage("/admin/submissions");
-  const rows = await getPendingSubmissions();
+  const session = await requireAdminPage("/admin/submissions");
+  const rows = await withRlsContext({ userId: session.userId, role: "admin" }, (tx) => getPendingSubmissions(tx));
 
   return (
     <div className="space-y-6">

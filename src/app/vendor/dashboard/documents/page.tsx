@@ -1,4 +1,5 @@
 import { getVendorDocuments, getVendorProfileByUserId } from "@/lib/data/vendor";
+import { withRlsContext } from "@/lib/db-context";
 import { getSession } from "@/lib/session";
 import { DocumentForm } from "./document-form";
 
@@ -20,7 +21,10 @@ export default async function VendorDocumentsPage() {
   const vendorProfile = await getVendorProfileByUserId(session!.userId);
   if (!vendorProfile) return null;
 
-  const documents = await getVendorDocuments(vendorProfile.id);
+  const documents = await withRlsContext(
+    { userId: session!.userId, role: "vendor", vendorProfileId: vendorProfile.id },
+    (tx) => getVendorDocuments(vendorProfile.id, tx),
+  );
 
   return (
     <div className="space-y-6">

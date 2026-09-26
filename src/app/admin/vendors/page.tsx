@@ -1,10 +1,11 @@
 import { getVendorApprovalQueue } from "@/lib/data/admin";
 import { requireAdminPage } from "@/lib/auth";
+import { withRlsContext } from "@/lib/db-context";
 import { VendorRow } from "./vendor-row";
 
 export default async function AdminVendorsPage() {
-  await requireAdminPage("/admin/vendors");
-  const rows = await getVendorApprovalQueue();
+  const session = await requireAdminPage("/admin/vendors");
+  const rows = await withRlsContext({ userId: session.userId, role: "admin" }, (tx) => getVendorApprovalQueue(tx));
 
   return (
     <div className="space-y-6">

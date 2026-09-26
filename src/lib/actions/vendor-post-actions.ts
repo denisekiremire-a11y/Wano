@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { postImages, posts } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
+import { withRlsContext } from "@/lib/db-context";
 import { generateVendorPostItem } from "@/lib/feed-generators";
 import { getOwningVendorProfileId } from "@/lib/data/rewards";
 import { getVendorProfileByUserId } from "@/lib/data/vendor";
@@ -53,17 +54,23 @@ export async function createVendorPostAction(_prev: ActionState, formData: FormD
     .filter((f): f is File => f instanceof File && f.size > 0)
     .slice(0, MAX_IMAGES);
 
-  const [post] = await db
-    .insert(posts)
-    .values({
-      authorType: "vendor",
-      vendorProfileId: vendorProfile.id,
-      content: parsed.data.content,
-      contextType: parsed.data.listingId ? "listing" : null,
-      contextId: parsed.data.listingId || null,
-      status: "visible",
-    })
-    .returning();
+  const post = await withRlsContext(
+    { userId: session.userId, role: "vendor", vendorProfileId: vendorProfile.id },
+    async (tx) => {
+      const [row] = await tx
+        .insert(posts)
+        .values({
+          authorType: "vendor",
+          vendorProfileId: vendorProfile.id,
+          content: parsed.data.content,
+          contextType: parsed.data.listingId ? "listing" : null,
+          contextId: parsed.data.listingId || null,
+          status: "visible",
+        })
+        .returning();
+      return row;
+    },
+  );
 
   for (let i = 0; i < images.length; i++) {
     const buffer = Buffer.from(await images[i].arrayBuffer());
@@ -92,7 +99,12 @@ export async function deleteVendorPostAction(postId: string) {
   const [post] = await db.select().from(posts).where(eq(posts.id, postId)).limit(1);
   if (!post || post.vendorProfileId !== vendorProfile.id) throw new Error("Post not found.");
 
-  await db.delete(posts).where(eq(posts.id, postId));
+  await withRlsContext(
+    { userId: session.userId, role: "vendor", vendorProfileId: vendorProfile.id },
+    async (tx) => {
+      await tx.delete(posts).where(eq(posts.id, postId));
+    },
+  );
   revalidatePath("/social");
   revalidatePath("/vendor/dashboard/posts");
   if (post.contextType === "listing" && post.contextId) revalidatePath(`/explore/${post.contextId}`);

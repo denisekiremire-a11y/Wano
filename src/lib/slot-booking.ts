@@ -4,7 +4,25 @@ import { db } from "@/db";
 import { bookingItems, bookings, listings, slots } from "@/db/schema";
 import { generateBookingRef } from "@/lib/booking-shared";
 import { CANCELLATION_CUTOFF_HOURS, HOLD_MINUTES, REQUEST_EXPIRY_HOURS } from "@/lib/booking-config";
+import type { Tx } from "@/lib/db-context";
 import { refundFlutterwaveTransaction } from "@/lib/flutterwave";
+
+// slots is RLS-protected (see drizzle/manual_rls_round_a.sql): writes need
+// app.role='admin' or a matching app.vendor_profile_id set on the same
+// transaction. Every function below is trusted booking-engine logic
+// called on behalf of whoever's checking out (a traveller, most often) or
+// by cron with no session at all — not "a vendor acting on their own
+// slot" — so it always opens its transaction with admin-equivalent
+// context rather than trying to attribute the write to whichever end
+// user happened to trigger it. Ownership was already validated earlier in
+// the request (a traveller can only reserve a slot that's really theirs
+// to book); this is just how that already-checked write clears RLS.
+function withSystemRls<T>(fn: (tx: Tx) => Promise<T>): Promise<T> {
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select set_config('app.role', 'admin', true)`);
+    return fn(tx);
+  });
+}
 
 // The capacity-safe core of the booking system — every function here is a
 // plain async function, never "use server", never calling redirect()/
@@ -72,7 +90,7 @@ export type ReserveSlotHoldInput = {
 export async function reserveSlotHold(
   input: ReserveSlotHoldInput,
 ): Promise<{ error: string } | { booking: Booking }> {
-  return db.transaction(async (tx) => {
+  return withSystemRls(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${input.slotId}))`);
 
     const [slot] = await tx.select().from(slots).where(eq(slots.id, input.slotId)).limit(1);
@@ -132,7 +150,7 @@ export async function reserveSlotHold(
  * rollback and for a traveller abandoning checkout. No refund: a held
  * booking never had a confirmed payment (see confirmBookingPayment). */
 export async function releaseHeldBooking(bookingId: string): Promise<void> {
-  await db.transaction(async (tx) => {
+  await withSystemRls(async (tx) => {
     const [updated] = await tx
       .update(bookings)
       .set({ status: "expired", heldUntil: null })
@@ -200,7 +218,7 @@ export async function confirmBookingPayment(
     return updated ? { outcome: "confirmed", booking: updated } : { outcome: "already_confirmed" };
   }
 
-  return db.transaction(async (tx) => {
+  return withSystemRls(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${booking.slotId}))`);
 
     const [current] = await tx.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
@@ -247,7 +265,7 @@ export async function expireStaleHolds(): Promise<{ expiredBookingIds: string[] 
 
   const expiredBookingIds: string[] = [];
   for (const row of stale) {
-    const resolved = await db.transaction(async (tx) => {
+    const resolved = await withSystemRls(async (tx) => {
       if (row.slotId) await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${row.slotId}))`);
       const [updated] = await tx
         .update(bookings)
@@ -298,7 +316,7 @@ export async function cancelBooking(bookingId: string, travellerId: string): Pro
   if (!booking || booking.travellerId !== travellerId) return { error: "Booking not found." };
 
   if (booking.status === "held" || booking.status === "pending") {
-    await db.transaction(async (tx) => {
+    await withSystemRls(async (tx) => {
       await tx
         .update(bookings)
         .set({ status: "cancelled", heldUntil: null, requestExpiresAt: null })
@@ -324,7 +342,7 @@ export async function cancelBooking(bookingId: string, travellerId: string): Pro
     refunded = await refundFlutterwaveTransaction(booking.paymentRef, booking.totalMinor);
   }
 
-  await db.transaction(async (tx) => {
+  await withSystemRls(async (tx) => {
     await tx.update(bookings).set({ status: "cancelled" }).where(eq(bookings.id, bookingId));
     if (booking.slotId) {
       await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${booking.slotId}))`);
@@ -352,7 +370,7 @@ export async function vendorCancelConfirmedBooking(bookingId: string): Promise<C
     refunded = await refundFlutterwaveTransaction(booking.paymentRef, booking.totalMinor);
   }
 
-  await db.transaction(async (tx) => {
+  await withSystemRls(async (tx) => {
     await tx.update(bookings).set({ status: "cancelled", flaggedForSupport: true }).where(eq(bookings.id, bookingId));
     if (booking.slotId) {
       await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${booking.slotId}))`);

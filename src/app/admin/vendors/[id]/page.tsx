@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getVendorDetail } from "@/lib/data/admin";
 import { getListingImageIdsFor } from "@/lib/data/listing-images";
 import { requireAdminPage } from "@/lib/auth";
+import { withRlsContext } from "@/lib/db-context";
 import { AccreditationPanel } from "./accreditation-panel";
 import { DocumentReviewRow } from "./document-review-row";
 import { ListingForm } from "./listing-form";
@@ -12,9 +13,9 @@ export default async function AdminVendorDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireAdminPage("/admin/vendors");
+  const session = await requireAdminPage("/admin/vendors");
   const { id } = await params;
-  const detail = await getVendorDetail(id);
+  const detail = await withRlsContext({ userId: session.userId, role: "admin" }, (tx) => getVendorDetail(id, tx));
   if (!detail) notFound();
 
   const { vendorProfile, vendorUser, listingRow, documents, reviews, allJourneys } = detail;

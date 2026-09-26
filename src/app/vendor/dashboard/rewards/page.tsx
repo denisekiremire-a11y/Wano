@@ -3,6 +3,7 @@ import { formatRewardDiscount } from "@/lib/reward-format";
 import { getVendorRewards } from "@/lib/data/rewards";
 import { getSubmissionsForVendor } from "@/lib/data/submissions";
 import { getVendorProfileByUserId } from "@/lib/data/vendor";
+import { withRlsContext } from "@/lib/db-context";
 import { getSession } from "@/lib/session";
 import { WithdrawSubmissionButton } from "../listings/withdraw-submission-button";
 
@@ -13,7 +14,9 @@ export default async function VendorRewardsPage() {
 
   const [rewardRows, submissions] = await Promise.all([
     getVendorRewards(vendorProfile.id),
-    getSubmissionsForVendor(vendorProfile.id),
+    withRlsContext({ userId: session!.userId, role: "vendor", vendorProfileId: vendorProfile.id }, (tx) =>
+      getSubmissionsForVendor(vendorProfile.id, tx),
+    ),
   ]);
 
   const rewardSubmissions = submissions.filter((s) => s.entityType === "reward");

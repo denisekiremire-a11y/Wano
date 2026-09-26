@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getVendorListings, getVendorProfileByUserId } from "@/lib/data/vendor";
 import { getVendorRewards } from "@/lib/data/rewards";
 import { getSubmissionsForVendor } from "@/lib/data/submissions";
+import { withRlsContext } from "@/lib/db-context";
 import { getSession } from "@/lib/session";
 
 const statusCopy = {
@@ -27,7 +28,9 @@ export default async function VendorDashboardPage() {
   const [listingRows, rewardRows, submissions] = await Promise.all([
     getVendorListings(vendorProfile.id),
     getVendorRewards(vendorProfile.id),
-    getSubmissionsForVendor(vendorProfile.id),
+    withRlsContext({ userId: session!.userId, role: "vendor", vendorProfileId: vendorProfile.id }, (tx) =>
+      getSubmissionsForVendor(vendorProfile.id, tx),
+    ),
   ]);
   const status = statusCopy[vendorProfile.accreditationStatus];
   const pendingSubmissions = submissions.filter((s) => s.status === "pending");

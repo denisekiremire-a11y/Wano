@@ -1,5 +1,6 @@
 import { and, count, desc, eq, gte, inArray, isNotNull, or } from "drizzle-orm";
 import { db } from "@/db";
+import type { DbOrTx } from "@/lib/db-context";
 import {
   bookings,
   events,
@@ -116,8 +117,8 @@ export const vendorDocumentListColumns = {
   reviewedAt: vendorDocuments.reviewedAt,
 } as const;
 
-export async function getVendorDocuments(vendorProfileId: string) {
-  return db
+export async function getVendorDocuments(vendorProfileId: string, client: DbOrTx = db) {
+  return client
     .select(vendorDocumentListColumns)
     .from(vendorDocuments)
     .where(eq(vendorDocuments.vendorProfileId, vendorProfileId))
@@ -126,8 +127,8 @@ export async function getVendorDocuments(vendorProfileId: string) {
 
 /** Fetches one document's actual bytes (or its external URL) for the
  * download/view route — the only place fileData should be selected. */
-export async function getVendorDocumentFile(documentId: string) {
-  const [doc] = await db
+export async function getVendorDocumentFile(documentId: string, client: DbOrTx = db) {
+  const [doc] = await client
     .select({
       id: vendorDocuments.id,
       vendorProfileId: vendorDocuments.vendorProfileId,

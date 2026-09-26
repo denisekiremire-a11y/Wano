@@ -1,6 +1,5 @@
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { db } from "@/db";
 import {
   experienceDetails,
   hotelDetails,
@@ -10,6 +9,7 @@ import {
   restaurantDetails,
   vendorProfiles,
 } from "@/db/schema";
+import type { Tx } from "@/lib/db-context";
 import { generatePlaceAddedItem } from "@/lib/feed-generators";
 
 // Shared by the admin's direct-edit form (applies immediately) and the
@@ -96,8 +96,14 @@ export function parseListingContentFromFormData(formData: FormData) {
 /** Creates or updates a listing (plus its journey tags, offer, and
  * type-specific detail row) from approved content. Returns the listing id.
  * Never touches isPublished/active — those are the platform gate and the
- * vendor's own pause switch respectively, orthogonal to content moderation. */
+ * vendor's own pause switch respectively, orthogonal to content moderation.
+ *
+ * Always called from an admin action (direct edit or submission approval)
+ * — takes the caller's RLS transaction (see withRlsContext) rather than
+ * the bare db client, since it writes to listings, which is RLS-protected
+ * and requires app.role='admin' to be set on the same transaction. */
 export async function applyListingContent(
+  tx: Tx,
   listingId: string | null,
   vendorProfileId: string,
   d: ListingContent,
@@ -118,28 +124,28 @@ export async function applyListingContent(
 
   let id = listingId;
   if (id) {
-    await db.update(listings).set(listingValues).where(eq(listings.id, id));
+    await tx.update(listings).set(listingValues).where(eq(listings.id, id));
   } else {
-    const [created] = await db.insert(listings).values(listingValues).returning();
+    const [created] = await tx.insert(listings).values(listingValues).returning();
     id = created.id;
     // No-ops if the vendor isn't trusted yet — setAccreditationStatusAction
     // backfills this listing once they are.
     await generatePlaceAddedItem(id);
   }
 
-  await db.delete(listingJourneys).where(eq(listingJourneys.listingId, id));
+  await tx.delete(listingJourneys).where(eq(listingJourneys.listingId, id));
   if (d.journeyIds.length > 0) {
-    await db.insert(listingJourneys).values(d.journeyIds.map((journeyId) => ({ listingId: id!, journeyId })));
+    await tx.insert(listingJourneys).values(d.journeyIds.map((journeyId) => ({ listingId: id!, journeyId })));
   }
 
-  const [existingOffer] = await db.select().from(offers).where(eq(offers.listingId, id)).limit(1);
+  const [existingOffer] = await tx.select().from(offers).where(eq(offers.listingId, id)).limit(1);
   if (existingOffer) {
-    await db
+    await tx
       .update(offers)
       .set({ discountText: d.discountText, freebieText: d.freebieText || null, updatedAt: new Date() })
       .where(eq(offers.listingId, id));
   } else {
-    await db.insert(offers).values({ listingId: id, discountText: d.discountText, freebieText: d.freebieText || null });
+    await tx.insert(offers).values({ listingId: id, discountText: d.discountText, freebieText: d.freebieText || null });
   }
 
   if (d.type === "hotel") {
@@ -149,9 +155,9 @@ export async function applyListingContent(
       checkInTime: d.hotelCheckIn || null,
       checkOutTime: d.hotelCheckOut || null,
     };
-    const [existing] = await db.select().from(hotelDetails).where(eq(hotelDetails.listingId, id)).limit(1);
-    if (existing) await db.update(hotelDetails).set(values).where(eq(hotelDetails.listingId, id));
-    else await db.insert(hotelDetails).values({ listingId: id, ...values });
+    const [existing] = await tx.select().from(hotelDetails).where(eq(hotelDetails.listingId, id)).limit(1);
+    if (existing) await tx.update(hotelDetails).set(values).where(eq(hotelDetails.listingId, id));
+    else await tx.insert(hotelDetails).values({ listingId: id, ...values });
   } else if (d.type === "restaurant") {
     const values = {
       cuisine: d.restaurantCuisine || null,
@@ -159,18 +165,18 @@ export async function applyListingContent(
       hours: d.restaurantHours || null,
       allowsPreorder: d.restaurantAllowsPreorder ?? false,
     };
-    const [existing] = await db.select().from(restaurantDetails).where(eq(restaurantDetails.listingId, id)).limit(1);
-    if (existing) await db.update(restaurantDetails).set(values).where(eq(restaurantDetails.listingId, id));
-    else await db.insert(restaurantDetails).values({ listingId: id, ...values });
+    const [existing] = await tx.select().from(restaurantDetails).where(eq(restaurantDetails.listingId, id)).limit(1);
+    if (existing) await tx.update(restaurantDetails).set(values).where(eq(restaurantDetails.listingId, id));
+    else await tx.insert(restaurantDetails).values({ listingId: id, ...values });
   } else if (d.type === "experience") {
     const values = {
       durationText: d.experienceDuration || null,
       groupSizeText: d.experienceGroupSize || null,
       whatsIncluded: d.experienceIncluded || null,
     };
-    const [existing] = await db.select().from(experienceDetails).where(eq(experienceDetails.listingId, id)).limit(1);
-    if (existing) await db.update(experienceDetails).set(values).where(eq(experienceDetails.listingId, id));
-    else await db.insert(experienceDetails).values({ listingId: id, ...values });
+    const [existing] = await tx.select().from(experienceDetails).where(eq(experienceDetails.listingId, id)).limit(1);
+    if (existing) await tx.update(experienceDetails).set(values).where(eq(experienceDetails.listingId, id));
+    else await tx.insert(experienceDetails).values({ listingId: id, ...values });
   }
 
   return id;
@@ -178,9 +184,10 @@ export async function applyListingContent(
 
 /** The vendor's own social links live on vendorProfiles, not the listing —
  * bundled into the same submission payload as a convenience since the
- * vendor-facing form edits them together, but applied separately. */
-export async function applyVendorSocialLinks(vendorProfileId: string, d: ListingContent) {
-  await db
+ * vendor-facing form edits them together, but applied separately. Takes
+ * the caller's RLS transaction for the same reason as applyListingContent. */
+export async function applyVendorSocialLinks(tx: Tx, vendorProfileId: string, d: ListingContent) {
+  await tx
     .update(vendorProfiles)
     .set({
       instagramUrl: d.instagramUrl || null,

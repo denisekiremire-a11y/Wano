@@ -19,6 +19,7 @@ import {
   vendorDocuments,
   vendorProfiles,
 } from "@/db/schema";
+import type { DbOrTx } from "@/lib/db-context";
 import { calculatePostEarningsMinor, isInfluencerByFollowers, MONETIZABLE_POST_LIKE_THRESHOLD } from "@/lib/influencer";
 import { getEngagementCounts } from "./social";
 import { getJourneyTagsForListing } from "./journeys";
@@ -43,26 +44,26 @@ export async function getAllAdmins() {
     .orderBy(users.createdAt);
 }
 
-export async function getVendorDetail(vendorProfileId: string) {
+export async function getVendorDetail(vendorProfileId: string, client: DbOrTx = db) {
   const vendorProfile = await getVendorProfileById(vendorProfileId);
   if (!vendorProfile) return null;
 
-  const [vendorUser] = await db.select().from(users).where(eq(users.id, vendorProfile.userId)).limit(1);
+  const [vendorUser] = await client.select().from(users).where(eq(users.id, vendorProfile.userId)).limit(1);
 
   const [listingRow, documents, reviews, allJourneys] = await Promise.all([
     getVendorListingFull(vendorProfileId),
-    db
+    client
       .select(vendorDocumentListColumns)
       .from(vendorDocuments)
       .where(eq(vendorDocuments.vendorProfileId, vendorProfileId))
       .orderBy(desc(vendorDocuments.uploadedAt)),
-    db
+    client
       .select({ review: accreditationReviews, reviewer: users })
       .from(accreditationReviews)
       .innerJoin(users, eq(accreditationReviews.reviewerUserId, users.id))
       .where(eq(accreditationReviews.vendorProfileId, vendorProfileId))
       .orderBy(desc(accreditationReviews.decidedAt)),
-    db.select().from(journeys).orderBy(journeys.sortOrder),
+    client.select().from(journeys).orderBy(journeys.sortOrder),
   ]);
 
   return { vendorProfile, vendorUser, listingRow, documents, reviews, allJourneys };
@@ -75,8 +76,8 @@ export async function getPendingAccreditationCount() {
   return row?.total ?? 0;
 }
 
-export async function getVendorApprovalQueue() {
-  const rows = await db
+export async function getVendorApprovalQueue(client: DbOrTx = db) {
+  const rows = await client
     .select({ vendor: vendorProfiles, user: users })
     .from(vendorProfiles)
     .innerJoin(users, eq(vendorProfiles.userId, users.id))
@@ -86,7 +87,7 @@ export async function getVendorApprovalQueue() {
     rows.map(async (row) => {
       const [listingRow, pendingDocs] = await Promise.all([
         getVendorListingWithOffer(row.vendor.id),
-        db
+        client
           .select(vendorDocumentListColumns)
           .from(vendorDocuments)
           .where(eq(vendorDocuments.vendorProfileId, row.vendor.id)),

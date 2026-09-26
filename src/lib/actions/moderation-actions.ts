@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { blocks, moderationActions, posts, reports } from "@/db/schema";
 import { requireAdminLevel, requireRole } from "@/lib/auth";
+import { withRlsContext } from "@/lib/db-context";
 import { generateUserPostItem } from "@/lib/feed-generators";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { countInLastHour, RATE_LIMITS } from "@/lib/rate-limit";
@@ -45,7 +46,13 @@ export async function createReportAction(targetType: ReportTargetType, targetId:
     if (total >= AUTO_HIDE_REPORT_THRESHOLD) {
       const [post] = await db.select().from(posts).where(eq(posts.id, targetId)).limit(1);
       if (post && post.status === "visible") {
-        await db.update(posts).set({ status: "hidden" }).where(eq(posts.id, targetId));
+        // This is the platform's own auto-moderation policy acting on
+        // someone else's post, not the reporting traveller editing it
+        // themselves — treated as a system/admin-equivalent write for RLS,
+        // same reasoning as slot-booking.ts's withSystemRls.
+        await withRlsContext({ userId: session.userId, role: "admin" }, async (tx) => {
+          await tx.update(posts).set({ status: "hidden" }).where(eq(posts.id, targetId));
+        });
         await db.insert(moderationActions).values({
           targetType: "post",
           targetId,
@@ -105,10 +112,12 @@ export async function resolveReportAction(
 
   if (action === "hide" || action === "remove") {
     if (report.targetType === "post") {
-      await db
-        .update(posts)
-        .set({ status: action === "hide" ? "hidden" : "removed" })
-        .where(eq(posts.id, report.targetId));
+      await withRlsContext({ userId: session.userId, role: "admin" }, async (tx) => {
+        await tx
+          .update(posts)
+          .set({ status: action === "hide" ? "hidden" : "removed" })
+          .where(eq(posts.id, report.targetId));
+      });
     } else if (report.targetType === "comment") {
       // Comments have no status column to hide-but-keep — both actions
       // just delete the row.
@@ -159,10 +168,12 @@ export async function reviewPendingPostAction(postId: string, decision: "approve
   const [post] = await db.select().from(posts).where(eq(posts.id, postId)).limit(1);
   if (!post) throw new Error("Post not found.");
 
-  await db
-    .update(posts)
-    .set({ status: decision === "approve" ? "visible" : "removed" })
-    .where(eq(posts.id, postId));
+  await withRlsContext({ userId: session.userId, role: "admin" }, async (tx) => {
+    await tx
+      .update(posts)
+      .set({ status: decision === "approve" ? "visible" : "removed" })
+      .where(eq(posts.id, postId));
+  });
 
   if (decision === "approve" && post.travellerId) {
     const { travellerProfiles } = await import("@/db/schema");

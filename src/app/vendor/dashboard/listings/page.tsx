@@ -2,6 +2,7 @@ import Link from "next/link";
 import { formatListingPrice } from "@/lib/currency";
 import { getVendorListings, getVendorProfileByUserId } from "@/lib/data/vendor";
 import { getSubmissionsForVendor } from "@/lib/data/submissions";
+import { withRlsContext } from "@/lib/db-context";
 import { listingTypeLabels } from "@/lib/listing-type";
 import { getSession } from "@/lib/session";
 import { WithdrawSubmissionButton } from "./withdraw-submission-button";
@@ -14,7 +15,9 @@ export default async function VendorListingsPage() {
 
   const [listingRows, submissions] = await Promise.all([
     getVendorListings(vendorProfile.id),
-    getSubmissionsForVendor(vendorProfile.id),
+    withRlsContext({ userId: session!.userId, role: "vendor", vendorProfileId: vendorProfile.id }, (tx) =>
+      getSubmissionsForVendor(vendorProfile.id, tx),
+    ),
   ]);
 
   const pendingByListing = new Map(

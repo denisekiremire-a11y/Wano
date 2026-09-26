@@ -17,6 +17,7 @@ import {
 } from "@/db/schema";
 import { ADMIN_MIN_LEVEL } from "@/lib/admin-permissions";
 import { requireAdminLevel } from "@/lib/auth";
+import { withRlsContext } from "@/lib/db-context";
 import { generatePlaceAddedItemsForVendor } from "@/lib/feed-generators";
 import { applyListingContent, applyVendorSocialLinks, listingContentSchema } from "@/lib/actions/listing-shared";
 import { notifyTravellerOfBookingStatus } from "@/lib/booking-notifications";
@@ -82,10 +83,12 @@ export async function reviewVendorDocumentAction(
 ) {
   const session = await requireAdminLevel(ADMIN_MIN_LEVEL["/admin/vendors"]);
 
-  await db
-    .update(vendorDocuments)
-    .set({ status, reviewedByUserId: session.userId, reviewedAt: new Date() })
-    .where(eq(vendorDocuments.id, documentId));
+  await withRlsContext({ userId: session.userId, role: "admin" }, async (tx) => {
+    await tx
+      .update(vendorDocuments)
+      .set({ status, reviewedByUserId: session.userId, reviewedAt: new Date() })
+      .where(eq(vendorDocuments.id, documentId));
+  });
 
   revalidatePath("/admin/vendors");
 }
@@ -100,7 +103,7 @@ export async function upsertVendorListingAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireAdminLevel(ADMIN_MIN_LEVEL["/admin/vendors"]);
+  const session = await requireAdminLevel(ADMIN_MIN_LEVEL["/admin/vendors"]);
 
   const parsed = adminListingSchema.safeParse({
     vendorProfileId: formData.get("vendorProfileId"),
@@ -147,9 +150,12 @@ export async function upsertVendorListingAction(
     if (!ALLOWED_LISTING_IMAGE_TYPES.has(file.type)) return { error: "Photos must be JPG, PNG, or WebP." };
   }
 
-  await applyVendorSocialLinks(d.vendorProfileId, d);
-  const listingId = await applyListingContent(d.listingId || null, d.vendorProfileId, d);
-  await db.update(listings).set({ isPublished: d.isPublished }).where(eq(listings.id, listingId));
+  const listingId = await withRlsContext({ userId: session.userId, role: "admin" }, async (tx) => {
+    await applyVendorSocialLinks(tx, d.vendorProfileId, d);
+    const id = await applyListingContent(tx, d.listingId || null, d.vendorProfileId, d);
+    await tx.update(listings).set({ isPublished: d.isPublished }).where(eq(listings.id, id));
+    return id;
+  });
 
   if (images.length > 0) {
     const existing = await db
@@ -236,17 +242,19 @@ export async function adminSetBookingStatusAction(
  * on profile/social/feed) and users.name (shown in admin lists and emails)
  * in sync, since nothing else updates both together. */
 export async function updateTravellerNameAction(travellerId: string, name: string) {
-  await requireAdminLevel(ADMIN_MIN_LEVEL["travellers:write"]);
+  const session = await requireAdminLevel(ADMIN_MIN_LEVEL["travellers:write"]);
   const trimmed = name.trim();
   if (!trimmed) throw new Error("Name can't be empty.");
 
-  const [traveller] = await db.select().from(travellerProfiles).where(eq(travellerProfiles.id, travellerId)).limit(1);
-  if (!traveller) throw new Error("Traveller not found.");
+  await withRlsContext({ userId: session.userId, role: "admin" }, async (tx) => {
+    const [traveller] = await tx.select().from(travellerProfiles).where(eq(travellerProfiles.id, travellerId)).limit(1);
+    if (!traveller) throw new Error("Traveller not found.");
 
-  await Promise.all([
-    db.update(travellerProfiles).set({ displayName: trimmed }).where(eq(travellerProfiles.id, travellerId)),
-    db.update(users).set({ name: trimmed }).where(eq(users.id, traveller.userId)),
-  ]);
+    await Promise.all([
+      tx.update(travellerProfiles).set({ displayName: trimmed }).where(eq(travellerProfiles.id, travellerId)),
+      tx.update(users).set({ name: trimmed }).where(eq(users.id, traveller.userId)),
+    ]);
+  });
 
   revalidatePath("/admin/travellers");
   revalidatePath("/social");

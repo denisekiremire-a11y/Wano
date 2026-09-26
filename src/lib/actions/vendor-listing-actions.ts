@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { listingImages, listings, vendorSubmissions } from "@/db/schema";
 import { parseListingContentFromFormData } from "@/lib/actions/listing-shared";
 import { requireRole } from "@/lib/auth";
+import { withRlsContext } from "@/lib/db-context";
 import { getPendingEditSubmission } from "@/lib/data/submissions";
 import { getVendorOwnListingFull, getVendorProfileByUserId } from "@/lib/data/vendor";
 import { notifyAdmin } from "@/lib/notify";
@@ -42,23 +43,23 @@ export async function submitListingAction(_prev: ActionState, formData: FormData
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Please check the listing fields." };
   const payload = parsed.data as unknown as Record<string, unknown>;
 
-  if (listingId) {
-    const existing = await getPendingEditSubmission(vendorProfile.id, "listing", listingId);
-    if (existing) {
-      await db
-        .update(vendorSubmissions)
-        .set({ payload, status: "pending", reviewNotes: null, updatedAt: new Date() })
-        .where(eq(vendorSubmissions.id, existing.id));
-    } else {
-      await db
-        .insert(vendorSubmissions)
-        .values({ vendorProfileId: vendorProfile.id, entityType: "listing", entityId: listingId, payload });
-    }
-  } else {
-    await db
-      .insert(vendorSubmissions)
-      .values({ vendorProfileId: vendorProfile.id, entityType: "listing", entityId: null, payload });
-  }
+  await withRlsContext(
+    { userId: session.userId, role: "vendor", vendorProfileId: vendorProfile.id },
+    async (tx) => {
+      const existing = listingId ? await getPendingEditSubmission(vendorProfile.id, "listing", listingId, tx) : null;
+
+      if (existing) {
+        await tx
+          .update(vendorSubmissions)
+          .set({ payload, status: "pending", reviewNotes: null, updatedAt: new Date() })
+          .where(eq(vendorSubmissions.id, existing.id));
+      } else {
+        await tx
+          .insert(vendorSubmissions)
+          .values({ vendorProfileId: vendorProfile.id, entityType: "listing", entityId: listingId, payload });
+      }
+    },
+  );
 
   await notifyAdmin("New vendor listing submission", [
     `<strong>${vendorProfile.businessName}</strong> submitted ${listingId ? "an edit to" : "a new listing:"} "${parsed.data.title}" for review.`,
@@ -74,11 +75,16 @@ export async function withdrawListingSubmissionAction(submissionId: string) {
   const vendorProfile = await getVendorProfileByUserId(session.userId);
   if (!vendorProfile) throw new Error("Vendor profile not found.");
 
-  const [row] = await db.select().from(vendorSubmissions).where(eq(vendorSubmissions.id, submissionId)).limit(1);
-  if (!row || row.vendorProfileId !== vendorProfile.id || row.status !== "pending") {
-    throw new Error("Submission not found.");
-  }
-  await db.delete(vendorSubmissions).where(eq(vendorSubmissions.id, submissionId));
+  await withRlsContext(
+    { userId: session.userId, role: "vendor", vendorProfileId: vendorProfile.id },
+    async (tx) => {
+      const [row] = await tx.select().from(vendorSubmissions).where(eq(vendorSubmissions.id, submissionId)).limit(1);
+      if (!row || row.vendorProfileId !== vendorProfile.id || row.status !== "pending") {
+        throw new Error("Submission not found.");
+      }
+      await tx.delete(vendorSubmissions).where(eq(vendorSubmissions.id, submissionId));
+    },
+  );
   revalidatePath("/vendor/dashboard/listings");
 }
 
@@ -91,7 +97,9 @@ export async function setListingActiveAction(listingId: string, active: boolean)
   const owned = await getVendorOwnListingFull(vendorProfile.id, listingId);
   if (!owned) throw new Error("You can only edit your own listings.");
 
-  await db.update(listings).set({ active }).where(eq(listings.id, listingId));
+  await withRlsContext({ userId: session.userId, role: "vendor", vendorProfileId: vendorProfile.id }, async (tx) => {
+    await tx.update(listings).set({ active }).where(eq(listings.id, listingId));
+  });
   revalidatePath("/vendor/dashboard/listings");
   revalidatePath(`/explore/${listingId}`);
   revalidatePath("/explore");
@@ -109,7 +117,9 @@ export async function setListingBookingModeAction(listingId: string, bookingMode
   const owned = await getVendorOwnListingFull(vendorProfile.id, listingId);
   if (!owned) throw new Error("You can only edit your own listings.");
 
-  await db.update(listings).set({ bookingMode }).where(eq(listings.id, listingId));
+  await withRlsContext({ userId: session.userId, role: "vendor", vendorProfileId: vendorProfile.id }, async (tx) => {
+    await tx.update(listings).set({ bookingMode }).where(eq(listings.id, listingId));
+  });
   revalidatePath("/vendor/dashboard/listings");
   revalidatePath(`/vendor/dashboard/listings/${listingId}`);
   revalidatePath(`/explore/${listingId}`);

@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { db } from "@/db";
 import { vendorDocuments } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
+import { withRlsContext } from "@/lib/db-context";
 import { getVendorProfileByUserId } from "@/lib/data/vendor";
 import { notifyAdmin } from "@/lib/notify";
 import type { ActionState } from "@/lib/validation";
@@ -42,14 +42,19 @@ export async function submitVendorDocumentAction(
 
   const fileData = Buffer.from(await file.arrayBuffer());
 
-  await db.insert(vendorDocuments).values({
-    vendorProfileId: vendorProfile.id,
-    docType: parsed.data.docType,
-    fileName: file.name,
-    fileMimeType: file.type,
-    fileSize: file.size,
-    fileData,
-  });
+  await withRlsContext(
+    { userId: session.userId, role: "vendor", vendorProfileId: vendorProfile.id },
+    async (tx) => {
+      await tx.insert(vendorDocuments).values({
+        vendorProfileId: vendorProfile.id,
+        docType: parsed.data.docType,
+        fileName: file.name,
+        fileMimeType: file.type,
+        fileSize: file.size,
+        fileData,
+      });
+    },
+  );
 
   await notifyAdmin("New accreditation document", [
     `<strong>${vendorProfile.businessName}</strong> submitted a ${parsed.data.docType.replace("_", " ")} document for review.`,

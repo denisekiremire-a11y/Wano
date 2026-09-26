@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { listings, slots } from "@/db/schema";
 import { requireAdminLevel, requireRole } from "@/lib/auth";
+import { type Tx, withRlsContext } from "@/lib/db-context";
 import { getVendorProfileByUserId } from "@/lib/data/vendor";
 import type { ActionState } from "@/lib/validation";
 
@@ -42,11 +43,11 @@ function parseSlotFields(formData: FormData) {
   return { data: { date, startTime, endTime, capacity: Math.round(capacity) } } as const;
 }
 
-async function insertOneOffSlot(vendorProfileId: string, listingId: string, formData: FormData): Promise<ActionState> {
+async function insertOneOffSlot(tx: Tx, vendorProfileId: string, listingId: string, formData: FormData): Promise<ActionState> {
   const parsed = parseSlotFields(formData);
   if ("error" in parsed) return { error: parsed.error };
 
-  await db.insert(slots).values({ vendorId: vendorProfileId, listingId, ...parsed.data });
+  await tx.insert(slots).values({ vendorId: vendorProfileId, listingId, ...parsed.data });
   revalidateSlotPaths(listingId);
   return {};
 }
@@ -107,7 +108,7 @@ function expandRecurringDates(dayOfWeek: number, weeksAhead: number): string[] {
   return dates;
 }
 
-async function insertRecurringSlots(vendorProfileId: string, listingId: string, formData: FormData): Promise<ActionState> {
+async function insertRecurringSlots(tx: Tx, vendorProfileId: string, listingId: string, formData: FormData): Promise<ActionState> {
   const parsed = parseRecurringFields(formData);
   if ("error" in parsed) return { error: parsed.error };
   const { dayOfWeek, startTimes, durationMinutes, capacity, weeksAhead } = parsed.data;
@@ -124,7 +125,7 @@ async function insertRecurringSlots(vendorProfileId: string, listingId: string, 
     })),
   );
 
-  await db.insert(slots).values(rows);
+  await tx.insert(slots).values(rows);
   revalidateSlotPaths(listingId);
   return {};
 }
@@ -134,7 +135,10 @@ export async function createOneOffSlotAction(_prev: ActionState, formData: FormD
   const listingId = String(formData.get("listingId") ?? "");
   const owned = await requireOwnListing(session.userId, listingId);
   if (!owned) return { error: "You don't have this listing." };
-  return insertOneOffSlot(owned.vendorProfileId, listingId, formData);
+  return withRlsContext(
+    { userId: session.userId, role: "vendor", vendorProfileId: owned.vendorProfileId },
+    (tx) => insertOneOffSlot(tx, owned.vendorProfileId, listingId, formData),
+  );
 }
 
 export async function createRecurringSlotsAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -142,7 +146,10 @@ export async function createRecurringSlotsAction(_prev: ActionState, formData: F
   const listingId = String(formData.get("listingId") ?? "");
   const owned = await requireOwnListing(session.userId, listingId);
   if (!owned) return { error: "You don't have this listing." };
-  return insertRecurringSlots(owned.vendorProfileId, listingId, formData);
+  return withRlsContext(
+    { userId: session.userId, role: "vendor", vendorProfileId: owned.vendorProfileId },
+    (tx) => insertRecurringSlots(tx, owned.vendorProfileId, listingId, formData),
+  );
 }
 
 export async function toggleSlotBlockedAction(slotId: string, blocked: boolean) {
@@ -153,7 +160,12 @@ export async function toggleSlotBlockedAction(slotId: string, blocked: boolean) 
   const [slot] = await db.select().from(slots).where(eq(slots.id, slotId)).limit(1);
   if (!slot || slot.vendorId !== vendorProfile.id) throw new Error("Slot not found.");
 
-  await db.update(slots).set({ isBlocked: blocked }).where(eq(slots.id, slotId));
+  await withRlsContext(
+    { userId: session.userId, role: "vendor", vendorProfileId: vendorProfile.id },
+    async (tx) => {
+      await tx.update(slots).set({ isBlocked: blocked }).where(eq(slots.id, slotId));
+    },
+  );
   revalidateSlotPaths(slot.listingId);
 }
 
@@ -162,26 +174,32 @@ export async function toggleSlotBlockedAction(slotId: string, blocked: boolean) 
 // not by ownership. The listing's own vendorId is still what gets stamped
 // onto every slot row, exactly as if that vendor created it themselves.
 export async function adminCreateOneOffSlotAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireAdminLevel("ops");
+  const session = await requireAdminLevel("ops");
   const listingId = String(formData.get("listingId") ?? "");
   const [listing] = await db.select().from(listings).where(eq(listings.id, listingId)).limit(1);
   if (!listing) return { error: "Listing not found." };
-  return insertOneOffSlot(listing.vendorProfileId, listingId, formData);
+  return withRlsContext({ userId: session.userId, role: "admin" }, (tx) =>
+    insertOneOffSlot(tx, listing.vendorProfileId, listingId, formData),
+  );
 }
 
 export async function adminCreateRecurringSlotsAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireAdminLevel("ops");
+  const session = await requireAdminLevel("ops");
   const listingId = String(formData.get("listingId") ?? "");
   const [listing] = await db.select().from(listings).where(eq(listings.id, listingId)).limit(1);
   if (!listing) return { error: "Listing not found." };
-  return insertRecurringSlots(listing.vendorProfileId, listingId, formData);
+  return withRlsContext({ userId: session.userId, role: "admin" }, (tx) =>
+    insertRecurringSlots(tx, listing.vendorProfileId, listingId, formData),
+  );
 }
 
 export async function adminToggleSlotBlockedAction(slotId: string, blocked: boolean) {
-  await requireAdminLevel("ops");
+  const session = await requireAdminLevel("ops");
   const [slot] = await db.select().from(slots).where(eq(slots.id, slotId)).limit(1);
   if (!slot) throw new Error("Slot not found.");
 
-  await db.update(slots).set({ isBlocked: blocked }).where(eq(slots.id, slotId));
+  await withRlsContext({ userId: session.userId, role: "admin" }, async (tx) => {
+    await tx.update(slots).set({ isBlocked: blocked }).where(eq(slots.id, slotId));
+  });
   revalidateSlotPaths(slot.listingId);
 }

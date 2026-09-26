@@ -9,6 +9,7 @@ import { db } from "@/db";
 import { events, pointRedemptions, rewards, userRewards, vendorProfiles, vendorSubmissions } from "@/db/schema";
 import { requireAdminLevel, requireRole } from "@/lib/auth";
 import { generateVoucherCode } from "@/lib/codes";
+import { withRlsContext } from "@/lib/db-context";
 import { getOwningVendorProfileId, getRewardsSummary, getUserRewardById } from "@/lib/data/rewards";
 import { vendorRewardContentSchema } from "@/lib/actions/reward-shared";
 import { getPendingEditSubmission } from "@/lib/data/submissions";
@@ -420,23 +421,22 @@ export async function submitRewardAction(_prev: ActionState, formData: FormData)
   }
 
   const payload = parsed.data as unknown as Record<string, unknown>;
-  if (rewardId) {
-    const existing = await getPendingEditSubmission(vendorProfile.id, "reward", rewardId);
-    if (existing) {
-      await db
-        .update(vendorSubmissions)
-        .set({ payload, status: "pending", reviewNotes: null, updatedAt: new Date() })
-        .where(eq(vendorSubmissions.id, existing.id));
-    } else {
-      await db
-        .insert(vendorSubmissions)
-        .values({ vendorProfileId: vendorProfile.id, entityType: "reward", entityId: rewardId, payload });
-    }
-  } else {
-    await db
-      .insert(vendorSubmissions)
-      .values({ vendorProfileId: vendorProfile.id, entityType: "reward", entityId: null, payload });
-  }
+  await withRlsContext(
+    { userId: session.userId, role: "vendor", vendorProfileId: vendorProfile.id },
+    async (tx) => {
+      const existing = rewardId ? await getPendingEditSubmission(vendorProfile.id, "reward", rewardId, tx) : null;
+      if (existing) {
+        await tx
+          .update(vendorSubmissions)
+          .set({ payload, status: "pending", reviewNotes: null, updatedAt: new Date() })
+          .where(eq(vendorSubmissions.id, existing.id));
+      } else {
+        await tx
+          .insert(vendorSubmissions)
+          .values({ vendorProfileId: vendorProfile.id, entityType: "reward", entityId: rewardId, payload });
+      }
+    },
+  );
 
   await notifyAdmin("New vendor reward submission", [
     `<strong>${vendorProfile.businessName}</strong> submitted ${rewardId ? "an edit to" : "a new reward:"} "${parsed.data.title}" for review.`,
@@ -452,11 +452,16 @@ export async function withdrawRewardSubmissionAction(submissionId: string) {
   const vendorProfile = await getVendorProfileByUserId(session.userId);
   if (!vendorProfile) throw new Error("Vendor profile not found.");
 
-  const [row] = await db.select().from(vendorSubmissions).where(eq(vendorSubmissions.id, submissionId)).limit(1);
-  if (!row || row.vendorProfileId !== vendorProfile.id || row.status !== "pending") {
-    throw new Error("Submission not found.");
-  }
-  await db.delete(vendorSubmissions).where(eq(vendorSubmissions.id, submissionId));
+  await withRlsContext(
+    { userId: session.userId, role: "vendor", vendorProfileId: vendorProfile.id },
+    async (tx) => {
+      const [row] = await tx.select().from(vendorSubmissions).where(eq(vendorSubmissions.id, submissionId)).limit(1);
+      if (!row || row.vendorProfileId !== vendorProfile.id || row.status !== "pending") {
+        throw new Error("Submission not found.");
+      }
+      await tx.delete(vendorSubmissions).where(eq(vendorSubmissions.id, submissionId));
+    },
+  );
   revalidatePath("/vendor/dashboard/rewards");
 }
 
