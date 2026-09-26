@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { vendorSubmissions } from "@/db/schema";
 import { applyListingContent, applyVendorSocialLinks, listingContentSchema } from "@/lib/actions/listing-shared";
 import { applyVendorRewardContent, vendorRewardContentSchema } from "@/lib/actions/reward-shared";
+import { logAdminAction } from "@/lib/admin-action-log";
 import { requireAdminLevel } from "@/lib/auth";
 import { withRlsContext } from "@/lib/db-context";
 import { getSubmissionById, getVendorUserEmail } from "@/lib/data/submissions";
@@ -50,6 +51,10 @@ export async function approveSubmissionAction(submissionId: string) {
 
     return { vendorProfileId: submission.vendorProfileId, entityLabel };
   });
+  await logAdminAction(session.userId, "submission.approved", `Approved submission "${submission.entityLabel}"`, {
+    type: "vendor_submission",
+    id: submissionId,
+  });
 
   const vendor = await getVendorUserEmail(submission.vendorProfileId);
   if (vendor) {
@@ -75,9 +80,13 @@ export async function rejectSubmissionAction(submissionId: string, notes: string
 
     return submission;
   });
+  const title = typeof submission.payload.title === "string" ? submission.payload.title : "a submission";
+  await logAdminAction(session.userId, "submission.rejected", `Rejected submission "${title}"`, {
+    type: "vendor_submission",
+    id: submissionId,
+  });
 
   const vendor = await getVendorUserEmail(submission.vendorProfileId);
-  const title = typeof submission.payload.title === "string" ? submission.payload.title : "your submission";
   if (vendor) {
     await notifyUser(vendor.email, "Your submission needs changes", [
       `<strong>${title}</strong> wasn't approved this time.`,

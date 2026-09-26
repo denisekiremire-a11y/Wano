@@ -2,6 +2,7 @@ import { and, count, desc, eq, gt, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import {
   accreditationReviews,
+  adminActionLog,
   bookings,
   challengeCompletions,
   events,
@@ -30,6 +31,20 @@ import {
   getVendorProfileById,
   vendorDocumentListColumns,
 } from "./vendor";
+
+/** Most recent entries in the Stage 1.3 admin action log, newest first —
+ * powers /admin/action-log. Capped rather than paginated for now; revisit
+ * if the list ever gets too long to scan usefully at a glance. */
+export async function getAdminActionLog(limit = 200) {
+  return withRlsContext({ role: "admin" }, (tx) =>
+    tx
+      .select({ entry: adminActionLog, actor: users })
+      .from(adminActionLog)
+      .innerJoin(users, eq(users.id, adminActionLog.actorUserId))
+      .orderBy(desc(adminActionLog.createdAt))
+      .limit(limit),
+  );
+}
 
 export async function getAllAdmins() {
   return db

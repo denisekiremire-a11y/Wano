@@ -8,6 +8,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { events, pointRedemptions, rewards, userRewards, vendorProfiles, vendorSubmissions } from "@/db/schema";
 import { requireAdminLevel, requireRole } from "@/lib/auth";
+import { logAdminAction } from "@/lib/admin-action-log";
 import { generateVoucherCode } from "@/lib/codes";
 import type { DbOrTx } from "@/lib/db-context";
 import { withRlsContext } from "@/lib/db-context";
@@ -378,7 +379,7 @@ const rewardSchema = z.object({
 });
 
 export async function createRewardAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireAdminLevel("super");
+  const session = await requireAdminLevel("super");
 
   const parsed = rewardSchema.safeParse({
     title: formData.get("title"),
@@ -408,20 +409,27 @@ export async function createRewardAction(_prev: ActionState, formData: FormData)
     return { error: "Enter how many points this reward costs to redeem." };
   }
 
-  await withRlsContext({ role: "admin" }, (tx) =>
-    tx.insert(rewards).values({
-      title: parsed.data.title,
-      description: parsed.data.description || null,
-      targetType: kind,
-      targetId: id,
-      discountType: parsed.data.discountType,
-      discountValue: parsed.data.discountType === "freebie" ? null : parsed.data.discountValue || null,
-      source: parsed.data.source,
-      pointsCost: parsed.data.source === "points_shop" ? parsed.data.pointsCost : null,
-      fundedBy: parsed.data.fundedBy || null,
-      defaultValidityDays: parsed.data.defaultValidityDays,
-    }),
+  const [created] = await withRlsContext({ role: "admin" }, (tx) =>
+    tx
+      .insert(rewards)
+      .values({
+        title: parsed.data.title,
+        description: parsed.data.description || null,
+        targetType: kind,
+        targetId: id,
+        discountType: parsed.data.discountType,
+        discountValue: parsed.data.discountType === "freebie" ? null : parsed.data.discountValue || null,
+        source: parsed.data.source,
+        pointsCost: parsed.data.source === "points_shop" ? parsed.data.pointsCost : null,
+        fundedBy: parsed.data.fundedBy || null,
+        defaultValidityDays: parsed.data.defaultValidityDays,
+      })
+      .returning(),
   );
+  await logAdminAction(session.userId, "reward.created", `Created reward "${parsed.data.title}"`, {
+    type: "reward",
+    id: created.id,
+  });
 
   revalidateRewardPaths();
 
@@ -513,9 +521,13 @@ export async function withdrawRewardSubmissionAction(submissionId: string) {
 }
 
 export async function toggleRewardActiveAction(rewardId: string, active: boolean) {
-  await requireAdminLevel("super");
+  const session = await requireAdminLevel("super");
 
   await withRlsContext({ role: "admin" }, (tx) => tx.update(rewards).set({ active }).where(eq(rewards.id, rewardId)));
+  await logAdminAction(session.userId, "reward.toggled", `Set reward ${active ? "active" : "inactive"}`, {
+    type: "reward",
+    id: rewardId,
+  });
 
   revalidateRewardPaths();
 }

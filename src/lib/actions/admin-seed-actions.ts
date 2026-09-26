@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { logAdminAction } from "@/lib/admin-action-log";
 import { requireAdminLevel } from "@/lib/auth";
 import { backfillFeedItems } from "@/lib/feed-generators";
 import {
@@ -25,6 +26,7 @@ export async function runMilestoneSBackfillAction() {
   const journal = await seedJournalPosts(session.userId);
   const clubsResult = await seedLaunchClubs(session.userId);
   const feed = await backfillFeedItems();
+  await logAdminAction(session.userId, "seed.milestone_s_run", "Ran the Milestone S backfill (journal, clubs, feed)");
 
   return { journal, clubs: clubsResult, feed };
 }
@@ -33,8 +35,10 @@ export async function runMilestoneSBackfillAction() {
  * J1: backfills cost range/region/duration and day-by-day stops for the 5
  * editorial journeys, then publishes each once it has both. */
 export async function runJourneysJ1BackfillAction() {
-  await requireAdminLevel("super");
-  return backfillEditorialJourneysJ1();
+  const session = await requireAdminLevel("super");
+  const result = await backfillEditorialJourneysJ1();
+  await logAdminAction(session.userId, "seed.journeys_j1_run", "Ran the Journeys J1 backfill");
+  return result;
 }
 
 /** One-time (safe to re-run) demo-content bootstrap: ten fictional but
@@ -44,7 +48,9 @@ export async function runJourneysJ1BackfillAction() {
  * through the whole app live. */
 export async function runDemoInventoryBackfillAction() {
   const session = await requireAdminLevel("super");
-  return seedDemoInventory(session.userId);
+  const result = await seedDemoInventory(session.userId);
+  await logAdminAction(session.userId, "seed.demo_inventory_run", "Ran the demo inventory seed");
+  return result;
 }
 
 /** One-time (safe to re-run) demo bootstrap for the Influencer feature: one
@@ -53,8 +59,9 @@ export async function runDemoInventoryBackfillAction() {
  * 500-like earning threshold, so /admin/influencers has something to show
  * without needing real follower/like activity. */
 export async function runDemoInfluencerBackfillAction() {
-  await requireAdminLevel("super");
+  const session = await requireAdminLevel("super");
   const result = await seedDemoInfluencer();
+  await logAdminAction(session.userId, "seed.demo_influencer_run", "Ran the demo influencer seed");
   revalidatePath("/admin/influencers");
   return result;
 }
@@ -63,8 +70,9 @@ export async function runDemoInfluencerBackfillAction() {
  * prizes: a Fun Zone win at Le Chateau Brasserie, and the XP draw grand
  * prize at Jinja Riverside Hotel. */
 export async function runDemoRewardsBackfillAction() {
-  await requireAdminLevel("super");
+  const session = await requireAdminLevel("super");
   const result = await seedDemoRewards();
+  await logAdminAction(session.userId, "seed.demo_rewards_run", "Ran the demo Match Day rewards seed");
   revalidatePath("/admin/rewards");
   revalidatePath("/admin/funzone");
   revalidatePath("/admin/match-day");
@@ -76,8 +84,9 @@ export async function runDemoRewardsBackfillAction() {
  * Hoima, with real coordinates so the /afcon/[venue] distance sort has
  * something to show. */
 export async function runAfconVenueVendorsSeedAction() {
-  await requireAdminLevel("super");
+  const session = await requireAdminLevel("super");
   const result = await seedAfconVenueVendors();
+  await logAdminAction(session.userId, "seed.afcon_venue_vendors_run", "Ran the AFCON venue vendors seed");
   revalidatePath("/afcon");
   revalidatePath("/afcon/namboole");
   revalidatePath("/afcon/hoima");

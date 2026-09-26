@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { funzoneClaims, rewards } from "@/db/schema";
 import { requireAdminLevel } from "@/lib/auth";
+import { logAdminAction } from "@/lib/admin-action-log";
 import { generateShortCode } from "@/lib/codes";
 import { withRlsContext } from "@/lib/db-context";
 import { mintUserReward } from "@/lib/actions/reward-actions";
@@ -48,11 +49,18 @@ export async function issueFunzoneClaimAction(
   if (!reward) return { error: "Pick a prize from the Fun Zone pool." };
 
   const claimCode = await uniqueClaimCode();
-  await db.insert(funzoneClaims).values({
-    phone: phone.trim(),
-    rewardId: reward.id,
-    claimCode,
-    issuedByUserId: session.userId,
+  const [claim] = await db
+    .insert(funzoneClaims)
+    .values({
+      phone: phone.trim(),
+      rewardId: reward.id,
+      claimCode,
+      issuedByUserId: session.userId,
+    })
+    .returning();
+  await logAdminAction(session.userId, "funzone.claim_issued", `Issued a Fun Zone claim link for "${reward.title}"`, {
+    type: "funzone_claim",
+    id: claim.id,
   });
 
   revalidatePath("/admin/funzone");

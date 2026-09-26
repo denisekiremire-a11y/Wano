@@ -7,6 +7,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { journalPosts } from "@/db/schema";
 import { requireAdminLevel } from "@/lib/auth";
+import { logAdminAction } from "@/lib/admin-action-log";
 import { generateJournalPublishedItem } from "@/lib/feed-generators";
 import { slugify, uniqueSlug } from "@/lib/slug";
 import type { ActionState } from "@/lib/validation";
@@ -65,7 +66,7 @@ function resolvePublishedAt(status: string, publishedAtInput: string) {
 }
 
 export async function createJournalPostAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireAdminLevel("super");
+  const session = await requireAdminLevel("super");
   const parsed = readForm(formData);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Please check the post fields." };
   const d = parsed.data;
@@ -96,6 +97,10 @@ export async function createJournalPostAction(_prev: ActionState, formData: Form
   if (status === "published" && publishedAt && publishedAt <= new Date()) {
     await generateJournalPublishedItem(created.id);
   }
+  await logAdminAction(session.userId, "journal.created", `Created journal post "${d.title}"`, {
+    type: "journal_post",
+    id: created.id,
+  });
 
   revalidatePath("/admin/journal");
   revalidatePath("/journal");
@@ -107,7 +112,7 @@ export async function updateJournalPostAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireAdminLevel("super");
+  const session = await requireAdminLevel("super");
   const parsed = readForm(formData);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Please check the post fields." };
   const d = parsed.data;
@@ -139,6 +144,10 @@ export async function updateJournalPostAction(
   if (status === "published" && publishedAt && publishedAt <= new Date()) {
     await generateJournalPublishedItem(postId);
   }
+  await logAdminAction(session.userId, "journal.updated", `Updated journal post "${d.title}"`, {
+    type: "journal_post",
+    id: postId,
+  });
 
   revalidatePath("/admin/journal");
   revalidatePath(`/admin/journal/${postId}`);
@@ -148,8 +157,9 @@ export async function updateJournalPostAction(
 }
 
 export async function deleteJournalPostAction(postId: string) {
-  await requireAdminLevel("super");
+  const session = await requireAdminLevel("super");
   await db.delete(journalPosts).where(eq(journalPosts.id, postId));
+  await logAdminAction(session.userId, "journal.deleted", "Deleted a journal post", { type: "journal_post", id: postId });
   revalidatePath("/admin/journal");
   revalidatePath("/journal");
 }

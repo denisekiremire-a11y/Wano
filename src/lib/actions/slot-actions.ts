@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { listings, slots } from "@/db/schema";
 import { requireAdminLevel, requireRole } from "@/lib/auth";
+import { logAdminAction } from "@/lib/admin-action-log";
 import { type Tx, withRlsContext } from "@/lib/db-context";
 import { getVendorProfileByUserId } from "@/lib/data/vendor";
 import type { ActionState } from "@/lib/validation";
@@ -178,9 +179,16 @@ export async function adminCreateOneOffSlotAction(_prev: ActionState, formData: 
   const listingId = String(formData.get("listingId") ?? "");
   const [listing] = await db.select().from(listings).where(eq(listings.id, listingId)).limit(1);
   if (!listing) return { error: "Listing not found." };
-  return withRlsContext({ userId: session.userId, role: "admin" }, (tx) =>
+  const result = await withRlsContext({ userId: session.userId, role: "admin" }, (tx) =>
     insertOneOffSlot(tx, listing.vendorProfileId, listingId, formData),
   );
+  if (!result.error) {
+    await logAdminAction(session.userId, "slot.one_off_created", "Created a one-off slot for a vendor's listing", {
+      type: "listing",
+      id: listingId,
+    });
+  }
+  return result;
 }
 
 export async function adminCreateRecurringSlotsAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -188,9 +196,16 @@ export async function adminCreateRecurringSlotsAction(_prev: ActionState, formDa
   const listingId = String(formData.get("listingId") ?? "");
   const [listing] = await db.select().from(listings).where(eq(listings.id, listingId)).limit(1);
   if (!listing) return { error: "Listing not found." };
-  return withRlsContext({ userId: session.userId, role: "admin" }, (tx) =>
+  const result = await withRlsContext({ userId: session.userId, role: "admin" }, (tx) =>
     insertRecurringSlots(tx, listing.vendorProfileId, listingId, formData),
   );
+  if (!result.error) {
+    await logAdminAction(session.userId, "slot.recurring_created", "Created recurring slots for a vendor's listing", {
+      type: "listing",
+      id: listingId,
+    });
+  }
+  return result;
 }
 
 export async function adminToggleSlotBlockedAction(slotId: string, blocked: boolean) {
@@ -200,6 +215,10 @@ export async function adminToggleSlotBlockedAction(slotId: string, blocked: bool
 
   await withRlsContext({ userId: session.userId, role: "admin" }, async (tx) => {
     await tx.update(slots).set({ isBlocked: blocked }).where(eq(slots.id, slotId));
+  });
+  await logAdminAction(session.userId, "slot.blocked_toggled", `Set slot ${blocked ? "blocked" : "unblocked"}`, {
+    type: "slot",
+    id: slotId,
   });
   revalidateSlotPaths(slot.listingId);
 }

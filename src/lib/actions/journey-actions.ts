@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { journeys, journeyStops, supplyLeads } from "@/db/schema";
 import { requireAdminLevel } from "@/lib/auth";
+import { logAdminAction } from "@/lib/admin-action-log";
 import { journeyHasCostRange } from "@/lib/data/journeys";
 import type { ActionState } from "@/lib/validation";
 
@@ -33,7 +34,7 @@ export async function updateJourneyDetailsAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireAdminLevel("ops");
+  const session = await requireAdminLevel("ops");
   const parsed = journeyDetailsSchema.safeParse({
     region: formData.get("region") ?? "",
     city: formData.get("city") ?? "",
@@ -63,6 +64,10 @@ export async function updateJourneyDetailsAction(
       isFeatured: parsed.data.isFeatured ?? false,
     })
     .where(eq(journeys.id, journeyId));
+  await logAdminAction(session.userId, "journey.details_updated", "Updated journey details", {
+    type: "journey",
+    id: journeyId,
+  });
 
   revalidatePath(`/admin/journeys/${journeyId}`);
   revalidatePath("/admin/journeys");
@@ -73,7 +78,7 @@ export async function updateJourneyDetailsAction(
 /** Publishing requires a real cost range and at least one stop — "what does
  * this cost" is the question the main brief says locals ask first. */
 export async function publishJourneyAction(journeyId: string): Promise<ActionState> {
-  await requireAdminLevel("ops");
+  const session = await requireAdminLevel("ops");
   const [journey] = await db.select().from(journeys).where(eq(journeys.id, journeyId)).limit(1);
   if (!journey) return { error: "Journey not found." };
   if (!journeyHasCostRange(journey)) {
@@ -86,6 +91,10 @@ export async function publishJourneyAction(journeyId: string): Promise<ActionSta
     .update(journeys)
     .set({ status: "published", publishedAt: journey.publishedAt ?? new Date() })
     .where(eq(journeys.id, journeyId));
+  await logAdminAction(session.userId, "journey.published", `Published journey "${journey.name}"`, {
+    type: "journey",
+    id: journeyId,
+  });
 
   revalidatePath(`/admin/journeys/${journeyId}`);
   revalidatePath("/admin/journeys");
@@ -95,11 +104,15 @@ export async function publishJourneyAction(journeyId: string): Promise<ActionSta
 }
 
 export async function unpublishJourneyAction(journeyId: string) {
-  await requireAdminLevel("ops");
+  const session = await requireAdminLevel("ops");
   const [journey] = await db.select().from(journeys).where(eq(journeys.id, journeyId)).limit(1);
   if (!journey) return;
 
   await db.update(journeys).set({ status: "unlisted" }).where(eq(journeys.id, journeyId));
+  await logAdminAction(session.userId, "journey.unpublished", `Unpublished journey "${journey.name}"`, {
+    type: "journey",
+    id: journeyId,
+  });
 
   revalidatePath(`/admin/journeys/${journeyId}`);
   revalidatePath("/admin/journeys");
@@ -130,7 +143,7 @@ async function upsertSupplyLead(stopId: string, customName: string, customAddres
 }
 
 export async function addStopAction(journeyId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireAdminLevel("ops");
+  const session = await requireAdminLevel("ops");
   const parsed = stopSchema.safeParse({
     dayNumber: formData.get("dayNumber"),
     orderIndex: formData.get("orderIndex") ?? "0",
@@ -170,6 +183,10 @@ export async function addStopAction(journeyId: string, _prev: ActionState, formD
   if (!parsed.data.listingId && !parsed.data.eventId && parsed.data.customName) {
     await upsertSupplyLead(stop.id, parsed.data.customName, parsed.data.customAddress || null);
   }
+  await logAdminAction(session.userId, "journey.stop_added", `Added a day ${parsed.data.dayNumber} stop`, {
+    type: "journey",
+    id: journeyId,
+  });
 
   revalidatePath(`/admin/journeys/${journeyId}`);
   revalidatePath("/admin/supply-leads");
@@ -177,8 +194,12 @@ export async function addStopAction(journeyId: string, _prev: ActionState, formD
 }
 
 export async function deleteStopAction(journeyId: string, stopId: string) {
-  await requireAdminLevel("ops");
+  const session = await requireAdminLevel("ops");
   await db.delete(journeyStops).where(eq(journeyStops.id, stopId));
+  await logAdminAction(session.userId, "journey.stop_deleted", "Deleted a journey stop", {
+    type: "journey",
+    id: journeyId,
+  });
   revalidatePath(`/admin/journeys/${journeyId}`);
   revalidatePath("/admin/supply-leads");
 }
@@ -187,7 +208,11 @@ export async function updateSupplyLeadStatusAction(
   leadId: string,
   status: "open" | "contacted" | "listed" | "dismissed",
 ) {
-  await requireAdminLevel("ops");
+  const session = await requireAdminLevel("ops");
   await db.update(supplyLeads).set({ status }).where(eq(supplyLeads.id, leadId));
+  await logAdminAction(session.userId, "journey.supply_lead_status_updated", `Set supply lead status to "${status}"`, {
+    type: "supply_lead",
+    id: leadId,
+  });
   revalidatePath("/admin/supply-leads");
 }

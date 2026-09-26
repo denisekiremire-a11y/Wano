@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { blocks, moderationActions, posts, reports } from "@/db/schema";
 import { requireAdminLevel, requireRole } from "@/lib/auth";
+import { logAdminAction } from "@/lib/admin-action-log";
 import { withRlsContext } from "@/lib/db-context";
 import { generateUserPostItem } from "@/lib/feed-generators";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
@@ -156,6 +157,12 @@ export async function resolveReportAction(
     action,
     performedByUserId: session.userId,
   });
+  await logAdminAction(
+    session.userId,
+    "moderation.report_resolved",
+    action === "suspend" ? "Suspended a user's account over a report" : `Resolved a report: ${action}`,
+    { type: report.targetType, id: report.targetId },
+  );
 
   revalidatePath("/admin/moderation");
   revalidatePath("/social");
@@ -187,6 +194,10 @@ export async function reviewPendingPostAction(postId: string, decision: "approve
     action: decision === "approve" ? "dismiss" : "remove",
     reason: "New-account first post review",
     performedByUserId: session.userId,
+  });
+  await logAdminAction(session.userId, "moderation.pending_post_reviewed", `${decision === "approve" ? "Approved" : "Removed"} a new-account pending post`, {
+    type: "post",
+    id: postId,
   });
 
   revalidatePath("/admin/moderation");

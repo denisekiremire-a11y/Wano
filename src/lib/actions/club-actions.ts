@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { clubs } from "@/db/schema";
 import { requireAdminLevel, requireRole } from "@/lib/auth";
+import { logAdminAction } from "@/lib/admin-action-log";
 import { hasUpcomingMeetup } from "@/lib/data/social";
 import { getVendorProfileByUserId } from "@/lib/data/vendor";
 import { notifyAdmin } from "@/lib/notify";
@@ -137,19 +138,26 @@ export async function createClubAction(_prev: ActionState, formData: FormData): 
   }
 
   const slug = await uniqueSlug(parsed.data.name, clubSlugExists);
-  await db.insert(clubs).values({
-    name: parsed.data.name,
-    slug,
-    description: parsed.data.description,
-    interestId: parsed.data.interestId,
-    vendorProfileId: parsed.data.vendorProfileId || null,
-    hostUserId: parsed.data.hostUserId || null,
-    coverImage: parsed.data.coverImage || null,
-    city: parsed.data.city || null,
-    cadence: parsed.data.cadence || null,
-    whatsappInviteUrl: parsed.data.whatsappInviteUrl || null,
-    createdByUserId: session.userId,
-    status: "pending",
+  const [club] = await db
+    .insert(clubs)
+    .values({
+      name: parsed.data.name,
+      slug,
+      description: parsed.data.description,
+      interestId: parsed.data.interestId,
+      vendorProfileId: parsed.data.vendorProfileId || null,
+      hostUserId: parsed.data.hostUserId || null,
+      coverImage: parsed.data.coverImage || null,
+      city: parsed.data.city || null,
+      cadence: parsed.data.cadence || null,
+      whatsappInviteUrl: parsed.data.whatsappInviteUrl || null,
+      createdByUserId: session.userId,
+      status: "pending",
+    })
+    .returning();
+  await logAdminAction(session.userId, "club.created", `Created club "${parsed.data.name}"`, {
+    type: "club",
+    id: club.id,
   });
 
   revalidatePath("/admin/clubs");
@@ -171,7 +179,7 @@ export async function updateClubDetailsAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireAdminLevel("ops");
+  const session = await requireAdminLevel("ops");
   const parsed = detailsSchema.safeParse({
     hostUserId: formData.get("hostUserId") ?? "",
     coverImage: formData.get("coverImage") ?? "",
@@ -191,6 +199,7 @@ export async function updateClubDetailsAction(
       whatsappInviteUrl: parsed.data.whatsappInviteUrl || null,
     })
     .where(eq(clubs.id, clubId));
+  await logAdminAction(session.userId, "club.updated", "Updated club details", { type: "club", id: clubId });
 
   revalidatePath(`/admin/clubs`);
   revalidatePath(`/social/clubs/${clubId}`);
@@ -214,6 +223,10 @@ export async function reviewClubAction(clubId: string, status: "approved" | "rej
     .update(clubs)
     .set({ status, reviewedByUserId: session.userId, reviewNotes: notes || null })
     .where(eq(clubs.id, clubId));
+  await logAdminAction(session.userId, "club.reviewed", `Set club review status to "${status}"`, {
+    type: "club",
+    id: clubId,
+  });
 
   revalidatePath("/admin/clubs");
   revalidatePath("/vendor/dashboard/clubs");

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { promoCodes } from "@/db/schema";
 import { requireAdminLevel } from "@/lib/auth";
+import { logAdminAction } from "@/lib/admin-action-log";
 import { generatePerkAddedItem } from "@/lib/feed-generators";
 import type { ActionState } from "@/lib/validation";
 
@@ -34,7 +35,7 @@ export async function createPromoCodeAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireAdminLevel("super");
+  const session = await requireAdminLevel("super");
 
   const parsed = promoSchema.safeParse({
     code: formData.get("code"),
@@ -76,6 +77,10 @@ export async function createPromoCodeAction(
     .returning();
 
   await generatePerkAddedItem(created.id);
+  await logAdminAction(session.userId, "promo.created", `Created promo code "${parsed.data.code}"`, {
+    type: "promo_code",
+    id: created.id,
+  });
 
   revalidatePromoPaths();
 
@@ -83,9 +88,13 @@ export async function createPromoCodeAction(
 }
 
 export async function togglePromoCodeAction(promoId: string, active: boolean) {
-  await requireAdminLevel("super");
+  const session = await requireAdminLevel("super");
 
   await db.update(promoCodes).set({ active }).where(eq(promoCodes.id, promoId));
+  await logAdminAction(session.userId, "promo.toggled", `Set promo code ${active ? "active" : "inactive"}`, {
+    type: "promo_code",
+    id: promoId,
+  });
 
   revalidatePromoPaths();
 }

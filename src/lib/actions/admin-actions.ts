@@ -16,6 +16,7 @@ import {
   vendorProfiles,
 } from "@/db/schema";
 import { ADMIN_MIN_LEVEL } from "@/lib/admin-permissions";
+import { logAdminAction } from "@/lib/admin-action-log";
 import { requireAdminLevel } from "@/lib/auth";
 import { withRlsContext } from "@/lib/db-context";
 import { generatePlaceAddedItemsForVendor } from "@/lib/feed-generators";
@@ -45,6 +46,10 @@ export async function setAccreditationStatusAction(
     reviewerUserId: session.userId,
     decision: status,
     notes: notes || null,
+  });
+  await logAdminAction(session.userId, "vendor.accreditation_set", `Set accreditation to "${status}"`, {
+    type: "vendor_profile",
+    id: vendorProfileId,
   });
 
   // Listings created before this vendor was trusted never got a
@@ -88,6 +93,10 @@ export async function reviewVendorDocumentAction(
       .update(vendorDocuments)
       .set({ status, reviewedByUserId: session.userId, reviewedAt: new Date() })
       .where(eq(vendorDocuments.id, documentId));
+  });
+  await logAdminAction(session.userId, "vendor.document_reviewed", `Marked KYC document "${status}"`, {
+    type: "vendor_document",
+    id: documentId,
   });
 
   revalidatePath("/admin/vendors");
@@ -173,6 +182,11 @@ export async function upsertVendorListingAction(
     }
   }
 
+  await logAdminAction(session.userId, "vendor.listing_upserted", `${d.listingId ? "Edited" : "Created"} listing "${d.title}"`, {
+    type: "listing",
+    id: listingId,
+  });
+
   revalidatePath("/admin/vendors");
   revalidatePath(`/admin/vendors/${d.vendorProfileId}`);
   revalidatePath("/journeys");
@@ -185,8 +199,12 @@ export async function upsertVendorListingAction(
 }
 
 export async function deleteListingImageAction(imageId: string, vendorProfileId: string) {
-  await requireAdminLevel(ADMIN_MIN_LEVEL["/admin/vendors"]);
+  const session = await requireAdminLevel(ADMIN_MIN_LEVEL["/admin/vendors"]);
   await db.delete(listingImages).where(eq(listingImages.id, imageId));
+  await logAdminAction(session.userId, "vendor.listing_image_deleted", "Deleted a listing photo", {
+    type: "listing_image",
+    id: imageId,
+  });
 
   revalidatePath(`/admin/vendors/${vendorProfileId}`);
   revalidatePath("/explore");
@@ -199,9 +217,9 @@ export async function adminSetBookingStatusAction(
   bookingId: string,
   status: "pending" | "confirmed" | "completed" | "cancelled",
 ) {
-  await requireAdminLevel(ADMIN_MIN_LEVEL["/admin/bookings"]);
+  const session = await requireAdminLevel(ADMIN_MIN_LEVEL["/admin/bookings"]);
 
-  const booking = await withRlsContext({ role: "admin" }, async (tx) => {
+  const booking = await withRlsContext({ userId: session.userId, role: "admin" }, async (tx) => {
     const [row] = await tx.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
     if (!row) throw new Error("Booking not found.");
 
@@ -224,6 +242,11 @@ export async function adminSetBookingStatusAction(
     }
 
     return row;
+  });
+
+  await logAdminAction(session.userId, "booking.status_set", `Set booking status to "${status}"`, {
+    type: "booking",
+    id: bookingId,
   });
 
   if (status === "confirmed") {
@@ -258,6 +281,10 @@ export async function updateTravellerNameAction(travellerId: string, name: strin
       tx.update(travellerProfiles).set({ displayName: trimmed }).where(eq(travellerProfiles.id, travellerId)),
       tx.update(users).set({ name: trimmed }).where(eq(users.id, traveller.userId)),
     ]);
+  });
+  await logAdminAction(session.userId, "traveller.renamed", `Renamed a traveller to "${trimmed}"`, {
+    type: "traveller_profile",
+    id: travellerId,
   });
 
   revalidatePath("/admin/travellers");

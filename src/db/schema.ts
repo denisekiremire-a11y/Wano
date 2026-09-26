@@ -545,6 +545,36 @@ export const accreditationReviews = pgTable("accreditation_reviews", {
   decidedAt: timestamp("decided_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// General append-only audit trail across every admin-gated mutating
+// action (Stage 1.3) — accreditationReviews above stays as its own
+// richer, domain-specific record for accreditation decisions
+// specifically; this is the cross-cutting "who did what, when" feed that
+// covers everything else too (including accreditation, for one unified
+// view at /admin/action-log). `action` is a short free-text slug
+// ("booking.status_set", "admin.level_changed", ...) rather than a
+// pgEnum — the set of admin actions only ever grows, and an enum would
+// need a migration for every new one. targetType/targetId are the same
+// polymorphic-reference pattern as rewards/reports elsewhere; both null
+// for an action with no single target row (e.g. a seed/backfill run).
+export const adminActionLog = pgTable(
+  "admin_action_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    actorUserId: uuid("actor_user_id")
+      .notNull()
+      .references(() => users.id),
+    action: text("action").notNull(),
+    targetType: text("target_type"),
+    targetId: uuid("target_id"),
+    summary: text("summary").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("admin_action_log_created_idx").on(table.createdAt),
+    index("admin_action_log_actor_idx").on(table.actorUserId),
+  ],
+);
+
 // Admin-managed perk independent of any single partner's own offer — either
 // platform-wide (journeyId null) or scoped to travellers who hold one
 // journey's stamp.

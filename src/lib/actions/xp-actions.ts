@@ -7,6 +7,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { events, rewards, travellerProfiles, users, xpBookings, xpDraws } from "@/db/schema";
 import { requireAdminLevel, requireRole } from "@/lib/auth";
+import { logAdminAction } from "@/lib/admin-action-log";
 import { withRlsContext } from "@/lib/db-context";
 import {
   createFlutterwavePayment,
@@ -232,7 +233,7 @@ const matchSchema = z.object({
  * general createEventAction) so a match always gets an endAt — reward
  * vouchers tied to a match expire at that endAt, not a generic default. */
 export async function createMatchAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireAdminLevel("super");
+  const session = await requireAdminLevel("super");
 
   const parsed = matchSchema.safeParse({
     title: formData.get("title"),
@@ -250,15 +251,22 @@ export async function createMatchAction(_prev: ActionState, formData: FormData):
   }
   const endAt = new Date(startAt.getTime() + parsed.data.durationHours * 60 * 60 * 1000);
 
-  await db.insert(events).values({
-    title: parsed.data.title,
-    description: parsed.data.description,
-    category: MATCH_DAY_CATEGORY,
-    startAt,
-    endAt,
-    location: parsed.data.location,
-    venueId: parsed.data.venueId || null,
-    priceHint: `UGX ${WANO_XP_PRICE_PER_SEAT_UGX.toLocaleString()}/seat`,
+  const [match] = await db
+    .insert(events)
+    .values({
+      title: parsed.data.title,
+      description: parsed.data.description,
+      category: MATCH_DAY_CATEGORY,
+      startAt,
+      endAt,
+      location: parsed.data.location,
+      venueId: parsed.data.venueId || null,
+      priceHint: `UGX ${WANO_XP_PRICE_PER_SEAT_UGX.toLocaleString()}/seat`,
+    })
+    .returning();
+  await logAdminAction(session.userId, "xp.match_created", `Created match "${parsed.data.title}"`, {
+    type: "event",
+    id: match.id,
   });
 
   revalidatePath("/admin/match-day");
@@ -277,7 +285,7 @@ export async function runXpDrawAction(
   matchId: string,
   prizeRewardId: string,
 ): Promise<ActionState & { winnerName?: string }> {
-  await requireAdminLevel("super");
+  const session = await requireAdminLevel("super");
 
   const [existingDraw] = await db.select().from(xpDraws).where(eq(xpDraws.matchId, matchId)).limit(1);
   if (existingDraw?.drawnAt) return { error: "This match has already been drawn." };
@@ -316,6 +324,11 @@ export async function runXpDrawAction(
       winnerTravellerId: winner.travellerId,
     });
   }
+
+  await logAdminAction(session.userId, "xp.draw_run", `Ran the XP draw — winner: ${winnerProfile?.displayName ?? "unknown"}`, {
+    type: "event",
+    id: matchId,
+  });
 
   revalidateXpPaths(matchId);
 
