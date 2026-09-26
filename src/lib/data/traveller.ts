@@ -19,6 +19,7 @@ import {
   userRewards,
   vendorProfiles,
 } from "@/db/schema";
+import { withRlsContext } from "@/lib/db-context";
 import { getPublicListingsForJourney } from "./journeys";
 
 export async function getTravellerProfileByUserId(userId: string) {
@@ -65,7 +66,9 @@ export async function getReferrerNameByCode(code: string) {
 
 export async function getPassportProgress(travellerId: string) {
   const journeyList = await db.select().from(journeys).orderBy(journeys.sortOrder);
-  const earnedStamps = await db.select().from(stamps).where(eq(stamps.travellerId, travellerId));
+  const earnedStamps = await withRlsContext({ role: "traveller", travellerProfileId: travellerId }, (tx) =>
+    tx.select().from(stamps).where(eq(stamps.travellerId, travellerId)),
+  );
   const earnedJourneyIds = new Set(earnedStamps.map((s) => s.journeyId));
 
   const progress = journeyList.map((journey) => ({
@@ -83,7 +86,9 @@ export async function getPassportProgress(travellerId: string) {
 }
 
 export async function getUnlockedOffersForTraveller(travellerId: string) {
-  const earnedStamps = await db.select().from(stamps).where(eq(stamps.travellerId, travellerId));
+  const earnedStamps = await withRlsContext({ role: "traveller", travellerProfileId: travellerId }, (tx) =>
+    tx.select().from(stamps).where(eq(stamps.travellerId, travellerId)),
+  );
   const earnedJourneyIds = earnedStamps.map((s) => s.journeyId);
 
   const allJourneys = await db.select().from(journeys).orderBy(journeys.sortOrder);
@@ -100,7 +105,9 @@ export async function getUnlockedOffersForTraveller(travellerId: string) {
 }
 
 export async function getActivePromoCodesForTraveller(travellerId: string) {
-  const earnedStamps = await db.select().from(stamps).where(eq(stamps.travellerId, travellerId));
+  const earnedStamps = await withRlsContext({ role: "traveller", travellerProfileId: travellerId }, (tx) =>
+    tx.select().from(stamps).where(eq(stamps.travellerId, travellerId)),
+  );
   const earnedJourneyIds = earnedStamps.map((s) => s.journeyId);
 
   // Listing-scoped promos show on that specific place's card instead of here.
@@ -116,63 +123,74 @@ export async function getActivePromoCodesForTraveller(travellerId: string) {
 }
 
 export async function getTravellerBookings(travellerId: string) {
-  return db
-    .select({
-      booking: bookings,
-      listing: listings,
-      event: events,
-      journey: journeys,
-    })
-    .from(bookings)
-    .leftJoin(listings, eq(bookings.listingId, listings.id))
-    .leftJoin(events, eq(bookings.eventId, events.id))
-    .leftJoin(journeys, eq(bookings.journeyId, journeys.id))
-    .where(eq(bookings.travellerId, travellerId))
-    .orderBy(bookings.createdAt);
+  return withRlsContext({ role: "traveller", travellerProfileId: travellerId }, (tx) =>
+    tx
+      .select({
+        booking: bookings,
+        listing: listings,
+        event: events,
+        journey: journeys,
+      })
+      .from(bookings)
+      .leftJoin(listings, eq(bookings.listingId, listings.id))
+      .leftJoin(events, eq(bookings.eventId, events.id))
+      .leftJoin(journeys, eq(bookings.journeyId, journeys.id))
+      .where(eq(bookings.travellerId, travellerId))
+      .orderBy(bookings.createdAt),
+  );
 }
 
 /** This traveller's bookings for one specific listing — what a listing
  * page's "Your bookings and rewards" section shows under Bookings. */
 export async function getMyBookingsForListing(travellerId: string, listingId: string) {
-  return db
-    .select({ booking: bookings })
-    .from(bookings)
-    .where(and(eq(bookings.travellerId, travellerId), eq(bookings.listingId, listingId)))
-    .orderBy(desc(bookings.createdAt));
+  return withRlsContext({ role: "traveller", travellerProfileId: travellerId }, (tx) =>
+    tx
+      .select({ booking: bookings })
+      .from(bookings)
+      .where(and(eq(bookings.travellerId, travellerId), eq(bookings.listingId, listingId)))
+      .orderBy(desc(bookings.createdAt)),
+  );
 }
 
 /** A single booking by its confirmation code, scoped to the traveller who
  * made it — used by the post-booking confirmation page. Returns null
  * rather than someone else's booking if the ref doesn't belong to them. */
 export async function getBookingByRef(bookingRef: string, travellerId: string) {
-  const [row] = await db
-    .select({
-      booking: bookings,
-      listing: listings,
-      event: events,
-      vendor: vendorProfiles,
-      journey: journeys,
-      appliedReward: rewards,
-    })
-    .from(bookings)
-    .leftJoin(listings, eq(bookings.listingId, listings.id))
-    .leftJoin(events, eq(bookings.eventId, events.id))
-    .leftJoin(
-      vendorProfiles,
-      or(eq(vendorProfiles.id, listings.vendorProfileId), eq(vendorProfiles.id, events.organizerVendorProfileId)),
-    )
-    .leftJoin(journeys, eq(bookings.journeyId, journeys.id))
-    .leftJoin(userRewards, eq(bookings.appliedUserRewardId, userRewards.id))
-    .leftJoin(rewards, eq(userRewards.rewardId, rewards.id))
-    .where(and(eq(bookings.bookingRef, bookingRef), eq(bookings.travellerId, travellerId)))
-    .limit(1);
+  const row = await withRlsContext({ role: "traveller", travellerProfileId: travellerId }, (tx) =>
+    tx
+      .select({
+        booking: bookings,
+        listing: listings,
+        event: events,
+        vendor: vendorProfiles,
+        journey: journeys,
+        appliedReward: rewards,
+      })
+      .from(bookings)
+      .leftJoin(listings, eq(bookings.listingId, listings.id))
+      .leftJoin(events, eq(bookings.eventId, events.id))
+      .leftJoin(
+        vendorProfiles,
+        or(eq(vendorProfiles.id, listings.vendorProfileId), eq(vendorProfiles.id, events.organizerVendorProfileId)),
+      )
+      .leftJoin(journeys, eq(bookings.journeyId, journeys.id))
+      .leftJoin(userRewards, eq(bookings.appliedUserRewardId, userRewards.id))
+      .leftJoin(rewards, eq(userRewards.rewardId, rewards.id))
+      .where(and(eq(bookings.bookingRef, bookingRef), eq(bookings.travellerId, travellerId)))
+      .limit(1)
+      .then((rows) => rows[0]),
+  );
   return row ?? null;
 }
 
 /** The room/vehicle/service/tickets/pre-order lines snapshotted onto one
- * booking at confirm time — used by the confirmation page's summary. */
-export async function getBookingItems(bookingId: string) {
-  return db.select().from(bookingItems).where(eq(bookingItems.bookingId, bookingId));
+ * booking at confirm time — used by the confirmation page's summary.
+ * bookingId's ownership is the caller's job (see bookings/[ref]/page.tsx,
+ * which always calls this right after a traveller-scoped getBookingByRef). */
+export async function getBookingItems(bookingId: string, travellerId: string) {
+  return withRlsContext({ role: "traveller", travellerProfileId: travellerId }, (tx) =>
+    tx.select().from(bookingItems).where(eq(bookingItems.bookingId, bookingId)),
+  );
 }
 
 export async function getReferralStats(travellerId: string) {
@@ -216,15 +234,17 @@ export async function awardReferralCreditOnFirstBooking(travellerId: string) {
     .limit(1);
   if (!pendingCredit) return;
 
-  const priorConfirmed = await db
-    .select({ id: bookings.id })
-    .from(bookings)
-    .where(
-      and(
-        eq(bookings.travellerId, travellerId),
-        or(eq(bookings.status, "confirmed"), eq(bookings.status, "completed")),
+  const priorConfirmed = await withRlsContext({ role: "traveller", travellerProfileId: travellerId }, (tx) =>
+    tx
+      .select({ id: bookings.id })
+      .from(bookings)
+      .where(
+        and(
+          eq(bookings.travellerId, travellerId),
+          or(eq(bookings.status, "confirmed"), eq(bookings.status, "completed")),
+        ),
       ),
-    );
+  );
   if (priorConfirmed.length > 1) return;
 
   await db

@@ -23,6 +23,7 @@ import {
   parseBookingDraft,
   parseEventBookingDraft,
 } from "@/lib/booking-shared";
+import { withRlsContext } from "@/lib/db-context";
 import { createFlutterwavePayment, isFlutterwaveConfigured } from "@/lib/flutterwave";
 import type { ListingType } from "@/lib/listing-type";
 import { cancelBooking, confirmHeldBookingWithoutPayment, releaseHeldBooking, reserveSlotHold } from "@/lib/slot-booking";
@@ -62,20 +63,23 @@ async function resolveReward(
   userRewardId: string | null,
 ) {
   if (!userRewardId) return null;
-  const [row] = await db
-    .select({ userReward: userRewards, reward: rewards })
-    .from(userRewards)
-    .innerJoin(rewards, eq(rewards.id, userRewards.rewardId))
-    .where(
-      and(
-        eq(userRewards.id, userRewardId),
-        eq(userRewards.travellerId, travellerId),
-        eq(userRewards.targetType, targetType),
-        eq(userRewards.targetId, targetId),
-        eq(userRewards.status, "claimed"),
-      ),
-    )
-    .limit(1);
+  const row = await withRlsContext({ role: "traveller", travellerProfileId: travellerId }, (tx) =>
+    tx
+      .select({ userReward: userRewards, reward: rewards })
+      .from(userRewards)
+      .innerJoin(rewards, eq(rewards.id, userRewards.rewardId))
+      .where(
+        and(
+          eq(userRewards.id, userRewardId),
+          eq(userRewards.travellerId, travellerId),
+          eq(userRewards.targetType, targetType),
+          eq(userRewards.targetId, targetId),
+          eq(userRewards.status, "claimed"),
+        ),
+      )
+      .limit(1)
+      .then((rows) => rows[0]),
+  );
   return row ?? null;
 }
 
@@ -204,45 +208,51 @@ export async function bookListingFormAction(formData: FormData) {
   // Request mode — unchanged behavior: the vendor confirms from their
   // dashboard (see respondToBookingAction), auto-expires after
   // REQUEST_EXPIRY_HOURS if they never respond (see expirePendingRequests).
-  const [booking] = await db
-    .insert(bookings)
-    .values({
-      travellerId: travellerProfile.id,
-      listingId: listing.id,
-      journeyId,
-      visitDate: draft.visitDate,
-      visitTime: draft.visitTime,
-      endDate: draft.endDate,
-      partySize: draft.partySize,
-      childrenCount: draft.childrenCount,
-      pickupLocation: draft.pickupLocation,
-      dropoffLocation: draft.dropoffLocation,
-      bookingName: draft.bookingName ?? travellerProfile.displayName,
-      notes: draft.notes,
-      details: Object.keys(draft.details).length > 0 ? draft.details : null,
-      appliedUserRewardId: rewardRow?.userReward.id ?? null,
-      status: "pending",
-      requestExpiresAt: new Date(Date.now() + REQUEST_EXPIRY_HOURS * 60 * 60 * 1000),
-      bookingRef: generateBookingRef(),
-      estimatedCommission: "15.00",
-      subtotalMinor: subtotalMinor || null,
-      totalMinor: subtotalMinor ? totalMinor : null,
-    })
-    .returning();
+  const booking = await withRlsContext(
+    { userId: session.userId, role: "traveller", travellerProfileId: travellerProfile.id },
+    async (tx) => {
+      const [booking] = await tx
+        .insert(bookings)
+        .values({
+          travellerId: travellerProfile.id,
+          listingId: listing.id,
+          journeyId,
+          visitDate: draft.visitDate,
+          visitTime: draft.visitTime,
+          endDate: draft.endDate,
+          partySize: draft.partySize,
+          childrenCount: draft.childrenCount,
+          pickupLocation: draft.pickupLocation,
+          dropoffLocation: draft.dropoffLocation,
+          bookingName: draft.bookingName ?? travellerProfile.displayName,
+          notes: draft.notes,
+          details: Object.keys(draft.details).length > 0 ? draft.details : null,
+          appliedUserRewardId: rewardRow?.userReward.id ?? null,
+          status: "pending",
+          requestExpiresAt: new Date(Date.now() + REQUEST_EXPIRY_HOURS * 60 * 60 * 1000),
+          bookingRef: generateBookingRef(),
+          estimatedCommission: "15.00",
+          subtotalMinor: subtotalMinor || null,
+          totalMinor: subtotalMinor ? totalMinor : null,
+        })
+        .returning();
 
-  if (lineItems.length > 0) {
-    await db.insert(bookingItems).values(
-      lineItems
-        .filter((li) => li.item)
-        .map((li) => ({
-          bookingId: booking.id,
-          listingItemId: li.item!.id,
-          nameAtBooking: li.item!.name,
-          priceMinorAtBooking: li.item!.priceMinor,
-          quantity: li.quantity,
-        })),
-    );
-  }
+      if (lineItems.length > 0) {
+        await tx.insert(bookingItems).values(
+          lineItems
+            .filter((li) => li.item)
+            .map((li) => ({
+              bookingId: booking.id,
+              listingItemId: li.item!.id,
+              nameAtBooking: li.item!.name,
+              priceMinorAtBooking: li.item!.priceMinor,
+              quantity: li.quantity,
+            })),
+        );
+      }
+      return booking;
+    },
+  );
 
   await logEvent("booking_completed", {
     userId: session.userId,
@@ -305,37 +315,43 @@ export async function buyEventTicketsAction(formData: FormData) {
     rewardRow ? { discountType: rewardRow.reward.discountType, discountValue: rewardRow.reward.discountValue } : null,
   );
 
-  const [booking] = await db
-    .insert(bookings)
-    .values({
-      travellerId: travellerProfile.id,
-      eventId: event.id,
-      bookingName: draft.bookingName ?? travellerProfile.displayName,
-      partySize: draft.partySize,
-      childrenCount: draft.childrenCount,
-      notes: draft.notes,
-      appliedUserRewardId: rewardRow?.userReward.id ?? null,
-      status: "pending",
-      bookingRef: generateBookingRef(),
-      estimatedCommission: "15.00",
-      subtotalMinor: subtotalMinor || null,
-      totalMinor: subtotalMinor ? totalMinor : null,
-    })
-    .returning();
+  const booking = await withRlsContext(
+    { userId: session.userId, role: "traveller", travellerProfileId: travellerProfile.id },
+    async (tx) => {
+      const [booking] = await tx
+        .insert(bookings)
+        .values({
+          travellerId: travellerProfile.id,
+          eventId: event.id,
+          bookingName: draft.bookingName ?? travellerProfile.displayName,
+          partySize: draft.partySize,
+          childrenCount: draft.childrenCount,
+          notes: draft.notes,
+          appliedUserRewardId: rewardRow?.userReward.id ?? null,
+          status: "pending",
+          bookingRef: generateBookingRef(),
+          estimatedCommission: "15.00",
+          subtotalMinor: subtotalMinor || null,
+          totalMinor: subtotalMinor ? totalMinor : null,
+        })
+        .returning();
 
-  if (lineItems.length > 0) {
-    await db.insert(bookingItems).values(
-      lineItems
-        .filter((li) => li.item)
-        .map((li) => ({
-          bookingId: booking.id,
-          listingItemId: li.item!.id,
-          nameAtBooking: li.item!.name,
-          priceMinorAtBooking: li.item!.priceMinor,
-          quantity: li.quantity,
-        })),
-    );
-  }
+      if (lineItems.length > 0) {
+        await tx.insert(bookingItems).values(
+          lineItems
+            .filter((li) => li.item)
+            .map((li) => ({
+              bookingId: booking.id,
+              listingItemId: li.item!.id,
+              nameAtBooking: li.item!.name,
+              priceMinorAtBooking: li.item!.priceMinor,
+              quantity: li.quantity,
+            })),
+        );
+      }
+      return booking;
+    },
+  );
 
   await logEvent("booking_completed", {
     userId: session.userId,

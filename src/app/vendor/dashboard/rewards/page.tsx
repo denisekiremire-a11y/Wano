@@ -12,12 +12,10 @@ export default async function VendorRewardsPage() {
   const vendorProfile = await getVendorProfileByUserId(session!.userId);
   if (!vendorProfile) return null;
 
-  const [rewardRows, submissions] = await Promise.all([
-    getVendorRewards(vendorProfile.id),
-    withRlsContext({ userId: session!.userId, role: "vendor", vendorProfileId: vendorProfile.id }, (tx) =>
-      getSubmissionsForVendor(vendorProfile.id, tx),
-    ),
-  ]);
+  const [rewardRows, submissions] = await withRlsContext(
+    { userId: session!.userId, role: "vendor", vendorProfileId: vendorProfile.id },
+    (tx) => Promise.all([getVendorRewards(vendorProfile.id, tx), getSubmissionsForVendor(vendorProfile.id, tx)]),
+  );
 
   const rewardSubmissions = submissions.filter((s) => s.entityType === "reward");
   const pendingByReward = new Map(

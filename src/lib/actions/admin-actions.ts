@@ -201,26 +201,30 @@ export async function adminSetBookingStatusAction(
 ) {
   await requireAdminLevel(ADMIN_MIN_LEVEL["/admin/bookings"]);
 
-  const [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
-  if (!booking) throw new Error("Booking not found.");
+  const booking = await withRlsContext({ role: "admin" }, async (tx) => {
+    const [row] = await tx.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+    if (!row) throw new Error("Booking not found.");
 
-  await db.update(bookings).set({ status }).where(eq(bookings.id, bookingId));
+    await tx.update(bookings).set({ status }).where(eq(bookings.id, bookingId));
 
-  if (status === "confirmed" && booking.journeyId) {
-    const [existingStamp] = await db
-      .select()
-      .from(stamps)
-      .where(and(eq(stamps.travellerId, booking.travellerId), eq(stamps.journeyId, booking.journeyId)))
-      .limit(1);
+    if (status === "confirmed" && row.journeyId) {
+      const [existingStamp] = await tx
+        .select()
+        .from(stamps)
+        .where(and(eq(stamps.travellerId, row.travellerId), eq(stamps.journeyId, row.journeyId)))
+        .limit(1);
 
-    if (!existingStamp) {
-      await db.insert(stamps).values({
-        travellerId: booking.travellerId,
-        journeyId: booking.journeyId,
-        bookingId: booking.id,
-      });
+      if (!existingStamp) {
+        await tx.insert(stamps).values({
+          travellerId: row.travellerId,
+          journeyId: row.journeyId,
+          bookingId: row.id,
+        });
+      }
     }
-  }
+
+    return row;
+  });
 
   if (status === "confirmed") {
     await awardReferralCreditOnFirstBooking(booking.travellerId);

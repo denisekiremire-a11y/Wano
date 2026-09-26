@@ -39,7 +39,7 @@ export async function approveSubmissionAction(submissionId: string) {
     } else {
       const parsed = vendorRewardContentSchema.safeParse(submission.payload);
       if (!parsed.success) throw new Error("This submission's content no longer validates — ask the vendor to resubmit.");
-      await applyVendorRewardContent(submission.entityId, parsed.data);
+      await applyVendorRewardContent(tx, submission.entityId, parsed.data);
       entityLabel = parsed.data.title;
     }
 

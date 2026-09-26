@@ -7,6 +7,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { events, rewards, travellerProfiles, users, xpBookings, xpDraws } from "@/db/schema";
 import { requireAdminLevel, requireRole } from "@/lib/auth";
+import { withRlsContext } from "@/lib/db-context";
 import {
   createFlutterwavePayment,
   isFlutterwaveConfigured,
@@ -290,11 +291,14 @@ export async function runXpDrawAction(
   const winner = confirmed[Math.floor(Math.random() * confirmed.length)];
   const winnerProfile = await getTravellerProfileById(winner.travellerId);
 
-  const [reward] = await db
-    .select()
-    .from(rewards)
-    .where(and(eq(rewards.id, prizeRewardId), eq(rewards.source, "xp_draw"), eq(rewards.active, true)))
-    .limit(1);
+  const reward = await withRlsContext({ role: "admin" }, (tx) =>
+    tx
+      .select()
+      .from(rewards)
+      .where(and(eq(rewards.id, prizeRewardId), eq(rewards.source, "xp_draw"), eq(rewards.active, true)))
+      .limit(1)
+      .then((rows) => rows[0]),
+  );
   if (!reward) return { error: "Pick a prize from the XP draw pool." };
 
   await mintUserReward(winner.travellerId, prizeRewardId);

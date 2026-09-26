@@ -20,6 +20,7 @@ import {
   vendorProfiles,
 } from "@/db/schema";
 import type { DbOrTx } from "@/lib/db-context";
+import { withRlsContext } from "@/lib/db-context";
 import { calculatePostEarningsMinor, isInfluencerByFollowers, MONETIZABLE_POST_LIKE_THRESHOLD } from "@/lib/influencer";
 import { getEngagementCounts } from "./social";
 import { getJourneyTagsForListing } from "./journeys";
@@ -119,25 +120,27 @@ export async function getVendorsWithRecentCancellations() {
 }
 
 export async function getAllBookings() {
-  return db
-    .select({
-      booking: bookings,
-      traveller: travellerProfiles,
-      travellerUser: users,
-      listing: listings,
-      vendor: vendorProfiles,
-      journey: journeys,
-      appliedReward: rewards,
-    })
-    .from(bookings)
-    .innerJoin(travellerProfiles, eq(bookings.travellerId, travellerProfiles.id))
-    .innerJoin(users, eq(travellerProfiles.userId, users.id))
-    .innerJoin(listings, eq(bookings.listingId, listings.id))
-    .innerJoin(vendorProfiles, eq(listings.vendorProfileId, vendorProfiles.id))
-    .leftJoin(journeys, eq(bookings.journeyId, journeys.id))
-    .leftJoin(userRewards, eq(bookings.appliedUserRewardId, userRewards.id))
-    .leftJoin(rewards, eq(userRewards.rewardId, rewards.id))
-    .orderBy(desc(bookings.createdAt));
+  return withRlsContext({ role: "admin" }, (tx) =>
+    tx
+      .select({
+        booking: bookings,
+        traveller: travellerProfiles,
+        travellerUser: users,
+        listing: listings,
+        vendor: vendorProfiles,
+        journey: journeys,
+        appliedReward: rewards,
+      })
+      .from(bookings)
+      .innerJoin(travellerProfiles, eq(bookings.travellerId, travellerProfiles.id))
+      .innerJoin(users, eq(travellerProfiles.userId, users.id))
+      .innerJoin(listings, eq(bookings.listingId, listings.id))
+      .innerJoin(vendorProfiles, eq(listings.vendorProfileId, vendorProfiles.id))
+      .leftJoin(journeys, eq(bookings.journeyId, journeys.id))
+      .leftJoin(userRewards, eq(bookings.appliedUserRewardId, userRewards.id))
+      .leftJoin(rewards, eq(userRewards.rewardId, rewards.id))
+      .orderBy(desc(bookings.createdAt)),
+  );
 }
 
 export async function getAllTravellersWithProgress() {
@@ -150,12 +153,12 @@ export async function getAllTravellersWithProgress() {
     .innerJoin(users, eq(travellerProfiles.userId, users.id))
     .orderBy(desc(travellerProfiles.createdAt));
 
-  const allStamps = await db.select().from(stamps);
+  const allStamps = await withRlsContext({ role: "admin" }, (tx) => tx.select().from(stamps));
   const allCompletions = await db
     .select()
     .from(challengeCompletions)
     .where(eq(challengeCompletions.status, "verified"));
-  const allBookings = await db.select().from(bookings);
+  const allBookings = await withRlsContext({ role: "admin" }, (tx) => tx.select().from(bookings));
 
   return rows.map((row) => {
     const stampCount = new Set(
@@ -207,8 +210,8 @@ export async function getAllVendorProfilesForAdmin() {
 export async function getCampaignMetrics() {
   const journeyList = await db.select().from(journeys).orderBy(journeys.sortOrder);
   const allVendors = await db.select().from(vendorProfiles);
-  const allBookings = await db.select().from(bookings);
-  const allStamps = await db.select().from(stamps);
+  const allBookings = await withRlsContext({ role: "admin" }, (tx) => tx.select().from(bookings));
+  const allStamps = await withRlsContext({ role: "admin" }, (tx) => tx.select().from(stamps));
   const allTravellers = await db.select().from(travellerProfiles);
   const allCompletions = await db.select().from(challengeCompletions);
 

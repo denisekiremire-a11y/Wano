@@ -1,10 +1,13 @@
 import { getActiveRewardsBySource } from "@/lib/data/rewards";
 import { requireAdminPage } from "@/lib/auth";
+import { withRlsContext } from "@/lib/db-context";
 import { IssueForm } from "./issue-form";
 
 export default async function AdminFunzonePage() {
-  await requireAdminPage("/admin/funzone");
-  const rewardsList = await getActiveRewardsBySource("funzone");
+  const session = await requireAdminPage("/admin/funzone");
+  const rewardsList = await withRlsContext({ userId: session.userId, role: "admin" }, (tx) =>
+    getActiveRewardsBySource("funzone", tx),
+  );
 
   return (
     <div className="space-y-6">

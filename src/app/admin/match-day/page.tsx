@@ -1,13 +1,17 @@
 import { getMatchesForAdmin } from "@/lib/data/xp";
 import { getActiveRewardsBySource } from "@/lib/data/rewards";
 import { requireAdminPage } from "@/lib/auth";
+import { withRlsContext } from "@/lib/db-context";
 import { MatchForm } from "./match-form";
 import { MatchRow } from "./match-row";
 import { SeedVenueVendorsButton } from "./seed-venue-vendors-button";
 
 export default async function AdminMatchDayPage() {
-  await requireAdminPage("/admin/match-day");
-  const [matches, prizePool] = await Promise.all([getMatchesForAdmin(), getActiveRewardsBySource("xp_draw")]);
+  const session = await requireAdminPage("/admin/match-day");
+  const [matches, prizePool] = await Promise.all([
+    getMatchesForAdmin(),
+    withRlsContext({ userId: session.userId, role: "admin" }, (tx) => getActiveRewardsBySource("xp_draw", tx)),
+  ]);
 
   const prizeOptions = prizePool.map((r) => ({
     id: r.id,

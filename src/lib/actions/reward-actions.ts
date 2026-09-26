@@ -9,6 +9,7 @@ import { db } from "@/db";
 import { events, pointRedemptions, rewards, userRewards, vendorProfiles, vendorSubmissions } from "@/db/schema";
 import { requireAdminLevel, requireRole } from "@/lib/auth";
 import { generateVoucherCode } from "@/lib/codes";
+import type { DbOrTx } from "@/lib/db-context";
 import { withRlsContext } from "@/lib/db-context";
 import { getOwningVendorProfileId, getRewardsSummary, getUserRewardById } from "@/lib/data/rewards";
 import { vendorRewardContentSchema } from "@/lib/actions/reward-shared";
@@ -28,10 +29,10 @@ function revalidateRewardPaths() {
   revalidatePath("/vendor/dashboard/redeem");
 }
 
-async function uniqueRedemptionCode() {
+async function uniqueRedemptionCode(client: DbOrTx) {
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = generateVoucherCode();
-    const [existing] = await db
+    const [existing] = await client
       .select({ id: userRewards.id })
       .from(userRewards)
       .where(eq(userRewards.redemptionCode, code))
@@ -58,23 +59,30 @@ async function resolveExpiryFor(reward: typeof rewards.$inferSelect) {
  * Fun Zone, XP draws, referrals — so expiry/code generation stay
  * consistent no matter how the voucher was earned. */
 export async function mintUserReward(travellerId: string, rewardId: string) {
-  const [reward] = await db.select().from(rewards).where(eq(rewards.id, rewardId)).limit(1);
-  if (!reward || !reward.active) throw new Error("That reward is no longer available.");
+  // Trusted-system write: every caller (self-claim, points-shop spend,
+  // Fun Zone/XP-draw/referral issuance) has already decided this traveller
+  // is entitled to this reward — same reasoning as Round A's engine-level
+  // writes, this is just how that already-checked write clears RLS.
+  const created = await withRlsContext({ role: "admin" }, async (tx) => {
+    const [reward] = await tx.select().from(rewards).where(eq(rewards.id, rewardId)).limit(1);
+    if (!reward || !reward.active) throw new Error("That reward is no longer available.");
 
-  const expiresAt = await resolveExpiryFor(reward);
-  const redemptionCode = await uniqueRedemptionCode();
+    const expiresAt = await resolveExpiryFor(reward);
+    const redemptionCode = await uniqueRedemptionCode(tx);
 
-  const [created] = await db
-    .insert(userRewards)
-    .values({
-      travellerId,
-      rewardId: reward.id,
-      targetType: reward.targetType,
-      targetId: reward.targetId,
-      redemptionCode,
-      expiresAt,
-    })
-    .returning();
+    const [row] = await tx
+      .insert(userRewards)
+      .values({
+        travellerId,
+        rewardId: reward.id,
+        targetType: reward.targetType,
+        targetId: reward.targetId,
+        redemptionCode,
+        expiresAt,
+      })
+      .returning();
+    return row;
+  });
 
   await notifyRewardClaimed(created.id);
 
@@ -95,7 +103,10 @@ export async function redeemPointsRewardAction(rewardId: string): Promise<Action
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
   if (!travellerProfile) return { error: "Traveller profile not found." };
 
-  const [reward] = await db.select().from(rewards).where(eq(rewards.id, rewardId)).limit(1);
+  const reward = await withRlsContext(
+    { userId: session.userId, role: "traveller", travellerProfileId: travellerProfile.id },
+    (tx) => tx.select().from(rewards).where(eq(rewards.id, rewardId)).limit(1).then((rows) => rows[0]),
+  );
   if (!reward || !reward.active || reward.source !== "points_shop" || !reward.pointsCost) {
     return { error: "That reward isn't available to redeem." };
   }
@@ -138,23 +149,30 @@ export async function claimRewardAction(_prev: ActionState, formData: FormData):
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
   if (!travellerProfile) return { error: "Traveller profile not found." };
 
-  const [reward] = await db.select().from(rewards).where(eq(rewards.id, rewardId)).limit(1);
+  type RewardRow = typeof rewards.$inferSelect;
+  const { reward, existing } = await withRlsContext(
+    { userId: session.userId, role: "traveller", travellerProfileId: travellerProfile.id },
+    async (tx): Promise<{ reward: RewardRow | null; existing: boolean }> => {
+      const [reward] = await tx.select().from(rewards).where(eq(rewards.id, rewardId)).limit(1);
+      if (!reward) return { reward: null, existing: false };
+      const [existing] = await tx
+        .select({ id: userRewards.id })
+        .from(userRewards)
+        .where(
+          and(
+            eq(userRewards.travellerId, travellerProfile.id),
+            eq(userRewards.rewardId, reward.id),
+            eq(userRewards.status, "claimed"),
+          ),
+        )
+        .limit(1);
+      return { reward, existing: Boolean(existing) };
+    },
+  );
   if (!reward || !reward.active) return { error: "That reward is no longer available." };
   if (reward.source !== "campaign" && reward.source !== "manual") {
     return { error: "That reward can't be claimed directly." };
   }
-
-  const [existing] = await db
-    .select({ id: userRewards.id })
-    .from(userRewards)
-    .where(
-      and(
-        eq(userRewards.travellerId, travellerProfile.id),
-        eq(userRewards.rewardId, reward.id),
-        eq(userRewards.status, "claimed"),
-      ),
-    )
-    .limit(1);
   if (existing) return { error: "You've already claimed this." };
 
   await mintUserReward(travellerProfile.id, reward.id);
@@ -173,7 +191,10 @@ export async function generateRewardQrAction(userRewardId: string) {
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
   if (!travellerProfile) throw new Error("Traveller profile not found.");
 
-  const row = await getUserRewardById(userRewardId);
+  const row = await withRlsContext(
+    { userId: session.userId, role: "traveller", travellerProfileId: travellerProfile.id },
+    (tx) => getUserRewardById(userRewardId, tx),
+  );
   if (!row || row.userReward.travellerId !== travellerProfile.id) {
     throw new Error("Voucher not found.");
   }
@@ -189,8 +210,8 @@ export type RedeemCheck =
   | { ok: true; travellerName: string; rewardTitle: string; discountType: string; discountValue: string | null }
   | { ok: false; reason: "invalid" | "already_redeemed" | "expired" | "wrong_venue" | "void"; detail?: string };
 
-async function checkRedeemable(userRewardId: string, vendorProfileId: string): Promise<RedeemCheck> {
-  const row = await getUserRewardById(userRewardId);
+async function checkRedeemable(userRewardId: string, vendorProfileId: string, client: DbOrTx = db): Promise<RedeemCheck> {
+  const row = await getUserRewardById(userRewardId, client);
   if (!row) return { ok: false, reason: "invalid" };
 
   const owningVendorId = await getOwningVendorProfileId(row.userReward.targetType, row.userReward.targetId);
@@ -230,7 +251,10 @@ export async function verifyRewardTokenForVendor(token: string): Promise<RedeemC
   const decoded = await verifyRewardToken(token);
   if (!decoded) return { ok: false, reason: "invalid" };
 
-  const result = await checkRedeemable(decoded.userRewardId, vendorProfile.id);
+  const result = await withRlsContext(
+    { userId: session.userId, role: "vendor", vendorProfileId: vendorProfile.id },
+    (tx) => checkRedeemable(decoded.userRewardId, vendorProfile.id, tx),
+  );
   return { ...result, userRewardId: decoded.userRewardId };
 }
 
@@ -250,14 +274,25 @@ export async function lookupRewardByCodeForVendor(code: string): Promise<RedeemC
   const vendorProfile = await getVendorProfileByUserId(session.userId);
   if (!vendorProfile) return { ok: false, reason: "invalid" };
 
-  const [row] = await db
-    .select({ id: userRewards.id })
-    .from(userRewards)
-    .where(eq(userRewards.redemptionCode, normalizeRedemptionCode(code)))
-    .limit(1);
+  // Resolved under an admin-equivalent context, not this vendor's own —
+  // otherwise a code for someone else's venue would be invisible to this
+  // lookup entirely (RLS-filtered out) rather than found and correctly
+  // rejected as "wrong_venue" by checkRedeemable just below, same
+  // distinction the UI already relies on.
+  const row = await withRlsContext({ role: "admin" }, (tx) =>
+    tx
+      .select({ id: userRewards.id })
+      .from(userRewards)
+      .where(eq(userRewards.redemptionCode, normalizeRedemptionCode(code)))
+      .limit(1)
+      .then((rows) => rows[0]),
+  );
   if (!row) return { ok: false, reason: "invalid" };
 
-  const result = await checkRedeemable(row.id, vendorProfile.id);
+  const result = await withRlsContext(
+    { userId: session.userId, role: "vendor", vendorProfileId: vendorProfile.id },
+    (tx) => checkRedeemable(row.id, vendorProfile.id, tx),
+  );
   return { ...result, userRewardId: row.id };
 }
 
@@ -278,22 +313,29 @@ export async function markRewardRedeemedAction(
   const pinValid = await bcrypt.compare(pin, vendorProfile.staffPinHash);
   if (!pinValid) return { error: "Incorrect PIN." };
 
-  const check = await checkRedeemable(userRewardId, vendorProfile.id);
-  if (!check.ok) {
-    const messages: Record<typeof check.reason, string> = {
-      invalid: "Voucher not found.",
-      already_redeemed: `Already redeemed${check.detail ? ` (${check.detail})` : ""}.`,
-      expired: "This voucher has expired.",
-      wrong_venue: "This voucher isn't for your venue.",
-      void: "This voucher was voided.",
-    };
-    return { error: messages[check.reason] };
-  }
+  const redeemError = await withRlsContext(
+    { userId: session.userId, role: "vendor", vendorProfileId: vendorProfile.id },
+    async (tx) => {
+      const check = await checkRedeemable(userRewardId, vendorProfile.id, tx);
+      if (!check.ok) {
+        const messages: Record<typeof check.reason, string> = {
+          invalid: "Voucher not found.",
+          already_redeemed: `Already redeemed${check.detail ? ` (${check.detail})` : ""}.`,
+          expired: "This voucher has expired.",
+          wrong_venue: "This voucher isn't for your venue.",
+          void: "This voucher was voided.",
+        };
+        return messages[check.reason];
+      }
 
-  await db
-    .update(userRewards)
-    .set({ status: "redeemed", redeemedAt: new Date(), redeemedByVendorProfileId: vendorProfile.id })
-    .where(eq(userRewards.id, userRewardId));
+      await tx
+        .update(userRewards)
+        .set({ status: "redeemed", redeemedAt: new Date(), redeemedByVendorProfileId: vendorProfile.id })
+        .where(eq(userRewards.id, userRewardId));
+      return null;
+    },
+  );
+  if (redeemError) return { error: redeemError };
 
   await notifyRewardRedeemed(userRewardId);
 
@@ -366,18 +408,20 @@ export async function createRewardAction(_prev: ActionState, formData: FormData)
     return { error: "Enter how many points this reward costs to redeem." };
   }
 
-  await db.insert(rewards).values({
-    title: parsed.data.title,
-    description: parsed.data.description || null,
-    targetType: kind,
-    targetId: id,
-    discountType: parsed.data.discountType,
-    discountValue: parsed.data.discountType === "freebie" ? null : parsed.data.discountValue || null,
-    source: parsed.data.source,
-    pointsCost: parsed.data.source === "points_shop" ? parsed.data.pointsCost : null,
-    fundedBy: parsed.data.fundedBy || null,
-    defaultValidityDays: parsed.data.defaultValidityDays,
-  });
+  await withRlsContext({ role: "admin" }, (tx) =>
+    tx.insert(rewards).values({
+      title: parsed.data.title,
+      description: parsed.data.description || null,
+      targetType: kind,
+      targetId: id,
+      discountType: parsed.data.discountType,
+      discountValue: parsed.data.discountType === "freebie" ? null : parsed.data.discountValue || null,
+      source: parsed.data.source,
+      pointsCost: parsed.data.source === "points_shop" ? parsed.data.pointsCost : null,
+      fundedBy: parsed.data.fundedBy || null,
+      defaultValidityDays: parsed.data.defaultValidityDays,
+    }),
+  );
 
   revalidateRewardPaths();
 
@@ -414,7 +458,10 @@ export async function submitRewardAction(_prev: ActionState, formData: FormData)
 
   const rewardId = String(formData.get("rewardId") ?? "") || null;
   if (rewardId) {
-    const [existingReward] = await db.select().from(rewards).where(eq(rewards.id, rewardId)).limit(1);
+    const existingReward = await withRlsContext(
+      { userId: session.userId, role: "vendor", vendorProfileId: vendorProfile.id },
+      (tx) => tx.select().from(rewards).where(eq(rewards.id, rewardId)).limit(1).then((rows) => rows[0]),
+    );
     if (!existingReward) return { error: "Reward not found." };
     const existingOwner = await getOwningVendorProfileId(existingReward.targetType, existingReward.targetId);
     if (existingOwner !== vendorProfile.id) return { error: "You can only edit your own rewards." };
@@ -468,7 +515,7 @@ export async function withdrawRewardSubmissionAction(submissionId: string) {
 export async function toggleRewardActiveAction(rewardId: string, active: boolean) {
   await requireAdminLevel("super");
 
-  await db.update(rewards).set({ active }).where(eq(rewards.id, rewardId));
+  await withRlsContext({ role: "admin" }, (tx) => tx.update(rewards).set({ active }).where(eq(rewards.id, rewardId)));
 
   revalidateRewardPaths();
 }

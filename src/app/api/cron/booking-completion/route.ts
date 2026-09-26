@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { and, eq, inArray, isNotNull, lt, sql } from "drizzle-orm";
-import { db } from "@/db";
 import { bookings, events } from "@/db/schema";
 import { notifyTravellerToReview } from "@/lib/booking-notifications";
+import { withRlsContext } from "@/lib/db-context";
 
 // Flips "confirmed" bookings whose date has passed to "completed" — the
 // only other place status reaches "completed" today is a manual admin
@@ -23,43 +23,47 @@ export async function GET(request: Request) {
 
   const today = new Date().toISOString().slice(0, 10);
 
-  // Listing-sourced: hotel checkout / experience end date / rental return
-  // date if set, otherwise the single visit date. Reviewable, so each one
-  // also gets a review-prompt email.
-  const dueListingBookings = await db
-    .select({ id: bookings.id })
-    .from(bookings)
-    .where(
-      and(
-        eq(bookings.status, "confirmed"),
-        isNotNull(bookings.listingId),
-        lt(sql`coalesce(${bookings.endDate}, ${bookings.visitDate})`, today),
-      ),
-    );
+  const { dueListingBookings, dueEventBookings } = await withRlsContext({ role: "admin" }, async (tx) => {
+    // Listing-sourced: hotel checkout / experience end date / rental return
+    // date if set, otherwise the single visit date. Reviewable, so each one
+    // also gets a review-prompt email.
+    const dueListingBookings = await tx
+      .select({ id: bookings.id })
+      .from(bookings)
+      .where(
+        and(
+          eq(bookings.status, "confirmed"),
+          isNotNull(bookings.listingId),
+          lt(sql`coalesce(${bookings.endDate}, ${bookings.visitDate})`, today),
+        ),
+      );
 
-  if (dueListingBookings.length > 0) {
-    await db
-      .update(bookings)
-      .set({ status: "completed" })
-      .where(inArray(bookings.id, dueListingBookings.map((b) => b.id)));
-
-    for (const { id } of dueListingBookings) {
-      await notifyTravellerToReview(id);
+    if (dueListingBookings.length > 0) {
+      await tx
+        .update(bookings)
+        .set({ status: "completed" })
+        .where(inArray(bookings.id, dueListingBookings.map((b) => b.id)));
     }
-  }
 
-  // Event-sourced: the standalone event's own start time.
-  const dueEventBookings = await db
-    .select({ id: bookings.id })
-    .from(bookings)
-    .innerJoin(events, eq(events.id, bookings.eventId))
-    .where(and(eq(bookings.status, "confirmed"), lt(events.startAt, new Date())));
+    // Event-sourced: the standalone event's own start time.
+    const dueEventBookings = await tx
+      .select({ id: bookings.id })
+      .from(bookings)
+      .innerJoin(events, eq(events.id, bookings.eventId))
+      .where(and(eq(bookings.status, "confirmed"), lt(events.startAt, new Date())));
 
-  if (dueEventBookings.length > 0) {
-    await db
-      .update(bookings)
-      .set({ status: "completed" })
-      .where(inArray(bookings.id, dueEventBookings.map((b) => b.id)));
+    if (dueEventBookings.length > 0) {
+      await tx
+        .update(bookings)
+        .set({ status: "completed" })
+        .where(inArray(bookings.id, dueEventBookings.map((b) => b.id)));
+    }
+
+    return { dueListingBookings, dueEventBookings };
+  });
+
+  for (const { id } of dueListingBookings) {
+    await notifyTravellerToReview(id);
   }
 
   return NextResponse.json({

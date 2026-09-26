@@ -18,6 +18,7 @@ import { getSession, type SessionPayload } from "@/lib/session";
 import { claimDealFormAction } from "@/lib/actions/deal-actions";
 import { getAllActiveDeals, getClaimedDealIds } from "@/lib/data/deals";
 import { getReviewableBookings } from "@/lib/data/reviews";
+import { withRlsContext } from "@/lib/db-context";
 import { getMyWallet, getPointsShopCatalog, getRewardsSummary } from "@/lib/data/rewards";
 import { ShareReferralBlock } from "@/components/share-referral-block";
 import { VoucherCard } from "@/components/voucher-card";
@@ -102,10 +103,10 @@ export default async function PassportPage({
     getSavedListingsForTraveller(travellerProfile.id),
   ]);
 
-  const [wallet, pointsShopCatalog] = await Promise.all([
-    getMyWallet(travellerProfile.id),
-    getPointsShopCatalog(),
-  ]);
+  const [wallet, pointsShopCatalog] = await withRlsContext(
+    { userId: session.userId, role: "traveller", travellerProfileId: travellerProfile.id },
+    (tx) => Promise.all([getMyWallet(travellerProfile.id, tx), getPointsShopCatalog(tx)]),
+  );
 
   const postIds = postRows.map((r) => r.post.id);
   const [{ likeMap, commentMap }, likedPostIds, savedPostIds] = await Promise.all([

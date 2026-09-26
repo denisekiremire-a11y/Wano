@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { bookings, reviews } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { logEvent } from "@/lib/analytics";
+import { withRlsContext } from "@/lib/db-context";
 import { generateReviewPostedItem } from "@/lib/feed-generators";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 import type { ActionState } from "@/lib/validation";
@@ -42,11 +43,10 @@ export async function submitReviewAction(
     return { error: "Please rate all four categories before submitting." };
   }
 
-  const [booking] = await db
-    .select()
-    .from(bookings)
-    .where(eq(bookings.id, parsed.data.bookingId))
-    .limit(1);
+  const booking = await withRlsContext(
+    { userId: session.userId, role: "traveller", travellerProfileId: travellerProfile.id },
+    (tx) => tx.select().from(bookings).where(eq(bookings.id, parsed.data.bookingId)).limit(1).then((rows) => rows[0]),
+  );
 
   if (!booking || booking.travellerId !== travellerProfile.id) {
     return { error: "You can only review your own bookings." };

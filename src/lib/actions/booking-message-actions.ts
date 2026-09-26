@@ -4,6 +4,9 @@ import { eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { bookingMessages, bookings, listings, travellerProfiles, users, vendorProfiles } from "@/db/schema";
+import { withRlsContext } from "@/lib/db-context";
+import { getTravellerProfileByUserId } from "@/lib/data/traveller";
+import { getVendorProfileByUserId } from "@/lib/data/vendor";
 import { notifyUser } from "@/lib/notify";
 import { getSession } from "@/lib/session";
 import { countInLastHour, RATE_LIMITS } from "@/lib/rate-limit";
@@ -27,18 +30,35 @@ async function resolveBookingAccess(bookingId: string) {
   const session = await getSession();
   if (!session) return null;
 
-  const [row] = await db
-    .select({
-      booking: bookings,
-      travellerUserId: travellerProfiles.userId,
-      vendorUserId: vendorProfiles.userId,
-    })
-    .from(bookings)
-    .innerJoin(travellerProfiles, eq(travellerProfiles.id, bookings.travellerId))
-    .innerJoin(listings, eq(listings.id, bookings.listingId))
-    .innerJoin(vendorProfiles, eq(vendorProfiles.id, listings.vendorProfileId))
-    .where(eq(bookings.id, bookingId))
-    .limit(1);
+  // Resolved as this exact session's own role/profile id — never a wider
+  // context — so RLS enforces the very same three-way access this
+  // function itself is about to check: a traveller/vendor session can
+  // only ever have this query return a row that's really theirs.
+  let travellerProfileId: string | null = null;
+  let vendorProfileId: string | null = null;
+  if (session.role === "traveller") {
+    travellerProfileId = (await getTravellerProfileByUserId(session.userId))?.id ?? null;
+  } else if (session.role === "vendor") {
+    vendorProfileId = (await getVendorProfileByUserId(session.userId))?.id ?? null;
+  }
+
+  const row = await withRlsContext(
+    { userId: session.userId, role: session.role, vendorProfileId, travellerProfileId },
+    (tx) =>
+      tx
+        .select({
+          booking: bookings,
+          travellerUserId: travellerProfiles.userId,
+          vendorUserId: vendorProfiles.userId,
+        })
+        .from(bookings)
+        .innerJoin(travellerProfiles, eq(travellerProfiles.id, bookings.travellerId))
+        .innerJoin(listings, eq(listings.id, bookings.listingId))
+        .innerJoin(vendorProfiles, eq(vendorProfiles.id, listings.vendorProfileId))
+        .where(eq(bookings.id, bookingId))
+        .limit(1)
+        .then((rows) => rows[0]),
+  );
   if (!row) return null;
 
   const isTraveller = session.role === "traveller" && session.userId === row.travellerUserId;
@@ -46,7 +66,7 @@ async function resolveBookingAccess(bookingId: string) {
   const isAdmin = session.role === "admin";
   if (!isTraveller && !isVendor && !isAdmin) return null;
 
-  return { session, row, isTraveller, isVendor, isAdmin };
+  return { session, row, isTraveller, isVendor, isAdmin, travellerProfileId, vendorProfileId };
 }
 
 export async function getBookingMessagesAction(
@@ -55,12 +75,21 @@ export async function getBookingMessagesAction(
   const access = await resolveBookingAccess(bookingId);
   if (!access) return { error: "You don't have access to this booking." };
 
-  const rows = await db
-    .select({ message: bookingMessages, senderName: users.name, senderUserId: users.id })
-    .from(bookingMessages)
-    .innerJoin(users, eq(users.id, bookingMessages.senderUserId))
-    .where(eq(bookingMessages.bookingId, bookingId))
-    .orderBy(bookingMessages.createdAt);
+  const rows = await withRlsContext(
+    {
+      userId: access.session.userId,
+      role: access.session.role,
+      vendorProfileId: access.vendorProfileId,
+      travellerProfileId: access.travellerProfileId,
+    },
+    (tx) =>
+      tx
+        .select({ message: bookingMessages, senderName: users.name, senderUserId: users.id })
+        .from(bookingMessages)
+        .innerJoin(users, eq(users.id, bookingMessages.senderUserId))
+        .where(eq(bookingMessages.bookingId, bookingId))
+        .orderBy(bookingMessages.createdAt),
+  );
 
   const messages: BookingMessage[] = rows.map((r) => ({
     id: r.message.id,
@@ -100,7 +129,15 @@ export async function postBookingMessageAction(
     return { error: "You're sending a lot of messages — try again in a bit." };
   }
 
-  await db.insert(bookingMessages).values({ bookingId, senderUserId: access.session.userId, content: trimmed });
+  await withRlsContext(
+    {
+      userId: access.session.userId,
+      role: access.session.role,
+      vendorProfileId: access.vendorProfileId,
+      travellerProfileId: access.travellerProfileId,
+    },
+    (tx) => tx.insert(bookingMessages).values({ bookingId, senderUserId: access.session.userId, content: trimmed }),
+  );
 
   // Email whichever side(s) didn't send this one — an admin stepping into
   // the thread pings both the traveller and the vendor.

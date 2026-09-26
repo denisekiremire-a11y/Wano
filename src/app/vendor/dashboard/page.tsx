@@ -25,11 +25,10 @@ export default async function VendorDashboardPage() {
   const vendorProfile = await getVendorProfileByUserId(session!.userId);
   if (!vendorProfile) return null;
 
-  const [listingRows, rewardRows, submissions] = await Promise.all([
+  const [listingRows, [rewardRows, submissions]] = await Promise.all([
     getVendorListings(vendorProfile.id),
-    getVendorRewards(vendorProfile.id),
     withRlsContext({ userId: session!.userId, role: "vendor", vendorProfileId: vendorProfile.id }, (tx) =>
-      getSubmissionsForVendor(vendorProfile.id, tx),
+      Promise.all([getVendorRewards(vendorProfile.id, tx), getSubmissionsForVendor(vendorProfile.id, tx)]),
     ),
   ]);
   const status = statusCopy[vendorProfile.accreditationStatus];

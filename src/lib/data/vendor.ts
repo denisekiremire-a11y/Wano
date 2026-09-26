@@ -1,6 +1,7 @@
 import { and, count, desc, eq, gte, inArray, isNotNull, or } from "drizzle-orm";
 import { db } from "@/db";
 import type { DbOrTx } from "@/lib/db-context";
+import { withRlsContext } from "@/lib/db-context";
 import {
   bookings,
   events,
@@ -156,10 +157,12 @@ export async function getVendorReferralStats(vendorProfileId: string) {
     return { totalBookings: 0, totalCommission: 0, totalViews, pendingCount: 0 };
   }
 
-  const bookingRows = await db
-    .select({ status: bookings.status, estimatedCommission: bookings.estimatedCommission })
-    .from(bookings)
-    .where(inArray(bookings.listingId, listingIds));
+  const bookingRows = await withRlsContext({ role: "vendor", vendorProfileId }, (tx) =>
+    tx
+      .select({ status: bookings.status, estimatedCommission: bookings.estimatedCommission })
+      .from(bookings)
+      .where(inArray(bookings.listingId, listingIds)),
+  );
 
   const confirmedRows = bookingRows.filter((b) => b.status === "confirmed" || b.status === "completed");
   const totalCommission = confirmedRows.reduce((sum, b) => sum + Number(b.estimatedCommission), 0);
@@ -182,10 +185,13 @@ export async function getVendorPendingBookingsCount(vendorProfileId: string) {
   const listingIds = vendorListings.map((l) => l.id);
   if (listingIds.length === 0) return 0;
 
-  const [row] = await db
-    .select({ total: count() })
-    .from(bookings)
-    .where(and(inArray(bookings.listingId, listingIds), eq(bookings.status, "pending")));
+  const row = await withRlsContext({ role: "vendor", vendorProfileId }, (tx) =>
+    tx
+      .select({ total: count() })
+      .from(bookings)
+      .where(and(inArray(bookings.listingId, listingIds), eq(bookings.status, "pending")))
+      .then((rows) => rows[0]),
+  );
   return row?.total ?? 0;
 }
 
@@ -200,24 +206,26 @@ export async function getVendorBookings(vendorProfileId: string) {
   const listingIds = vendorListings.map((l) => l.id);
   if (listingIds.length === 0) return [];
 
-  return db
-    .select({
-      booking: bookings,
-      traveller: travellerProfiles,
-      travellerUser: users,
-      journey: journeys,
-      listing: listings,
-      appliedReward: rewards,
-    })
-    .from(bookings)
-    .innerJoin(travellerProfiles, eq(bookings.travellerId, travellerProfiles.id))
-    .innerJoin(users, eq(travellerProfiles.userId, users.id))
-    .innerJoin(listings, eq(bookings.listingId, listings.id))
-    .leftJoin(journeys, eq(bookings.journeyId, journeys.id))
-    .leftJoin(userRewards, eq(bookings.appliedUserRewardId, userRewards.id))
-    .leftJoin(rewards, eq(userRewards.rewardId, rewards.id))
-    .where(inArray(bookings.listingId, listingIds))
-    .orderBy(desc(bookings.createdAt));
+  return withRlsContext({ role: "vendor", vendorProfileId }, (tx) =>
+    tx
+      .select({
+        booking: bookings,
+        traveller: travellerProfiles,
+        travellerUser: users,
+        journey: journeys,
+        listing: listings,
+        appliedReward: rewards,
+      })
+      .from(bookings)
+      .innerJoin(travellerProfiles, eq(bookings.travellerId, travellerProfiles.id))
+      .innerJoin(users, eq(travellerProfiles.userId, users.id))
+      .innerJoin(listings, eq(bookings.listingId, listings.id))
+      .leftJoin(journeys, eq(bookings.journeyId, journeys.id))
+      .leftJoin(userRewards, eq(bookings.appliedUserRewardId, userRewards.id))
+      .leftJoin(rewards, eq(userRewards.rewardId, rewards.id))
+      .where(inArray(bookings.listingId, listingIds))
+      .orderBy(desc(bookings.createdAt)),
+  );
 }
 
 /** Ticket purchases for events this vendor organizes — the event-ticket
@@ -233,22 +241,24 @@ export async function getVendorEventTicketBookings(vendorProfileId: string) {
   const eventIds = vendorEvents.map((e) => e.id);
   if (eventIds.length === 0) return [];
 
-  return db
-    .select({
-      booking: bookings,
-      traveller: travellerProfiles,
-      travellerUser: users,
-      event: events,
-      appliedReward: rewards,
-    })
-    .from(bookings)
-    .innerJoin(travellerProfiles, eq(bookings.travellerId, travellerProfiles.id))
-    .innerJoin(users, eq(travellerProfiles.userId, users.id))
-    .innerJoin(events, eq(bookings.eventId, events.id))
-    .leftJoin(userRewards, eq(bookings.appliedUserRewardId, userRewards.id))
-    .leftJoin(rewards, eq(userRewards.rewardId, rewards.id))
-    .where(inArray(bookings.eventId, eventIds))
-    .orderBy(desc(bookings.createdAt));
+  return withRlsContext({ role: "vendor", vendorProfileId }, (tx) =>
+    tx
+      .select({
+        booking: bookings,
+        traveller: travellerProfiles,
+        travellerUser: users,
+        event: events,
+        appliedReward: rewards,
+      })
+      .from(bookings)
+      .innerJoin(travellerProfiles, eq(bookings.travellerId, travellerProfiles.id))
+      .innerJoin(users, eq(travellerProfiles.userId, users.id))
+      .innerJoin(events, eq(bookings.eventId, events.id))
+      .leftJoin(userRewards, eq(bookings.appliedUserRewardId, userRewards.id))
+      .leftJoin(rewards, eq(userRewards.rewardId, rewards.id))
+      .where(inArray(bookings.eventId, eventIds))
+      .orderBy(desc(bookings.createdAt)),
+  );
 }
 
 /** Today's ticket check-ins for this vendor — covers both a standalone
@@ -258,20 +268,22 @@ export async function getVendorTicketCheckInsToday(vendorProfileId: string) {
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
 
-  const rows = await db
-    .select({ booking: bookings, listing: listings, event: events, traveller: travellerProfiles })
-    .from(bookings)
-    .leftJoin(listings, eq(listings.id, bookings.listingId))
-    .leftJoin(events, eq(events.id, bookings.eventId))
-    .innerJoin(travellerProfiles, eq(travellerProfiles.id, bookings.travellerId))
-    .where(
-      and(
-        isNotNull(bookings.checkedInAt),
-        gte(bookings.checkedInAt, startOfDay),
-        or(eq(listings.vendorProfileId, vendorProfileId), eq(events.organizerVendorProfileId, vendorProfileId)),
-      ),
-    )
-    .orderBy(desc(bookings.checkedInAt));
+  const rows = await withRlsContext({ role: "vendor", vendorProfileId }, (tx) =>
+    tx
+      .select({ booking: bookings, listing: listings, event: events, traveller: travellerProfiles })
+      .from(bookings)
+      .leftJoin(listings, eq(listings.id, bookings.listingId))
+      .leftJoin(events, eq(events.id, bookings.eventId))
+      .innerJoin(travellerProfiles, eq(travellerProfiles.id, bookings.travellerId))
+      .where(
+        and(
+          isNotNull(bookings.checkedInAt),
+          gte(bookings.checkedInAt, startOfDay),
+          or(eq(listings.vendorProfileId, vendorProfileId), eq(events.organizerVendorProfileId, vendorProfileId)),
+        ),
+      )
+      .orderBy(desc(bookings.checkedInAt)),
+  );
 
   return rows;
 }

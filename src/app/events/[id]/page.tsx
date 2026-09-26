@@ -13,6 +13,7 @@ import {
   getMyEventBooking,
 } from "@/lib/data/events";
 import { getEventItems, getListingItemImageIds } from "@/lib/data/listing-items";
+import { withRlsContext } from "@/lib/db-context";
 import { getClaimableRewardsForTarget, getMyClaimedRewardsForTarget } from "@/lib/data/rewards";
 import { getMediaPostsFor } from "@/lib/data/social";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
@@ -82,8 +83,12 @@ export default async function EventDetailPage({
 
       const [followed, claimable, myClaimed, xpBookings, existingBooking] = await Promise.all([
         getFollowedEventBookers(event.id, travellerProfile.id),
-        getClaimableRewardsForTarget("event", event.id),
-        getMyClaimedRewardsForTarget(travellerProfile.id, "event", event.id),
+        withRlsContext({ userId: session.userId, role: "traveller", travellerProfileId: travellerProfile.id }, (tx) =>
+          getClaimableRewardsForTarget("event", event.id, tx),
+        ),
+        withRlsContext({ userId: session.userId, role: "traveller", travellerProfileId: travellerProfile.id }, (tx) =>
+          getMyClaimedRewardsForTarget(travellerProfile.id, "event", event.id, tx),
+        ),
         isMatchDay ? getMyXpBookingsForMatch(travellerProfile.id, event.id) : Promise.resolve([]),
         isMatchDay ? Promise.resolve(null) : getMyEventBooking(event.id, travellerProfile.id),
       ]);

@@ -165,12 +165,14 @@ export async function releaseHeldBooking(bookingId: string): Promise<void> {
  * createXpBookingAction's fallback. Capacity was already reserved at hold
  * time, so this is just a status flip. */
 export async function confirmHeldBookingWithoutPayment(bookingId: string): Promise<Booking | null> {
-  const [updated] = await db
-    .update(bookings)
-    .set({ status: "confirmed", heldUntil: null })
-    .where(and(eq(bookings.id, bookingId), eq(bookings.status, "held")))
-    .returning();
-  return updated ?? null;
+  return withSystemRls(async (tx) => {
+    const [updated] = await tx
+      .update(bookings)
+      .set({ status: "confirmed", heldUntil: null })
+      .where(and(eq(bookings.id, bookingId), eq(bookings.status, "held")))
+      .returning();
+    return updated ?? null;
+  });
 }
 
 export type ConfirmPaymentResult =
@@ -193,7 +195,9 @@ export async function confirmBookingPayment(
   transactionId: string,
   verify: (transactionId: string) => Promise<{ txRef: string; amount: number; currency: string; status: string; id: string }>,
 ): Promise<ConfirmPaymentResult> {
-  const [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+  const booking = await withSystemRls((tx) => tx.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1)).then(
+    (rows) => rows[0],
+  );
   if (!booking) return { outcome: "not_found" };
   if (booking.status === "confirmed") return { outcome: "already_confirmed" };
   if (booking.status !== "held" && booking.status !== "expired") return { outcome: "not_found" };
@@ -210,12 +214,14 @@ export async function confirmBookingPayment(
   }
 
   if (!booking.slotId) {
-    const [updated] = await db
-      .update(bookings)
-      .set({ status: "confirmed", heldUntil: null, paymentRef: verified.id })
-      .where(and(eq(bookings.id, bookingId), or(eq(bookings.status, "held"), eq(bookings.status, "expired"))))
-      .returning();
-    return updated ? { outcome: "confirmed", booking: updated } : { outcome: "already_confirmed" };
+    return withSystemRls(async (tx) => {
+      const [updated] = await tx
+        .update(bookings)
+        .set({ status: "confirmed", heldUntil: null, paymentRef: verified.id })
+        .where(and(eq(bookings.id, bookingId), or(eq(bookings.status, "held"), eq(bookings.status, "expired"))))
+        .returning();
+      return updated ? { outcome: "confirmed" as const, booking: updated } : { outcome: "already_confirmed" as const };
+    });
   }
 
   return withSystemRls(async (tx) => {
@@ -288,11 +294,13 @@ export type ExpiredRequest = { bookingId: string; travellerId: string; listingId
  * traveller and suggest similar listings. */
 export async function expirePendingRequests(): Promise<ExpiredRequest[]> {
   const now = new Date();
-  const expired = await db
-    .update(bookings)
-    .set({ status: "expired" })
-    .where(and(eq(bookings.status, "pending"), lt(bookings.requestExpiresAt, now)))
-    .returning({ id: bookings.id, travellerId: bookings.travellerId, listingId: bookings.listingId });
+  const expired = await withSystemRls((tx) =>
+    tx
+      .update(bookings)
+      .set({ status: "expired" })
+      .where(and(eq(bookings.status, "pending"), lt(bookings.requestExpiresAt, now)))
+      .returning({ id: bookings.id, travellerId: bookings.travellerId, listingId: bookings.listingId }),
+  );
   return expired.map((r) => ({ bookingId: r.id, travellerId: r.travellerId, listingId: r.listingId }));
 }
 
@@ -312,7 +320,9 @@ export type CancelOutcome = { error: string } | { outcome: "cancelled"; refunded
  * CANCELLATION_CUTOFF_HOURS before the slot/visit; blocked after that —
  * the UI shows this policy before checkout so it's never a surprise. */
 export async function cancelBooking(bookingId: string, travellerId: string): Promise<CancelOutcome> {
-  const [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+  const booking = await withSystemRls((tx) => tx.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1)).then(
+    (rows) => rows[0],
+  );
   if (!booking || booking.travellerId !== travellerId) return { error: "Booking not found." };
 
   if (booking.status === "held" || booking.status === "pending") {
@@ -361,7 +371,9 @@ export async function cancelBooking(bookingId: string, travellerId: string): Pro
  * caller's job — same "requireRole + ownership check" pattern as every
  * other vendor action, not DB-level RLS (see slot-actions.ts for why). */
 export async function vendorCancelConfirmedBooking(bookingId: string): Promise<CancelOutcome> {
-  const [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+  const booking = await withSystemRls((tx) => tx.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1)).then(
+    (rows) => rows[0],
+  );
   if (!booking) return { error: "Booking not found." };
   if (booking.status !== "confirmed") return { error: "This booking isn't confirmed." };
 

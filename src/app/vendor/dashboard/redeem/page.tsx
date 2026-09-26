@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/auth";
+import { withRlsContext } from "@/lib/db-context";
 import { getVendorActiveCampaigns, getVendorRedemptionsToday } from "@/lib/data/rewards";
 import { getVendorProfileByUserId } from "@/lib/data/vendor";
 import { formatRewardDiscount } from "@/lib/reward-format";
@@ -11,10 +12,10 @@ export default async function VendorRedeemPage() {
   const vendorProfile = await getVendorProfileByUserId(session.userId);
   if (!vendorProfile) return null;
 
-  const [redemptionsToday, campaigns] = await Promise.all([
-    getVendorRedemptionsToday(vendorProfile.id),
-    getVendorActiveCampaigns(vendorProfile.id),
-  ]);
+  const [redemptionsToday, campaigns] = await withRlsContext(
+    { userId: session.userId, role: "vendor", vendorProfileId: vendorProfile.id },
+    (tx) => Promise.all([getVendorRedemptionsToday(vendorProfile.id, tx), getVendorActiveCampaigns(vendorProfile.id, tx)]),
+  );
 
   return (
     <div className="space-y-6">

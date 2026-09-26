@@ -3,7 +3,13 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db";
 
 export type RlsContext = {
-  userId: string;
+  // Optional because Round B's read-only data-fetching functions (see
+  // manual_rls_round_b.sql) key entirely off role/vendorProfileId/
+  // travellerProfileId — none of their policies check app.user_id — and
+  // those functions are usually only handed a profile id, not the
+  // underlying users.id. Action call sites that have the real session
+  // still pass it (matches traveller_profiles' Round A policy, which does).
+  userId?: string;
   role: "traveller" | "vendor" | "admin";
   vendorProfileId?: string | null;
   travellerProfileId?: string | null;
@@ -39,7 +45,7 @@ export async function withRlsContext<T>(
   return db.transaction(async (tx) => {
     await tx.execute(sql`
       select
-        set_config('app.user_id', ${ctx.userId}, true),
+        set_config('app.user_id', ${ctx.userId ?? ""}, true),
         set_config('app.role', ${ctx.role}, true),
         set_config('app.vendor_profile_id', ${ctx.vendorProfileId ?? ""}, true),
         set_config('app.traveller_profile_id', ${ctx.travellerProfileId ?? ""}, true)

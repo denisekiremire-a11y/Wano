@@ -23,6 +23,7 @@ import { getListingImageIdsFor } from "@/lib/data/listing-images";
 import { getListingItemImageIds, getListingItems } from "@/lib/data/listing-items";
 import { getListingSlots } from "@/lib/data/slots";
 import { getRatingSummary, getReviewsForListing } from "@/lib/data/reviews";
+import { withRlsContext } from "@/lib/db-context";
 import { getClaimableRewardsForTarget, getMyClaimedRewardsForTarget } from "@/lib/data/rewards";
 import { BookingForm } from "@/components/booking/booking-form";
 import { SlotPicker } from "@/components/booking/slot-picker";
@@ -104,8 +105,12 @@ export default async function ListingDetailPage({
       const [savedRows, allBookings, claimable, myClaimed] = await Promise.all([
         getSavedListingsForTraveller(travellerProfile.id),
         getTravellerBookings(travellerProfile.id),
-        getClaimableRewardsForTarget("listing", listing.id),
-        getMyClaimedRewardsForTarget(travellerProfile.id, "listing", listing.id),
+        withRlsContext({ userId: session.userId, role: "traveller", travellerProfileId: travellerProfile.id }, (tx) =>
+          getClaimableRewardsForTarget("listing", listing.id, tx),
+        ),
+        withRlsContext({ userId: session.userId, role: "traveller", travellerProfileId: travellerProfile.id }, (tx) =>
+          getMyClaimedRewardsForTarget(travellerProfile.id, "listing", listing.id, tx),
+        ),
       ]);
       saved = savedRows.some((s) => s.listing.id === listing.id);
       hasBirthdaySet = travellerProfile.dateOfBirth != null;

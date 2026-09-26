@@ -1,14 +1,15 @@
 import { getAllEventsForAdmin, getAllListingsForAdmin } from "@/lib/data/admin";
 import { getAllRewardsForAdmin } from "@/lib/data/rewards";
 import { requireAdminPage } from "@/lib/auth";
+import { withRlsContext } from "@/lib/db-context";
 import { RewardForm } from "./reward-form";
 import { RewardRow } from "./reward-row";
 import { SeedRewardsButton } from "./seed-rewards-button";
 
 export default async function AdminRewardsPage() {
-  await requireAdminPage("/admin/rewards");
+  const session = await requireAdminPage("/admin/rewards");
   const [rewardsList, listingOptions, eventOptions] = await Promise.all([
-    getAllRewardsForAdmin(),
+    withRlsContext({ userId: session.userId, role: "admin" }, (tx) => getAllRewardsForAdmin(tx)),
     getAllListingsForAdmin(),
     getAllEventsForAdmin(),
   ]);

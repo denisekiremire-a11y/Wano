@@ -10,6 +10,7 @@ import {
   userRewards,
   vendorProfiles,
 } from "@/db/schema";
+import type { DbOrTx } from "@/lib/db-context";
 import { getChallengesWithStatus, getPassportProgress, getReferralStats } from "./traveller";
 import { resolvePostContexts } from "./post-context";
 
@@ -79,8 +80,8 @@ function targetKey(targetType: string, targetId: string) {
 // Self-claimable rewards visible on a target's page — only "campaign" and
 // "manual" sourced rewards are claimable this way; funzone/xp_draw/referral
 // vouchers are only ever minted through their own issuance flows.
-export async function getClaimableRewardsForTarget(targetType: "listing" | "event", targetId: string) {
-  return db
+export async function getClaimableRewardsForTarget(targetType: "listing" | "event", targetId: string, client: DbOrTx = db) {
+  return client
     .select()
     .from(rewards)
     .where(
@@ -100,8 +101,9 @@ export async function getMyClaimedRewardsForTarget(
   travellerId: string,
   targetType: "listing" | "event",
   targetId: string,
+  client: DbOrTx = db,
 ) {
-  const rows = await db
+  const rows = await client
     .select({ userReward: userRewards, reward: rewards })
     .from(userRewards)
     .innerJoin(rewards, eq(userRewards.rewardId, rewards.id))
@@ -119,8 +121,8 @@ export async function getMyClaimedRewardsForTarget(
 
 // A traveller's full voucher wallet, across every target, grouped by
 // status and sorted soonest-expiry-first within each group.
-export async function getMyWallet(travellerId: string) {
-  const rows = await db
+export async function getMyWallet(travellerId: string, client: DbOrTx = db) {
+  const rows = await client
     .select({ userReward: userRewards, reward: rewards })
     .from(userRewards)
     .innerJoin(rewards, eq(userRewards.rewardId, rewards.id))
@@ -141,8 +143,8 @@ export async function getMyWallet(travellerId: string) {
   };
 }
 
-export async function getUserRewardById(userRewardId: string) {
-  const [row] = await db
+export async function getUserRewardById(userRewardId: string, client: DbOrTx = db) {
+  const [row] = await client
     .select({ userReward: userRewards, reward: rewards })
     .from(userRewards)
     .innerJoin(rewards, eq(userRewards.rewardId, rewards.id))
@@ -174,7 +176,7 @@ export async function getOwningVendorProfileId(targetType: "listing" | "event", 
  * no direct vendorProfileId column (targetType/targetId is polymorphic,
  * listing or event), so ownership is resolved via the vendor's listing
  * ids. Vendor-created rewards only ever target their own listings today. */
-export async function getVendorRewards(vendorProfileId: string) {
+export async function getVendorRewards(vendorProfileId: string, client: DbOrTx = db) {
   const vendorListings = await db
     .select({ id: listings.id })
     .from(listings)
@@ -182,7 +184,7 @@ export async function getVendorRewards(vendorProfileId: string) {
   const listingIds = vendorListings.map((l) => l.id);
   if (listingIds.length === 0) return [];
 
-  return db
+  return client
     .select()
     .from(rewards)
     .where(and(eq(rewards.targetType, "listing"), inArray(rewards.targetId, listingIds)))
@@ -194,8 +196,8 @@ export async function getVendorRewards(vendorProfileId: string) {
 // (a 50%-off row at one restaurant, a 20%-off row at another) rather than
 // one universal prize, so the operator picks which specific prize a
 // winner gets.
-export async function getActiveRewardsBySource(source: "funzone" | "xp_draw") {
-  const catalog = await db
+export async function getActiveRewardsBySource(source: "funzone" | "xp_draw", client: DbOrTx = db) {
+  const catalog = await client
     .select()
     .from(rewards)
     .where(and(eq(rewards.active, true), eq(rewards.source, source)));
@@ -208,8 +210,8 @@ export async function getActiveRewardsBySource(source: "funzone" | "xp_draw") {
 
 // The points-shop catalog — every active reward a traveller can spend
 // points on, cheapest first, with its target resolved for display.
-export async function getPointsShopCatalog() {
-  const catalog = await db
+export async function getPointsShopCatalog(client: DbOrTx = db) {
+  const catalog = await client
     .select()
     .from(rewards)
     .where(and(eq(rewards.active, true), eq(rewards.source, "points_shop")))
@@ -221,8 +223,8 @@ export async function getPointsShopCatalog() {
   }));
 }
 
-export async function getAllRewardsForAdmin() {
-  const catalog = await db.select().from(rewards).orderBy(desc(rewards.createdAt));
+export async function getAllRewardsForAdmin(client: DbOrTx = db) {
+  const catalog = await client.select().from(rewards).orderBy(desc(rewards.createdAt));
   const targetMap = await resolveTargets(catalog);
   return catalog.map((reward) => ({
     ...reward,
@@ -230,11 +232,11 @@ export async function getAllRewardsForAdmin() {
   }));
 }
 
-export async function getVendorRedemptionsToday(vendorProfileId: string) {
+export async function getVendorRedemptionsToday(vendorProfileId: string, client: DbOrTx = db) {
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
 
-  const rows = await db
+  const rows = await client
     .select({ userReward: userRewards, reward: rewards })
     .from(userRewards)
     .innerJoin(rewards, eq(userRewards.rewardId, rewards.id))
@@ -246,7 +248,7 @@ export async function getVendorRedemptionsToday(vendorProfileId: string) {
 
 // Active reward campaigns targeting this vendor's own listing or events —
 // what "active campaigns for that venue" means on the vendor dashboard.
-export async function getVendorActiveCampaigns(vendorProfileId: string) {
+export async function getVendorActiveCampaigns(vendorProfileId: string, client: DbOrTx = db) {
   const [ownListing] = await db
     .select({ id: listings.id })
     .from(listings)
@@ -264,7 +266,7 @@ export async function getVendorActiveCampaigns(vendorProfileId: string) {
   ];
   if (targets.length === 0) return [];
 
-  const all = await db.select().from(rewards).where(eq(rewards.active, true));
+  const all = await client.select().from(rewards).where(eq(rewards.active, true));
   return all.filter((r) => targets.some((t) => t.targetType === r.targetType && t.targetId === r.targetId));
 }
 

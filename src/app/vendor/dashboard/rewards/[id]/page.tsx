@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { db } from "@/db";
 import { rewards } from "@/db/schema";
+import { withRlsContext } from "@/lib/db-context";
 import { getOwningVendorProfileId } from "@/lib/data/rewards";
 import { getPendingEditSubmission } from "@/lib/data/submissions";
 import { getVendorListings, getVendorProfileByUserId } from "@/lib/data/vendor";
@@ -14,7 +14,10 @@ export default async function EditVendorRewardPage({ params }: PageProps<"/vendo
   const vendorProfile = await getVendorProfileByUserId(session!.userId);
   if (!vendorProfile) return null;
 
-  const [reward] = await db.select().from(rewards).where(eq(rewards.id, id)).limit(1);
+  const reward = await withRlsContext(
+    { userId: session!.userId, role: "vendor", vendorProfileId: vendorProfile.id },
+    (tx) => tx.select().from(rewards).where(eq(rewards.id, id)).limit(1).then((rows) => rows[0]),
+  );
   if (!reward) notFound();
   const owner = await getOwningVendorProfileId(reward.targetType, reward.targetId);
   if (owner !== vendorProfile.id) notFound();

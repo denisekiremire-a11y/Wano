@@ -76,7 +76,7 @@ export default async function BookingConfirmationPage({
 
   const { booking, listing, event, vendor, journey, appliedReward } = row;
   const status = STATUS_COPY[booking.status] ?? STATUS_COPY.pending;
-  const lineItems = await getBookingItems(booking.id);
+  const lineItems = await getBookingItems(booking.id, travellerProfile.id);
   const title = listing?.title ?? event?.title ?? "Booking";
   const subtitle = listing
     ? [vendor?.businessName, vendor?.location].filter(Boolean).join(" · ")
