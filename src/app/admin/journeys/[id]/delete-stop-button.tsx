@@ -19,7 +19,7 @@ export function DeleteStopButton({ journeyId, stopId }: { journeyId: string; sto
           router.refresh();
         })
       }
-      className="text-xs font-medium text-forest-800/50 hover:text-red-700 disabled:opacity-60"
+      className="text-xs font-medium text-ink/40 hover:text-red-700 disabled:opacity-60"
     >
       Remove
     </button>

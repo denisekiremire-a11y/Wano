@@ -10,14 +10,14 @@ export default async function AdminSubmissionsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-semibold text-forest-900">Vendor submissions</h1>
-        <p className="mt-1 text-sm text-forest-800/60">
+        <h1 className="font-serif-editorial text-2xl text-ink md:text-3xl">Vendor submissions</h1>
+        <p className="mt-1 text-sm text-ink/60">
           New listings, listing edits, and rewards vendors have submitted for review.
         </p>
       </div>
 
       {rows.length === 0 ? (
-        <p className="rounded-xl border border-forest-900/10 bg-white p-6 text-center text-sm text-forest-800/60">
+        <p className="border border-ink/10 bg-white p-6 text-center text-sm text-ink/50">
           Nothing waiting on review.
         </p>
       ) : (

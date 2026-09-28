@@ -35,24 +35,26 @@ export function SlotRow({
     });
   }
 
-  const dateLabel = new Date(`${date}T00:00:00`).toLocaleDateString("en-GB", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
+  // Built manually rather than via toLocaleDateString: "en-GB" weekday+day+month
+  // formatting disagrees on comma placement between Node's server-side ICU and
+  // browser ICU, which was causing a hydration mismatch on this exact string.
+  const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const parsedDate = new Date(`${date}T00:00:00`);
+  const dateLabel = `${WEEKDAYS[parsedDate.getDay()]} ${parsedDate.getDate()} ${MONTHS[parsedDate.getMonth()]}`;
 
   return (
     <div
-      className={`flex items-center justify-between gap-3 rounded-xl border p-3 ${
-        isBlocked ? "border-forest-900/10 bg-forest-50 opacity-60" : "border-forest-900/10 bg-white"
+      className={`flex items-center justify-between gap-3 border p-3 ${
+        isBlocked ? "border-ink/10 bg-ink/5 opacity-60" : "border-ink/10 bg-white"
       }`}
     >
       <div>
-        <p className="text-sm font-medium text-forest-900">
+        <p className="font-mono-data text-sm font-medium text-ink">
           {dateLabel} · {startTime.slice(0, 5)}–{endTime.slice(0, 5)}
         </p>
-        {subtitle && <p className="text-xs font-medium text-nile-700">{subtitle}</p>}
-        <p className="text-xs text-forest-800/50">
+        {subtitle && <p className="eyebrow text-ember">{subtitle}</p>}
+        <p className="font-mono-data text-xs text-ink/40">
           {bookedCount} / {capacity} booked{isBlocked ? " · blocked" : ""}
         </p>
       </div>
@@ -60,8 +62,8 @@ export function SlotRow({
         type="button"
         disabled={pending}
         onClick={toggle}
-        className={`flex-none rounded-full px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${
-          isBlocked ? "bg-forest-800 text-white" : "border border-red-300 text-red-700 hover:bg-red-50"
+        className={`flex-none rounded-full px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50 ${
+          isBlocked ? "bg-ink text-white hover:bg-ink/85" : "border border-red-300 text-red-700 hover:bg-red-50"
         }`}
       >
         {isBlocked ? "Unblock" : "Block"}

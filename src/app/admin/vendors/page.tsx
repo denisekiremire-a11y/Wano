@@ -10,10 +10,10 @@ export default async function AdminVendorsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-semibold text-forest-900">
+        <h1 className="font-serif-editorial text-2xl text-ink md:text-3xl">
           Business verification
         </h1>
-        <p className="mt-1 text-sm text-forest-800/60">
+        <p className="mt-1 text-sm text-ink/60">
           Review KYC documents and onboard businesses. Open a business to verify documents, set up
           their listing, and approve or reject verification.
         </p>

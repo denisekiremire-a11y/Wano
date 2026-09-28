@@ -15,7 +15,7 @@ export function ListingPicker({
     <select
       defaultValue={selectedListingId ?? ""}
       onChange={(e) => router.push(e.target.value ? `/admin/slots?listingId=${e.target.value}` : "/admin/slots")}
-      className="w-full max-w-md rounded-lg border border-forest-900/15 bg-white px-3 py-2 text-sm outline-none focus:border-forest-600"
+      className="w-full max-w-md rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm outline-none focus:border-ember"
     >
       <option value="">Choose a listing to manage…</option>
       {listings.map((l) => (

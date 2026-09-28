@@ -18,36 +18,36 @@ export function StopForm({
   const [mode, setMode] = useState<"listing" | "custom">("listing");
 
   return (
-    <form action={formAction} className="space-y-3 rounded-xl border border-dashed border-forest-900/20 p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-forest-800/50">Add a stop</p>
+    <form action={formAction} className="space-y-3 border border-dashed border-ink/20 p-4">
+      <p className="eyebrow text-ink/40">Add a stop</p>
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
-          <label className="text-xs font-medium text-forest-800/70">Day</label>
+          <label className="text-xs font-medium text-ink/70">Day</label>
           <input
             name="dayNumber"
             type="number"
             min={1}
             defaultValue={1}
             required
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-forest-800/70">Order</label>
+          <label className="text-xs font-medium text-ink/70">Order</label>
           <input
             name="orderIndex"
             type="number"
             min={0}
             defaultValue={0}
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-forest-800/70">Type</label>
+          <label className="text-xs font-medium text-ink/70">Type</label>
           <select
             name="stopType"
             defaultValue="do"
-            className="mt-1 w-full rounded-lg border border-forest-900/15 bg-white px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm outline-none focus:border-ember"
           >
             <option value="stay">Stay</option>
             <option value="do">Do</option>
@@ -58,18 +58,18 @@ export function StopForm({
         </div>
       </div>
 
-      <div className="flex gap-2 text-xs">
+      <div className="flex gap-4 border-b border-ink/10 text-xs">
         <button
           type="button"
           onClick={() => setMode("listing")}
-          className={`rounded-full px-3 py-1 font-medium ${mode === "listing" ? "bg-forest-800 text-white" : "border border-forest-900/15 text-forest-800"}`}
+          className={`eyebrow border-b-2 pb-2 ${mode === "listing" ? "border-ember text-ink" : "border-transparent text-ink/40"}`}
         >
           Real listing
         </button>
         <button
           type="button"
           onClick={() => setMode("custom")}
-          className={`rounded-full px-3 py-1 font-medium ${mode === "custom" ? "bg-forest-800 text-white" : "border border-forest-900/15 text-forest-800"}`}
+          className={`eyebrow border-b-2 pb-2 ${mode === "custom" ? "border-ember text-ink" : "border-transparent text-ink/40"}`}
         >
           Custom place (not on Wano yet)
         </button>
@@ -77,10 +77,10 @@ export function StopForm({
 
       {mode === "listing" ? (
         <div>
-          <label className="text-xs font-medium text-forest-800/70">Listing</label>
+          <label className="text-xs font-medium text-ink/70">Listing</label>
           <select
             name="listingId"
-            className="mt-1 w-full rounded-lg border border-forest-900/15 bg-white px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm outline-none focus:border-ember"
           >
             <option value="">— Choose a listing —</option>
             {listingOptions.map((l) => (
@@ -93,20 +93,20 @@ export function StopForm({
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label className="text-xs font-medium text-forest-800/70">Place name</label>
+            <label className="text-xs font-medium text-ink/70">Place name</label>
             <input
               name="customName"
-              className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+              className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-forest-800/70">Address</label>
+            <label className="text-xs font-medium text-ink/70">Address</label>
             <input
               name="customAddress"
-              className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+              className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
             />
           </div>
-          <p className="sm:col-span-2 text-[11px] text-forest-800/50">
+          <p className="sm:col-span-2 text-[11px] text-ink/40">
             This creates a supply lead for ops — a real place someone will want to book that Wano
             doesn&apos;t list yet.
           </p>
@@ -115,29 +115,29 @@ export function StopForm({
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <label className="text-xs font-medium text-forest-800/70">Note</label>
+          <label className="text-xs font-medium text-ink/70">Note</label>
           <input
             name="note"
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-medium text-forest-800/70">Minutes</label>
+            <label className="text-xs font-medium text-ink/70">Minutes</label>
             <input
               name="durationMinutes"
               type="number"
               min={0}
-              className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+              className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-forest-800/70">Est. cost</label>
+            <label className="text-xs font-medium text-ink/70">Est. cost</label>
             <input
               name="estCostMinor"
               type="number"
               min={0}
-              className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+              className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
             />
           </div>
         </div>
@@ -147,7 +147,7 @@ export function StopForm({
       <button
         type="submit"
         disabled={pending}
-        className="rounded-full bg-forest-800 px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
+        className="rounded-full bg-ink px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-ink/85 disabled:opacity-60"
       >
         {pending ? "Adding…" : "Add stop"}
       </button>

@@ -31,15 +31,15 @@ export function ModerationQueueRow({
   const [pending, startTransition] = useTransition();
 
   return (
-    <div className="rounded-xl border border-forest-900/10 bg-white p-3">
+    <div className="border border-ink/10 bg-white p-3">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-marigold-700">
+          <p className="eyebrow text-ember">
             {targetType} · {reason}
           </p>
-          <p className="mt-1 text-sm text-forest-900">{preview}</p>
-          {note && <p className="mt-1 text-xs text-forest-800/60">Reporter note: {note}</p>}
-          <p className="mt-1 text-xs text-forest-800/40">
+          <p className="mt-1 text-sm text-ink">{preview}</p>
+          {note && <p className="mt-1 text-xs text-ink/60">Reporter note: {note}</p>}
+          <p className="font-mono-data mt-1 text-xs text-ink/40">
             Reported by {reporterName} · {new Date(createdAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
           </p>
         </div>
@@ -51,10 +51,10 @@ export function ModerationQueueRow({
             type="button"
             disabled={pending}
             onClick={() => startTransition(() => resolveReportAction(reportId, a.value))}
-            className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold disabled:opacity-50 ${
+            className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors disabled:opacity-50 ${
               a.value === "dismiss"
-                ? "border-forest-900/15 text-forest-800 hover:bg-forest-50"
-                : "border-red-200 text-red-700 hover:bg-red-50"
+                ? "border-ink/20 text-ink hover:bg-ink/5"
+                : "border-red-200 text-red-600 hover:bg-red-50"
             }`}
           >
             {a.label}

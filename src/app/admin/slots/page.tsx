@@ -20,8 +20,8 @@ export default async function AdminSlotsPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-semibold text-forest-900">Slots</h1>
-        <p className="mt-1 text-sm text-forest-800/60">
+        <h1 className="font-serif-editorial text-2xl text-ink">Slots</h1>
+        <p className="mt-1 text-sm text-ink/60">
           Create, edit, or block availability for any business — same effect as them doing it from their own
           dashboard.
         </p>
@@ -33,8 +33,8 @@ export default async function AdminSlotsPage({
       />
 
       {selected && (
-        <section className="rounded-2xl border border-forest-900/10 bg-white p-5">
-          <h2 className="font-display text-lg font-semibold text-forest-900">
+        <section className="border border-ink/10 bg-white p-5">
+          <h2 className="font-serif-editorial text-lg text-ink">
             Add availability — {selected.listing.title}
           </h2>
           <div className="mt-3">
@@ -44,9 +44,9 @@ export default async function AdminSlotsPage({
               recurringAction={adminCreateRecurringSlotsAction}
             />
           </div>
-          <div className="mt-5 space-y-2 border-t border-forest-900/10 pt-4">
+          <div className="mt-5 space-y-2 border-t border-ink/10 pt-4">
             {selectedSlots.length === 0 ? (
-              <p className="text-sm text-forest-800/60">No upcoming slots for this listing yet.</p>
+              <p className="text-sm text-ink/60">No upcoming slots for this listing yet.</p>
             ) : (
               selectedSlots.map((slot) => (
                 <SlotRow
@@ -67,11 +67,12 @@ export default async function AdminSlotsPage({
       )}
 
       <section className="space-y-2">
-        <h2 className="font-display text-lg font-semibold text-forest-900">
-          All upcoming slots {allUpcoming.length > 0 && `(${allUpcoming.length})`}
+        <h2 className="font-serif-editorial text-lg text-ink">
+          All upcoming slots{" "}
+          {allUpcoming.length > 0 && <span className="font-mono-data text-base text-ink/40">({allUpcoming.length})</span>}
         </h2>
         {allUpcoming.length === 0 ? (
-          <p className="rounded-2xl border border-forest-900/10 bg-white p-6 text-center text-sm text-forest-800/60">
+          <p className="border border-ink/10 bg-white p-6 text-center text-sm text-ink/60">
             No slots set up anywhere yet.
           </p>
         ) : (

@@ -19,54 +19,54 @@ export function PromoForm({
   const [state, formAction, pending] = useActionState(createPromoCodeAction, initialState);
 
   return (
-    <form action={formAction} className="space-y-4 rounded-2xl border border-forest-900/10 bg-white p-5">
-      <h2 className="font-display text-lg font-semibold text-forest-900">Create a promotion</h2>
+    <form action={formAction} className="space-y-4 border border-ink/10 bg-white p-5">
+      <h2 className="font-serif-editorial text-lg text-ink">Create a promotion</h2>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <label className="text-sm font-medium text-forest-900">Code</label>
+          <label className="text-sm font-medium text-ink">Code</label>
           <input
             name="code"
             required
             placeholder="AFCON27"
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
         <div>
-          <label className="text-sm font-medium text-forest-900">Title</label>
+          <label className="text-sm font-medium text-ink">Title</label>
           <input
             name="title"
             required
             placeholder="Kickoff week special"
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
       </div>
 
       <div>
-        <label className="text-sm font-medium text-forest-900">Discount text</label>
+        <label className="text-sm font-medium text-ink">Discount text</label>
         <input
           name="discountText"
           required
           placeholder="Extra 10% off any journey booking"
-          className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
         />
       </div>
 
       <div>
-        <label className="text-sm font-medium text-forest-900">Freebie text (optional)</label>
+        <label className="text-sm font-medium text-ink">Freebie text (optional)</label>
         <input
           name="freebieText"
-          className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
         />
       </div>
 
       <div>
-        <label className="text-sm font-medium text-forest-900">Scope</label>
+        <label className="text-sm font-medium text-ink">Scope</label>
         <select
           name="scope"
           defaultValue=""
-          className="mt-1 w-full rounded-lg border border-forest-900/15 bg-white px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="mt-1 w-full rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm outline-none focus:border-ember"
         >
           <option value="">Platform-wide (all members)</option>
           <optgroup label="Only members with a journey stamp">
@@ -84,19 +84,19 @@ export function PromoForm({
             ))}
           </optgroup>
         </select>
-        <p className="mt-1 text-xs text-forest-800/50">
+        <p className="mt-1 text-xs text-ink/50">
           A place-specific promo shows only on that listing&apos;s card, everywhere it appears.
         </p>
       </div>
 
       <div>
-        <label className="text-sm font-medium text-forest-900">Expires (optional)</label>
+        <label className="text-sm font-medium text-ink">Expires (optional)</label>
         <input
           type="date"
           name="expiresAt"
-          className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
         />
-        <p className="mt-1 text-xs text-forest-800/50">
+        <p className="mt-1 text-xs text-ink/50">
           5 days before this date, the perk gets a reminder in the Social feed. Leave blank if it never expires.
         </p>
       </div>
@@ -106,7 +106,7 @@ export function PromoForm({
       <button
         type="submit"
         disabled={pending}
-        className="rounded-full bg-marigold-500 px-4 py-2.5 text-sm font-semibold text-forest-950 transition hover:bg-marigold-400 disabled:opacity-60"
+        className="rounded-full bg-ink px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-ink/85 disabled:opacity-60"
       >
         {pending ? "Creating…" : "Create promotion"}
       </button>

@@ -65,10 +65,10 @@ export function DashboardTrendChart({ days }: { days: DayPoint[] }) {
             y1={BASELINE_Y - PLOT_HEIGHT}
             x2={width}
             y2={BASELINE_Y - PLOT_HEIGHT}
-            className="stroke-forest-900/10"
+            className="stroke-ink/10"
             strokeWidth={1}
           />
-          <line x1={0} y1={BASELINE_Y} x2={width} y2={BASELINE_Y} className="stroke-forest-900/15" strokeWidth={1} />
+          <line x1={0} y1={BASELINE_Y} x2={width} y2={BASELINE_Y} className="stroke-ink/15" strokeWidth={1} />
           <defs>
             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="var(--color-nile-700)" stopOpacity="0.9" />
@@ -104,33 +104,33 @@ export function DashboardTrendChart({ days }: { days: DayPoint[] }) {
         </svg>
         {activeDay && (
           <div
-            className="pointer-events-none absolute top-0 -translate-x-1/2 rounded-lg border border-forest-900/10 bg-forest-900 px-2.5 py-1.5 text-xs text-white shadow-lg"
+            className="pointer-events-none absolute top-0 -translate-x-1/2 border border-ink/10 bg-ink px-2.5 py-1.5 text-xs text-white shadow-lg"
             style={{ left: `${((active! + 0.5) / days.length) * 100}%` }}
           >
-            <p className="font-semibold tabular-nums">{activeDay.count} booking{activeDay.count === 1 ? "" : "s"}</p>
+            <p className="font-mono-data font-semibold">{activeDay.count} booking{activeDay.count === 1 ? "" : "s"}</p>
             <p className="text-[11px] text-white/70">{formatDayLabel(activeDay.date)}</p>
           </div>
         )}
       </div>
-      <div className="mt-1.5 flex justify-between text-[11px] text-forest-800/40">
+      <div className="font-mono-data mt-1.5 flex justify-between text-[11px] text-ink/40">
         <span>{formatDayLabel(days[0].date)}</span>
         <span>{formatDayLabel(days[days.length - 1].date)}</span>
       </div>
-      <details className="mt-2 text-xs text-forest-800/60">
-        <summary className="cursor-pointer select-none font-medium">View as table</summary>
-        <div className="mt-2 max-h-40 overflow-y-auto rounded-lg border border-forest-900/10">
+      <details className="mt-2 text-xs text-ink/60">
+        <summary className="eyebrow cursor-pointer select-none text-ink/40">View as table</summary>
+        <div className="mt-2 max-h-40 overflow-y-auto border border-ink/10">
           <table className="w-full text-left">
-            <thead className="sticky top-0 bg-forest-50 text-forest-800/50">
+            <thead className="eyebrow sticky top-0 bg-paper text-ink/40">
               <tr>
                 <th className="px-2 py-1 font-medium">Date</th>
                 <th className="px-2 py-1 text-right font-medium">Bookings</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="font-mono-data">
               {days.map((day) => (
-                <tr key={day.date} className="border-t border-forest-900/5">
+                <tr key={day.date} className="border-t border-ink/5">
                   <td className="px-2 py-1">{formatDayLabel(day.date)}</td>
-                  <td className="px-2 py-1 text-right tabular-nums">{day.count}</td>
+                  <td className="px-2 py-1 text-right">{day.count}</td>
                 </tr>
               ))}
             </tbody>

@@ -21,35 +21,35 @@ export function RewardForm({
   const [source, setSource] = useState<"manual" | "funzone" | "xp_draw" | "points_shop">("manual");
 
   return (
-    <form action={formAction} className="space-y-4 rounded-2xl border border-forest-900/10 bg-white p-5">
-      <h2 className="font-display text-lg font-semibold text-forest-900">Add a reward</h2>
+    <form action={formAction} className="space-y-4 border border-ink/10 bg-white p-5">
+      <h2 className="font-serif-editorial text-lg text-ink">Add a reward</h2>
 
       <div>
-        <label className="text-sm font-medium text-forest-900">Title</label>
+        <label className="text-sm font-medium text-ink">Title</label>
         <input
           name="title"
           required
           placeholder="27% off your stay"
-          className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
         />
       </div>
 
       <div>
-        <label className="text-sm font-medium text-forest-900">Description (optional)</label>
+        <label className="text-sm font-medium text-ink">Description (optional)</label>
         <textarea
           name="description"
           rows={2}
-          className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
         />
       </div>
 
       <div>
-        <label className="text-sm font-medium text-forest-900">Applies to</label>
+        <label className="text-sm font-medium text-ink">Applies to</label>
         <select
           name="target"
           required
           defaultValue=""
-          className="mt-1 w-full rounded-lg border border-forest-900/15 bg-white px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="mt-1 w-full rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm outline-none focus:border-ember"
         >
           <option value="" disabled>
             Choose a place or event
@@ -72,12 +72,12 @@ export function RewardForm({
       </div>
 
       <div>
-        <label className="text-sm font-medium text-forest-900">Source</label>
+        <label className="text-sm font-medium text-ink">Source</label>
         <select
           name="source"
           value={source}
           onChange={(e) => setSource(e.target.value as typeof source)}
-          className="mt-1 w-full rounded-lg border border-forest-900/15 bg-white px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="mt-1 w-full rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm outline-none focus:border-ember"
         >
           <option value="manual">Campaign — travellers claim it on the place/event page</option>
           <option value="funzone">Fun Zone — staff issue it to a game winner</option>
@@ -88,16 +88,16 @@ export function RewardForm({
 
       {source === "points_shop" && (
         <div>
-          <label className="text-sm font-medium text-forest-900">Cost in points</label>
+          <label className="text-sm font-medium text-ink">Cost in points</label>
           <input
             name="pointsCost"
             type="number"
             min={1}
             required
             placeholder="1500"
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
-          <p className="mt-1 text-xs text-forest-800/50">
+          <p className="mt-1 text-xs text-ink/50">
             Travellers can redeem this again and again, any time their points balance covers the cost.
           </p>
         </div>
@@ -105,12 +105,12 @@ export function RewardForm({
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <label className="text-sm font-medium text-forest-900">Discount type</label>
+          <label className="text-sm font-medium text-ink">Discount type</label>
           <select
             name="discountType"
             value={discountType}
             onChange={(e) => setDiscountType(e.target.value as typeof discountType)}
-            className="mt-1 w-full rounded-lg border border-forest-900/15 bg-white px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm outline-none focus:border-ember"
           >
             <option value="percent">Percent off</option>
             <option value="fixed">Fixed amount (UGX)</option>
@@ -119,7 +119,7 @@ export function RewardForm({
         </div>
         {discountType !== "freebie" && (
           <div>
-            <label className="text-sm font-medium text-forest-900">
+            <label className="text-sm font-medium text-ink">
               {discountType === "percent" ? "Percent" : "Amount (UGX)"}
             </label>
             <input
@@ -128,7 +128,7 @@ export function RewardForm({
               min={1}
               required
               placeholder={discountType === "percent" ? "27" : "50000"}
-              className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+              className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
             />
           </div>
         )}
@@ -136,24 +136,24 @@ export function RewardForm({
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <label className="text-sm font-medium text-forest-900">Valid for (days)</label>
+          <label className="text-sm font-medium text-ink">Valid for (days)</label>
           <input
             name="defaultValidityDays"
             type="number"
             min={1}
             defaultValue={30}
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
-          <p className="mt-1 text-xs text-forest-800/50">
+          <p className="mt-1 text-xs text-ink/50">
             Ignored for event-targeted rewards — those expire when the event ends.
           </p>
         </div>
         <div>
-          <label className="text-sm font-medium text-forest-900">Funded by (optional)</label>
+          <label className="text-sm font-medium text-ink">Funded by (optional)</label>
           <select
             name="fundedBy"
             defaultValue=""
-            className="mt-1 w-full rounded-lg border border-forest-900/15 bg-white px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm outline-none focus:border-ember"
           >
             <option value="">Undecided</option>
             <option value="wano">Wano</option>
@@ -168,7 +168,7 @@ export function RewardForm({
       <button
         type="submit"
         disabled={pending}
-        className="rounded-full bg-marigold-500 px-4 py-2.5 text-sm font-semibold text-forest-950 transition hover:bg-marigold-400 disabled:opacity-60"
+        className="rounded-full bg-ink px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-ink/85 disabled:opacity-60"
       >
         {pending ? "Adding…" : "Add reward"}
       </button>

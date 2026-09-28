@@ -23,12 +23,12 @@ export function TravellerNameEditor({
   if (!editing) {
     return (
       <div className="flex items-center gap-2">
-        <p className="font-medium text-forest-900">{name}</p>
+        <p className="font-medium text-ink">{name}</p>
         {canEdit && (
           <button
             type="button"
             onClick={() => setEditing(true)}
-            className="text-xs font-medium text-nile-700 hover:underline"
+            className="text-xs font-medium text-ember hover:underline"
           >
             Edit name
           </button>
@@ -43,7 +43,7 @@ export function TravellerNameEditor({
         value={name}
         onChange={(e) => setName(e.target.value)}
         autoFocus
-        className="rounded-lg border border-forest-900/15 px-2 py-1 text-sm outline-none focus:border-forest-600"
+        className="rounded-lg border border-ink/15 px-2 py-1 text-sm outline-none focus:border-ember"
       />
       <button
         type="button"
@@ -59,7 +59,7 @@ export function TravellerNameEditor({
             }
           })
         }
-        className="rounded-full bg-forest-800 px-3 py-1 text-xs font-semibold text-white disabled:opacity-60"
+        className="rounded-full bg-ink px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-ink/85 disabled:opacity-60"
       >
         {pending ? "Saving…" : "Save"}
       </button>
@@ -70,7 +70,7 @@ export function TravellerNameEditor({
           setEditing(false);
           setError(null);
         }}
-        className="text-xs font-medium text-forest-800/60 hover:text-forest-800"
+        className="text-xs font-medium text-ink/60 hover:text-ink"
       >
         Cancel
       </button>

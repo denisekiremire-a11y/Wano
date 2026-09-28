@@ -10,11 +10,11 @@ export function CreateAdminForm() {
   const [state, formAction, pending] = useActionState(createAdminAction, initialState);
 
   return (
-    <form action={formAction} className="space-y-4 rounded-2xl border border-forest-900/10 bg-white p-5">
-      <h2 className="font-display text-lg font-semibold text-forest-900">Create an admin account</h2>
+    <form action={formAction} className="space-y-4 border border-ink/10 bg-white p-5">
+      <h2 className="font-serif-editorial text-lg text-ink">Create an admin account</h2>
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label htmlFor="name" className="text-sm font-medium text-forest-900">
+          <label htmlFor="name" className="text-sm font-medium text-ink">
             Name
           </label>
           <input
@@ -22,11 +22,11 @@ export function CreateAdminForm() {
             name="name"
             required
             maxLength={80}
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
         <div>
-          <label htmlFor="email" className="text-sm font-medium text-forest-900">
+          <label htmlFor="email" className="text-sm font-medium text-ink">
             Email
           </label>
           <input
@@ -34,11 +34,11 @@ export function CreateAdminForm() {
             name="email"
             type="email"
             required
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
         <div>
-          <label htmlFor="password" className="text-sm font-medium text-forest-900">
+          <label htmlFor="password" className="text-sm font-medium text-ink">
             Temporary password
           </label>
           <input
@@ -48,18 +48,18 @@ export function CreateAdminForm() {
             required
             minLength={8}
             maxLength={72}
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
         <div>
-          <label htmlFor="level" className="text-sm font-medium text-forest-900">
+          <label htmlFor="level" className="text-sm font-medium text-ink">
             Level
           </label>
           <select
             id="level"
             name="level"
             defaultValue="support"
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm capitalize outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm capitalize outline-none focus:border-ember"
           >
             <option value="support">Support</option>
             <option value="ops">Ops</option>
@@ -71,7 +71,7 @@ export function CreateAdminForm() {
       <button
         type="submit"
         disabled={pending}
-        className="rounded-full bg-forest-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-forest-700 disabled:opacity-60"
+        className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink/85 disabled:opacity-60"
       >
         {pending ? "Creating…" : "Create admin"}
       </button>

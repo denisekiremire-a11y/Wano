@@ -34,42 +34,42 @@ function OneOffForm({
       <input type="hidden" name="listingId" value={listingId} />
       <div className="grid gap-3 sm:grid-cols-4">
         <div>
-          <label className="text-xs font-medium text-forest-900">Date</label>
+          <label className="text-xs font-medium text-ink">Date</label>
           <input
             type="date"
             name="date"
             required
             min={new Date().toISOString().slice(0, 10)}
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-forest-900">Start</label>
+          <label className="text-xs font-medium text-ink">Start</label>
           <input
             type="time"
             name="startTime"
             required
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-forest-900">End</label>
+          <label className="text-xs font-medium text-ink">End</label>
           <input
             type="time"
             name="endTime"
             required
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-forest-900">Capacity</label>
+          <label className="text-xs font-medium text-ink">Capacity</label>
           <input
             type="number"
             name="capacity"
             min={1}
             required
             placeholder="20"
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
       </div>
@@ -77,7 +77,7 @@ function OneOffForm({
       <button
         type="submit"
         disabled={pending}
-        className="rounded-full bg-forest-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+        className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink/85 disabled:opacity-60"
       >
         {pending ? "Adding…" : "Add slot"}
       </button>
@@ -110,12 +110,12 @@ function RecurringForm({
       <input type="hidden" name="listingId" value={listingId} />
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <label className="text-xs font-medium text-forest-900">Every</label>
+          <label className="text-xs font-medium text-ink">Every</label>
           <select
             name="dayOfWeek"
             required
             defaultValue=""
-            className="mt-1 w-full rounded-lg border border-forest-900/15 bg-white px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm outline-none focus:border-ember"
           >
             <option value="" disabled>
               Choose a day
@@ -128,46 +128,46 @@ function RecurringForm({
           </select>
         </div>
         <div>
-          <label className="text-xs font-medium text-forest-900">Start times (comma-separated)</label>
+          <label className="text-xs font-medium text-ink">Start times (comma-separated)</label>
           <input
             type="text"
             name="startTimes"
             required
             placeholder="10:00, 12:00, 14:00"
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-forest-900">Duration (minutes)</label>
+          <label className="text-xs font-medium text-ink">Duration (minutes)</label>
           <input
             type="number"
             name="durationMinutes"
             min={15}
             required
             placeholder="60"
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-forest-900">Capacity per slot</label>
+          <label className="text-xs font-medium text-ink">Capacity per slot</label>
           <input
             type="number"
             name="capacity"
             min={1}
             required
             placeholder="20"
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-forest-900">Weeks ahead</label>
+          <label className="text-xs font-medium text-ink">Weeks ahead</label>
           <input
             type="number"
             name="weeksAhead"
             min={1}
             max={26}
             defaultValue={12}
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
       </div>
@@ -175,7 +175,7 @@ function RecurringForm({
       <button
         type="submit"
         disabled={pending}
-        className="rounded-full bg-forest-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+        className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink/85 disabled:opacity-60"
       >
         {pending ? "Creating…" : "Create recurring slots"}
       </button>
@@ -201,7 +201,7 @@ export function VendorSlotForm({
           type="button"
           onClick={() => setTab("recurring")}
           className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-            tab === "recurring" ? "bg-forest-800 text-white" : "border border-forest-900/15 text-forest-800"
+            tab === "recurring" ? "bg-ink text-white" : "border border-ink/15 text-ink"
           }`}
         >
           Recurring weekly
@@ -210,7 +210,7 @@ export function VendorSlotForm({
           type="button"
           onClick={() => setTab("one-off")}
           className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-            tab === "one-off" ? "bg-forest-800 text-white" : "border border-forest-900/15 text-forest-800"
+            tab === "one-off" ? "bg-ink text-white" : "border border-ink/15 text-ink"
           }`}
         >
           One-off

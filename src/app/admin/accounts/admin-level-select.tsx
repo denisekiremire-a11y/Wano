@@ -24,7 +24,7 @@ export function AdminLevelSelect({ userId, level, isSelf }: { userId: string; le
             if (result.error) setError(result.error);
           });
         }}
-        className="rounded-lg border border-forest-900/15 bg-white px-2 py-1 text-xs text-forest-800 capitalize disabled:opacity-50"
+        className="rounded-lg border border-ink/15 bg-white px-2 py-1 text-xs text-ink capitalize outline-none focus:border-ember disabled:opacity-50"
       >
         {LEVELS.map((l) => (
           <option key={l} value={l}>

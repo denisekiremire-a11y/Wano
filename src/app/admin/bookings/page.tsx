@@ -56,38 +56,38 @@ export default async function AdminBookingsPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-semibold text-forest-900">Bookings</h1>
-        <p className="mt-1 text-sm text-forest-800/60">
+        <h1 className="font-serif-editorial text-2xl text-ink">Bookings</h1>
+        <p className="mt-1 text-sm text-ink/60">
           Every booking request across all businesses. Confirming or marking complete here has the
           same effect as the business doing it from their own dashboard.
         </p>
       </div>
 
       {vendorsWithCancellations.length > 0 && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
-          <p className="text-sm font-semibold text-red-800">Vendors with recent cancellations</p>
+        <div className="border border-red-200 bg-red-50 p-4">
+          <p className="eyebrow text-red-600">Vendors with recent cancellations</p>
           <ul className="mt-2 space-y-1 text-sm text-red-900">
             {vendorsWithCancellations.map((v) => (
               <li key={v.id} className="flex items-center justify-between">
                 <span>{v.businessName}</span>
-                <span className="font-semibold">{v.vendorCancellationCount} cancelled</span>
+                <span className="font-mono-data font-semibold">{v.vendorCancellationCount} cancelled</span>
               </li>
             ))}
           </ul>
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+      <div className="grid grid-cols-3 gap-px overflow-hidden border border-ink/10 bg-ink/10 sm:grid-cols-6">
         {statusOptions.map((s) => (
           <a
             key={s}
             href={`/admin/bookings?status=${s}`}
-            className={`rounded-2xl border p-4 transition hover:shadow-md ${
-              status === s ? "border-forest-800 bg-forest-50" : "border-forest-900/10 bg-white"
+            className={`border-b-2 bg-white p-4 transition-colors ${
+              status === s ? "border-ember" : "border-transparent hover:bg-ink/5"
             }`}
           >
-            <p className="text-xs font-medium uppercase tracking-wide text-forest-800/50 capitalize">{s}</p>
-            <p className="mt-1 font-display text-2xl font-semibold text-forest-900">{counts[s]}</p>
+            <p className={`eyebrow ${status === s ? "text-ink" : "text-ink/40"}`}>{s}</p>
+            <p className="font-mono-data mt-1 text-2xl text-ink">{counts[s]}</p>
           </a>
         ))}
       </div>
@@ -99,18 +99,18 @@ export default async function AdminBookingsPage({
           name="q"
           defaultValue={q ?? ""}
           placeholder="Search by traveller, business, listing, or ref..."
-          className="min-w-[240px] flex-1 rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="min-w-[240px] flex-1 border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ink"
         />
         <button
           type="submit"
-          className="rounded-lg bg-forest-800 px-4 py-2 text-sm font-semibold text-white hover:bg-forest-700"
+          className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink/85"
         >
           Search
         </button>
         {(status || q) && (
           <a
             href="/admin/bookings"
-            className="rounded-lg border border-forest-900/15 px-4 py-2 text-sm font-semibold text-forest-800 hover:bg-forest-800/5"
+            className="rounded-full border border-ink/15 px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-ink/5"
           >
             Clear
           </a>
@@ -119,7 +119,7 @@ export default async function AdminBookingsPage({
 
       <div className="space-y-3">
         {filtered.length === 0 ? (
-          <p className="rounded-2xl border border-forest-900/10 bg-white p-6 text-center text-sm text-forest-800/60">
+          <p className="border border-ink/10 bg-white p-6 text-center text-sm text-ink/50">
             No bookings match.
           </p>
         ) : (

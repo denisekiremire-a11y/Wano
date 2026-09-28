@@ -21,8 +21,8 @@ export function RedeemVoucherPanel({ check, userRewardId }: { check: RedeemCheck
 
   if (!check.ok) {
     return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 p-5">
-        <p className="text-sm font-semibold text-red-800">Can&apos;t redeem this voucher</p>
+      <div className="border border-red-200 bg-red-50 p-5">
+        <p className="eyebrow text-red-600">Can&apos;t redeem this voucher</p>
         <p className="mt-1 text-sm text-red-700">
           {REJECTION_COPY[check.reason]}
           {check.reason === "already_redeemed" && check.detail ? ` (${check.detail})` : ""}
@@ -33,9 +33,9 @@ export function RedeemVoucherPanel({ check, userRewardId }: { check: RedeemCheck
 
   if (justRedeemed) {
     return (
-      <div className="rounded-2xl border border-forest-300 bg-forest-50 p-5 text-center">
-        <p className="text-sm font-semibold text-forest-900">Redeemed</p>
-        <p className="mt-1 text-sm text-forest-800/70">
+      <div className="border border-ink/10 bg-ink/5 p-5 text-center">
+        <p className="eyebrow text-ink">Redeemed</p>
+        <p className="mt-1 text-sm text-ink/70">
           {check.rewardTitle} for {check.travellerName}.
         </p>
       </div>
@@ -43,35 +43,35 @@ export function RedeemVoucherPanel({ check, userRewardId }: { check: RedeemCheck
   }
 
   return (
-    <div className="rounded-2xl border border-forest-900/10 bg-white p-5">
-      <p className="text-xs font-medium uppercase tracking-wide text-forest-800/50">Redeeming for</p>
-      <p className="mt-1 font-display text-xl font-semibold text-forest-900">{check.travellerName}</p>
-      <p className="mt-2 text-sm text-forest-800/80">{check.rewardTitle}</p>
-      <p className="text-sm font-semibold text-forest-800">
+    <div className="border border-ink/10 bg-white p-5">
+      <p className="eyebrow text-ink/40">Redeeming for</p>
+      <p className="font-serif-editorial mt-1 text-xl text-ink">{check.travellerName}</p>
+      <p className="mt-2 text-sm text-ink/70">{check.rewardTitle}</p>
+      <p className="font-mono-data text-sm font-semibold text-ember">
         {formatRewardDiscount(check.discountType as "percent" | "fixed" | "freebie", check.discountValue)}
       </p>
 
       <form action={formAction} className="mt-4 flex flex-wrap items-end gap-3">
         <input type="hidden" name="userRewardId" value={userRewardId} />
         <div>
-          <label className="text-sm font-medium text-forest-900">Venue PIN</label>
+          <label className="text-sm font-medium text-ink">Venue PIN</label>
           <input
             name="pin"
             type="password"
             inputMode="numeric"
             maxLength={6}
             required
-            className="mt-1 w-32 rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-32 rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
         <button
           type="submit"
           disabled={pending}
-          className="rounded-full bg-marigold-500 px-4 py-2.5 text-sm font-semibold text-forest-950 transition hover:bg-marigold-400 disabled:opacity-60"
+          className="rounded-full bg-ink px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-ink/85 disabled:opacity-60"
         >
           {pending ? "Checking…" : "Mark redeemed"}
         </button>
-        {state.error && <p className="w-full text-xs text-red-700">{state.error}</p>}
+        {state.error && <p className="w-full text-xs text-red-600">{state.error}</p>}
       </form>
     </div>
   );

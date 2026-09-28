@@ -10,77 +10,77 @@ export function MatchForm() {
   const [state, formAction, pending] = useActionState(createMatchAction, initialState);
 
   return (
-    <form action={formAction} className="space-y-4 rounded-2xl border border-forest-900/10 bg-white p-5">
-      <h2 className="font-display text-lg font-semibold text-forest-900">Add a match</h2>
+    <form action={formAction} className="space-y-4 border border-ink/10 bg-white p-5">
+      <h2 className="font-serif-editorial text-lg text-ink">Add a match</h2>
 
       <div>
-        <label className="text-sm font-medium text-forest-900">Title</label>
+        <label className="text-sm font-medium text-ink">Title</label>
         <input
           name="title"
           required
           placeholder="Uganda vs Senegal — Group Stage"
-          className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
         />
       </div>
 
       <div>
-        <label className="text-sm font-medium text-forest-900">Description</label>
+        <label className="text-sm font-medium text-ink">Description</label>
         <textarea
           name="description"
           required
           rows={2}
-          className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
         />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <label className="text-sm font-medium text-forest-900">Venue</label>
+          <label className="text-sm font-medium text-ink">Venue</label>
           <input
             name="location"
             required
             placeholder="Mandela National Stadium"
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
         <div>
-          <label className="text-sm font-medium text-forest-900">Kick-off</label>
+          <label className="text-sm font-medium text-ink">Kick-off</label>
           <input
             name="startAt"
             type="datetime-local"
             required
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
       </div>
 
       <div>
-        <label className="text-sm font-medium text-forest-900">AFCON venue page (optional)</label>
+        <label className="text-sm font-medium text-ink">AFCON venue page (optional)</label>
         <select
           name="venueId"
           defaultValue=""
-          className="mt-1 w-full rounded-lg border border-forest-900/15 bg-white px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="mt-1 w-full rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm outline-none focus:border-ember"
         >
           <option value="">Not an AFCON venue match</option>
           <option value="namboole">Mandela National Stadium (Namboole)</option>
           <option value="hoima">Hoima City Stadium</option>
         </select>
-        <p className="mt-1 text-xs text-forest-800/50">
+        <p className="mt-1 text-xs text-ink/40">
           Set this to list the match on that stadium&apos;s /afcon timetable.
         </p>
       </div>
 
       <div>
-        <label className="text-sm font-medium text-forest-900">Match length (hours)</label>
+        <label className="text-sm font-medium text-ink">Match length (hours)</label>
         <input
           name="durationHours"
           type="number"
           min={1}
           max={6}
           defaultValue={2}
-          className="mt-1 w-24 rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="mt-1 w-24 rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
         />
-        <p className="mt-1 text-xs text-forest-800/50">
+        <p className="mt-1 text-xs text-ink/40">
           Used as the kick-off time plus this many hours — vouchers tied to this match expire then.
         </p>
       </div>
@@ -90,7 +90,7 @@ export function MatchForm() {
       <button
         type="submit"
         disabled={pending}
-        className="rounded-full bg-marigold-500 px-4 py-2.5 text-sm font-semibold text-forest-950 transition hover:bg-marigold-400 disabled:opacity-60"
+        className="rounded-full bg-ink px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-ink/85 disabled:opacity-60"
       >
         {pending ? "Adding…" : "Add match"}
       </button>

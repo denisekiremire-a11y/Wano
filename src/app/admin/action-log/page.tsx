@@ -32,28 +32,30 @@ export default async function AdminActionLogPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-semibold text-forest-900">Action log</h1>
-        <p className="mt-1 text-sm text-forest-800/60">
+        <h1 className="font-serif-editorial text-3xl text-ink">Action log</h1>
+        <p className="mt-1.5 text-sm text-ink/60">
           Every admin-gated action across the app, newest first — who did what, and when. Super-only.
         </p>
       </div>
 
-      <div className="space-y-2 rounded-2xl border border-forest-900/10 bg-white p-5">
+      <div className="border border-ink/10 bg-white p-5">
         {entries.length === 0 ? (
-          <p className="text-sm text-forest-800/60">Nothing logged yet.</p>
+          <p className="text-sm text-ink/60">Nothing logged yet.</p>
         ) : (
-          entries.map(({ entry, actor }) => (
-            <div key={entry.id} className="border-b border-forest-900/5 pb-2 text-sm last:border-0">
-              <p className="text-forest-900">
-                <span className="font-medium">{actor.name}</span> — {entry.summary}
-              </p>
-              <p className="text-xs text-forest-800/40">
-                {entry.action}
-                {entry.targetType && ` · ${TARGET_LABELS[entry.targetType] ?? entry.targetType}`} ·{" "}
-                {new Date(entry.createdAt).toLocaleString()}
-              </p>
-            </div>
-          ))
+          <div className="border-t border-ink/10">
+            {entries.map(({ entry, actor }) => (
+              <div key={entry.id} className="border-b border-ink/10 py-3 text-sm">
+                <p className="text-ink">
+                  <span className="font-medium">{actor.name}</span> — {entry.summary}
+                </p>
+                <p className="eyebrow mt-1 text-ink/40">
+                  {entry.action}
+                  {entry.targetType && ` · ${TARGET_LABELS[entry.targetType] ?? entry.targetType}`} ·{" "}
+                  {new Date(entry.createdAt).toLocaleString()}
+                </p>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>

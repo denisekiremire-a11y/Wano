@@ -10,8 +10,8 @@ export default async function AdminAccountsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-semibold text-forest-900">Admin accounts</h1>
-        <p className="mt-1 text-sm text-forest-800/60">
+        <h1 className="font-serif-editorial text-3xl text-ink">Admin accounts</h1>
+        <p className="mt-1.5 text-sm text-ink/60">
           Create admin accounts and set their level — support, ops, or super. See src/lib/admin-permissions.ts
           for exactly what each level can reach.
         </p>
@@ -19,18 +19,18 @@ export default async function AdminAccountsPage() {
 
       <CreateAdminForm />
 
-      <div className="space-y-2">
+      <div className="border-t border-ink/10">
         {admins.map((admin) => (
           <div
             key={admin.id}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-forest-900/10 bg-white p-4"
+            className="flex flex-wrap items-center justify-between gap-3 border-b border-ink/10 py-4"
           >
             <div>
-              <p className="font-medium text-forest-900">
+              <p className="font-medium text-ink">
                 {admin.name}
-                {admin.id === session.userId && <span className="ml-2 text-xs text-forest-800/50">(you)</span>}
+                {admin.id === session.userId && <span className="eyebrow ml-2 text-ink/40">(you)</span>}
               </p>
-              <p className="text-sm text-forest-800/60">{admin.email}</p>
+              <p className="text-sm text-ink/60">{admin.email}</p>
             </div>
             <AdminLevelSelect
               userId={admin.id}

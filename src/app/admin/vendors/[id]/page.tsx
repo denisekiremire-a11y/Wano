@@ -23,26 +23,26 @@ export default async function AdminVendorDetailPage({
 
   return (
     <div className="space-y-6">
-      <Link href="/admin/vendors" className="text-sm text-nile-700 hover:underline">
+      <Link href="/admin/vendors" className="eyebrow text-ink/40 hover:text-ink">
         ← All vendors
       </Link>
 
       <div>
-        <h1 className="font-display text-2xl font-semibold text-forest-900">
+        <h1 className="font-serif-editorial text-2xl text-ink md:text-3xl">
           {vendorProfile.businessName}
         </h1>
-        <p className="mt-1 text-sm text-forest-800/60">
+        <p className="mt-1 text-sm text-ink/60">
           {vendorUser.email} · {vendorProfile.location}
         </p>
-        <p className="mt-2 max-w-2xl text-sm text-forest-800/70">{vendorProfile.description}</p>
+        <p className="mt-2 max-w-2xl text-sm text-ink/70">{vendorProfile.description}</p>
       </div>
 
       <AccreditationPanel vendorProfileId={vendorProfile.id} status={vendorProfile.accreditationStatus} />
 
-      <section className="space-y-3 rounded-2xl border border-forest-900/10 bg-white p-5">
-        <h2 className="font-display text-lg font-semibold text-forest-900">KYC documents</h2>
+      <section className="space-y-3 border border-ink/10 bg-white p-5">
+        <h2 className="font-serif-editorial text-lg text-ink">KYC documents</h2>
         {documents.length === 0 ? (
-          <p className="text-sm text-forest-800/60">No documents submitted yet.</p>
+          <p className="text-sm text-ink/60">No documents submitted yet.</p>
         ) : (
           <div className="space-y-2">
             {documents.map((doc) => (
@@ -95,15 +95,15 @@ export default async function AdminVendorDetailPage({
       />
 
       {reviews.length > 0 && (
-        <section className="space-y-2 rounded-2xl border border-forest-900/10 bg-white p-5">
-          <h2 className="font-display text-lg font-semibold text-forest-900">Review history</h2>
+        <section className="space-y-2 border border-ink/10 bg-white p-5">
+          <h2 className="font-serif-editorial text-lg text-ink">Review history</h2>
           {reviews.map(({ review, reviewer }) => (
-            <div key={review.id} className="border-b border-forest-900/5 pb-2 text-sm last:border-0">
-              <p className="font-medium text-forest-900">
-                {review.decision} <span className="font-normal text-forest-800/60">by {reviewer.name}</span>
+            <div key={review.id} className="border-b border-ink/10 pb-2 text-sm last:border-0">
+              <p className="font-medium text-ink">
+                {review.decision} <span className="font-normal text-ink/60">by {reviewer.name}</span>
               </p>
-              {review.notes && <p className="text-forest-800/70">{review.notes}</p>}
-              <p className="text-xs text-forest-800/40">
+              {review.notes && <p className="text-ink/70">{review.notes}</p>}
+              <p className="font-mono-data text-xs text-ink/40">
                 {new Date(review.decidedAt).toLocaleString()}
               </p>
             </div>

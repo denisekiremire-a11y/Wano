@@ -28,7 +28,7 @@ export function BookingModeToggle({
       disabled={pending}
       onClick={toggle}
       className={`rounded-full px-3 py-1 text-xs font-medium transition disabled:opacity-50 ${
-        instant ? "bg-forest-100 text-forest-800" : "bg-marigold-100 text-marigold-800"
+        instant ? "bg-ink/10 text-ink" : "bg-ember/10 text-ember"
       }`}
       title={
         instant

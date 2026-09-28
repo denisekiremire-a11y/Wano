@@ -21,7 +21,7 @@ export function DeleteVendorPostButton({ postId }: { postId: string }) {
       type="button"
       disabled={pending}
       onClick={handleDelete}
-      className="text-xs font-medium text-forest-800/50 hover:text-red-700 disabled:opacity-50"
+      className="text-xs font-medium text-ink/50 hover:text-red-600 disabled:opacity-50"
     >
       Delete
     </button>

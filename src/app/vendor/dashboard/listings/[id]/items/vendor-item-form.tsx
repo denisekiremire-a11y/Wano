@@ -48,42 +48,42 @@ export function VendorItemForm({ listingId, existing }: { listingId: string; exi
       {existing && <input type="hidden" name="itemId" value={existing.id} />}
 
       <div>
-        <label className="text-sm font-medium text-forest-900">Name</label>
+        <label className="text-sm font-medium text-ink">Name</label>
         <input
           name="name"
           required
           defaultValue={existing?.name}
-          className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
         />
       </div>
 
       <div>
-        <label className="text-sm font-medium text-forest-900">Section (optional)</label>
+        <label className="text-sm font-medium text-ink">Section (optional)</label>
         <input
           name="sectionLabel"
           placeholder='e.g. "Starters", "Main Courses", "Standard Package"'
           defaultValue={existing?.sectionLabel ?? ""}
-          className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
         />
-        <p className="mt-1 text-xs text-forest-800/50">
+        <p className="mt-1 text-xs text-ink/40">
           Group items under a heading, e.g. &quot;Starters&quot;, &quot;Main Courses&quot;, &quot;Standard
           Package&quot;.
         </p>
       </div>
 
       <div>
-        <label className="text-sm font-medium text-forest-900">Description (optional)</label>
+        <label className="text-sm font-medium text-ink">Description (optional)</label>
         <textarea
           name="description"
           rows={2}
           defaultValue={existing?.description ?? ""}
-          className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
         />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="text-sm font-medium text-forest-900">Price — whole UGX (optional)</label>
+          <label className="text-sm font-medium text-ink">Price — whole UGX (optional)</label>
           <input
             name="priceMinor"
             type="number"
@@ -91,37 +91,37 @@ export function VendorItemForm({ listingId, existing }: { listingId: string; exi
             step={1}
             placeholder="e.g. 25000"
             defaultValue={existing?.priceMinor ?? ""}
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
         <div>
-          <label className="text-sm font-medium text-forest-900">Price unit (optional)</label>
+          <label className="text-sm font-medium text-ink">Price unit (optional)</label>
           <input
             name="priceUnit"
             placeholder="/person, /night, /hour"
             defaultValue={existing?.priceUnit ?? ""}
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="text-sm font-medium text-forest-900">Duration (optional)</label>
+          <label className="text-sm font-medium text-ink">Duration (optional)</label>
           <input
             name="durationText"
             placeholder="e.g. 2 hours"
             defaultValue={existing?.durationText ?? ""}
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
         <div>
-          <label className="text-sm font-medium text-forest-900">Capacity (optional)</label>
+          <label className="text-sm font-medium text-ink">Capacity (optional)</label>
           <input
             name="capacityText"
             placeholder="e.g. Up to 5 passengers"
             defaultValue={existing?.capacityText ?? ""}
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
       </div>
@@ -132,14 +132,14 @@ export function VendorItemForm({ listingId, existing }: { listingId: string; exi
         <button
           type="submit"
           disabled={pending}
-          className="rounded-full bg-forest-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-forest-700 disabled:opacity-60"
+          className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink/85 disabled:opacity-60"
         >
           {pending ? "Saving…" : existing ? "Save changes" : "Add item"}
         </button>
         {existing && (
           <a
             href={`/vendor/dashboard/listings/${listingId}/items`}
-            className="text-sm font-medium text-forest-800/60 hover:text-forest-900"
+            className="text-sm font-medium text-ink/50 hover:text-ink"
           >
             Cancel
           </a>

@@ -60,22 +60,22 @@ export function VendorListingForm({
   }, [pending, state, router]);
 
   return (
-    <form action={formAction} className="space-y-4 rounded-2xl border border-forest-900/10 bg-white p-5">
+    <form action={formAction} className="space-y-4 border border-ink/10 bg-white p-5">
       {existing && <input type="hidden" name="listingId" value={existing.listingId} />}
 
-      <div className="rounded-xl border border-nile-200 bg-nile-50 p-3 text-xs text-nile-900">
+      <div className="border border-ink/10 bg-ink/5 p-3 text-xs text-ink/70">
         {existing
           ? "Changes here go to the Wano team for review before they replace what's currently live."
           : "New listings go to the Wano team for review before they appear on Explore."}
       </div>
 
       <div>
-        <label className="text-sm font-medium text-forest-900">Listing type</label>
+        <label className="text-sm font-medium text-ink">Listing type</label>
         <select
           name="type"
           value={type}
           onChange={(e) => setType(e.target.value as ListingType)}
-          className="mt-1 w-full rounded-lg border border-forest-900/15 bg-white px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="mt-1 w-full rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm outline-none focus:border-ember"
         >
           {Object.entries(listingTypeLabels).map(([value, label]) => (
             <option key={value} value={value}>
@@ -86,38 +86,38 @@ export function VendorListingForm({
       </div>
 
       <div>
-        <label className="text-sm font-medium text-forest-900">Title</label>
+        <label className="text-sm font-medium text-ink">Title</label>
         <input
           name="title"
           required
           defaultValue={existing?.title}
-          className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
         />
       </div>
 
       <div>
-        <label className="text-sm font-medium text-forest-900">Description</label>
+        <label className="text-sm font-medium text-ink">Description</label>
         <textarea
           name="description"
           required
           rows={3}
           defaultValue={existing?.description}
-          className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
         />
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div>
-          <label className="text-sm font-medium text-forest-900">Price label</label>
+          <label className="text-sm font-medium text-ink">Price label</label>
           <input
             name="priceLabel"
             placeholder="From"
             defaultValue={existing?.priceLabel ?? "From"}
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
         <div>
-          <label className="text-sm font-medium text-forest-900">Price (UGX)</label>
+          <label className="text-sm font-medium text-ink">Price (UGX)</label>
           <input
             name="priceMinor"
             type="number"
@@ -126,77 +126,77 @@ export function VendorListingForm({
             required
             placeholder="670000"
             defaultValue={existing?.priceMinor ?? ""}
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
         <div>
-          <label className="text-sm font-medium text-forest-900">Price unit</label>
+          <label className="text-sm font-medium text-ink">Price unit</label>
           <input
             name="priceUnit"
             placeholder="/night"
             defaultValue={existing?.priceUnit ?? ""}
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
         <div>
-          <label className="text-sm font-medium text-forest-900">Currency</label>
+          <label className="text-sm font-medium text-ink">Currency</label>
           <input
             name="currency"
             defaultValue={existing?.currency ?? "UGX"}
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
       </div>
 
       <div>
-        <label className="text-sm font-medium text-forest-900">External booking URL (optional)</label>
+        <label className="text-sm font-medium text-ink">External booking URL (optional)</label>
         <input
           name="externalBookingUrl"
           type="url"
           placeholder="Leave blank for normal in-app booking"
           defaultValue={existing?.externalBookingUrl ?? ""}
-          className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
         />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="text-sm font-medium text-forest-900">Latitude</label>
+          <label className="text-sm font-medium text-ink">Latitude</label>
           <input
             name="latitude"
             type="number"
             step="any"
             defaultValue={existing?.latitude ?? ""}
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
         <div>
-          <label className="text-sm font-medium text-forest-900">Longitude</label>
+          <label className="text-sm font-medium text-ink">Longitude</label>
           <input
             name="longitude"
             type="number"
             step="any"
             defaultValue={existing?.longitude ?? ""}
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
       </div>
 
       {!existing && (
-        <p className="text-xs text-forest-800/50">You can add photos once this listing is approved and live.</p>
+        <p className="text-xs text-ink/50">You can add photos once this listing is approved and live.</p>
       )}
 
       <div>
-        <label className="text-sm font-medium text-forest-900">Journey tags (optional)</label>
+        <label className="text-sm font-medium text-ink">Journey tags (optional)</label>
         <div className="mt-1 flex flex-wrap gap-3">
           {journeys.map((j) => (
-            <label key={j.id} className="flex items-center gap-1.5 text-sm text-forest-800">
+            <label key={j.id} className="flex items-center gap-1.5 text-sm text-ink">
               <input
                 type="checkbox"
                 name="journeyIds"
                 value={j.id}
                 defaultChecked={existing?.journeyIds.includes(j.id)}
-                className="h-4 w-4 rounded border-forest-900/30"
+                className="h-4 w-4 rounded border-ink/30"
               />
               {j.name}
             </label>
@@ -205,66 +205,66 @@ export function VendorListingForm({
       </div>
 
       {type === "hotel" && (
-        <div className="space-y-3 rounded-xl bg-forest-50 p-4">
-          <p className="text-xs font-medium text-forest-800/70">Hotel details</p>
+        <div className="space-y-3 bg-ink/5 p-4">
+          <p className="eyebrow text-ink/40">Hotel details</p>
           <input
             name="hotelRoomTypes"
             placeholder="Room types (e.g. Standard, Deluxe, Suite)"
             defaultValue={existing?.hotel?.roomTypes ?? ""}
-            className="w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
           <input
             name="hotelAmenities"
             placeholder="Amenities (e.g. Pool, spa, free breakfast)"
             defaultValue={existing?.hotel?.amenities ?? ""}
-            className="w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
           <div className="grid grid-cols-2 gap-3">
             <input
               name="hotelCheckIn"
               placeholder="Check-in (e.g. 2:00 PM)"
               defaultValue={existing?.hotel?.checkInTime ?? ""}
-              className="rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+              className="rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
             />
             <input
               name="hotelCheckOut"
               placeholder="Check-out (e.g. 11:00 AM)"
               defaultValue={existing?.hotel?.checkOutTime ?? ""}
-              className="rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+              className="rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
             />
           </div>
         </div>
       )}
 
       {type === "restaurant" && (
-        <div className="space-y-3 rounded-xl bg-forest-50 p-4">
-          <p className="text-xs font-medium text-forest-800/70">Restaurant details</p>
+        <div className="space-y-3 bg-ink/5 p-4">
+          <p className="eyebrow text-ink/40">Restaurant details</p>
           <input
             name="restaurantCuisine"
             placeholder="Cuisine (e.g. Ugandan, Continental)"
             defaultValue={existing?.restaurant?.cuisine ?? ""}
-            className="w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
           <div className="grid grid-cols-2 gap-3">
             <input
               name="restaurantPriceRange"
               placeholder="Price range (e.g. Mid-range) — not shown publicly"
               defaultValue={existing?.restaurant?.priceRange ?? ""}
-              className="rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+              className="rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
             />
             <input
               name="restaurantHours"
               placeholder="Hours (e.g. 11am–11pm daily)"
               defaultValue={existing?.restaurant?.hours ?? ""}
-              className="rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+              className="rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
             />
           </div>
-          <label className="flex items-center gap-2 text-sm text-forest-800">
+          <label className="flex items-center gap-2 text-sm text-ink">
             <input
               type="checkbox"
               name="restaurantAllowsPreorder"
               defaultChecked={existing?.restaurant?.allowsPreorder ?? false}
-              className="h-4 w-4 rounded border-forest-900/30"
+              className="h-4 w-4 rounded border-ink/30"
             />
             Allow menu pre-ordering
           </label>
@@ -272,79 +272,79 @@ export function VendorListingForm({
       )}
 
       {type === "experience" && (
-        <div className="space-y-3 rounded-xl bg-forest-50 p-4">
-          <p className="text-xs font-medium text-forest-800/70">Experience details</p>
+        <div className="space-y-3 bg-ink/5 p-4">
+          <p className="eyebrow text-ink/40">Experience details</p>
           <div className="grid grid-cols-2 gap-3">
             <input
               name="experienceDuration"
               placeholder="Duration (e.g. Half-day)"
               defaultValue={existing?.experience?.durationText ?? ""}
-              className="rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+              className="rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
             />
             <input
               name="experienceGroupSize"
               placeholder="Group size (e.g. 2–8 people)"
               defaultValue={existing?.experience?.groupSizeText ?? ""}
-              className="rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+              className="rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
             />
           </div>
           <input
             name="experienceIncluded"
             placeholder="What's included"
             defaultValue={existing?.experience?.whatsIncluded ?? ""}
-            className="w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
       )}
 
-      <div className="space-y-3 rounded-xl bg-forest-50 p-4">
-        <p className="text-xs font-medium text-forest-800/70">Business socials (shown on your partner profile)</p>
+      <div className="space-y-3 bg-ink/5 p-4">
+        <p className="eyebrow text-ink/40">Business socials (shown on your partner profile)</p>
         <div className="grid grid-cols-2 gap-3">
           <input
             name="instagramUrl"
             type="url"
             placeholder="Instagram URL"
             defaultValue={vendorSocials?.instagramUrl ?? ""}
-            className="rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
           <input
             name="facebookUrl"
             type="url"
             placeholder="Facebook URL"
             defaultValue={vendorSocials?.facebookUrl ?? ""}
-            className="rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
           <input
             name="tiktokUrl"
             type="url"
             placeholder="TikTok URL"
             defaultValue={vendorSocials?.tiktokUrl ?? ""}
-            className="rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
           <input
             name="websiteUrl"
             type="url"
             placeholder="Website URL"
             defaultValue={vendorSocials?.websiteUrl ?? ""}
-            className="rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
       </div>
 
-      <div className="space-y-3 rounded-xl bg-marigold-50 p-4">
-        <p className="text-xs font-medium text-marigold-900">Member offer</p>
+      <div className="space-y-3 bg-ember/5 p-4">
+        <p className="eyebrow text-ember">Member offer</p>
         <input
           name="discountText"
           required
           placeholder="Discount text (e.g. 15% off stays of 2+ nights)"
           defaultValue={existing?.discountText ?? ""}
-          className="w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
         />
         <input
           name="freebieText"
           placeholder="Freebie text (optional)"
           defaultValue={existing?.freebieText ?? ""}
-          className="w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
         />
       </div>
 
@@ -353,7 +353,7 @@ export function VendorListingForm({
       <button
         type="submit"
         disabled={pending}
-        className="rounded-full bg-forest-800 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-forest-700 disabled:opacity-60"
+        className="rounded-full bg-ink px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-ink/85 disabled:opacity-60"
       >
         {pending ? "Submitting…" : existing ? "Submit changes for review" : "Submit new listing for review"}
       </button>

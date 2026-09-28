@@ -37,43 +37,43 @@ export function VendorRewardForm({
   }, [pending, state, router]);
 
   return (
-    <form action={formAction} className="space-y-4 rounded-2xl border border-forest-900/10 bg-white p-5">
+    <form action={formAction} className="space-y-4 border border-ink/10 bg-white p-5">
       {existing && <input type="hidden" name="rewardId" value={existing.rewardId} />}
 
-      <div className="rounded-xl border border-nile-200 bg-nile-50 p-3 text-xs text-nile-900">
+      <div className="border border-ink/10 bg-ink/5 p-3 text-xs text-ink/70">
         {existing
           ? "Changes go to the Wano team for review before they replace what's currently live."
           : "New rewards go to the Wano team for review before members can claim them."}
       </div>
 
       <div>
-        <label className="text-sm font-medium text-forest-900">Title</label>
+        <label className="text-sm font-medium text-ink">Title</label>
         <input
           name="title"
           required
           placeholder="15% off your bill"
           defaultValue={existing?.title}
-          className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
         />
       </div>
 
       <div>
-        <label className="text-sm font-medium text-forest-900">Description (optional)</label>
+        <label className="text-sm font-medium text-ink">Description (optional)</label>
         <textarea
           name="description"
           rows={2}
           defaultValue={existing?.description}
-          className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
         />
       </div>
 
       <div>
-        <label className="text-sm font-medium text-forest-900">Applies to</label>
+        <label className="text-sm font-medium text-ink">Applies to</label>
         <select
           name="listingId"
           required
           defaultValue={existing?.listingId ?? ""}
-          className="mt-1 w-full rounded-lg border border-forest-900/15 bg-white px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="mt-1 w-full rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm outline-none focus:border-ember"
         >
           <option value="" disabled>
             Choose one of your listings
@@ -87,12 +87,12 @@ export function VendorRewardForm({
       </div>
 
       <div>
-        <label className="text-sm font-medium text-forest-900">Discount type</label>
+        <label className="text-sm font-medium text-ink">Discount type</label>
         <select
           name="discountType"
           value={discountType}
           onChange={(e) => setDiscountType(e.target.value as typeof discountType)}
-          className="mt-1 w-full rounded-lg border border-forest-900/15 bg-white px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="mt-1 w-full rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm outline-none focus:border-ember"
         >
           <option value="percent">Percent off</option>
           <option value="fixed">Fixed amount off</option>
@@ -102,7 +102,7 @@ export function VendorRewardForm({
 
       {discountType !== "freebie" && (
         <div>
-          <label className="text-sm font-medium text-forest-900">
+          <label className="text-sm font-medium text-ink">
             {discountType === "percent" ? "Percent (e.g. 15)" : "Amount in UGX"}
           </label>
           <input
@@ -112,20 +112,20 @@ export function VendorRewardForm({
             step={discountType === "percent" ? 1 : 100}
             required
             defaultValue={existing?.discountValue}
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
       )}
 
       <div>
-        <label className="text-sm font-medium text-forest-900">Valid for (days after claim)</label>
+        <label className="text-sm font-medium text-ink">Valid for (days after claim)</label>
         <input
           name="defaultValidityDays"
           type="number"
           min={1}
           max={365}
           defaultValue={existing?.defaultValidityDays ?? 30}
-          className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
         />
       </div>
 
@@ -134,7 +134,7 @@ export function VendorRewardForm({
       <button
         type="submit"
         disabled={pending}
-        className="rounded-full bg-forest-800 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-forest-700 disabled:opacity-60"
+        className="rounded-full bg-ink px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-ink/85 disabled:opacity-60"
       >
         {pending ? "Submitting…" : existing ? "Submit changes for review" : "Submit reward for review"}
       </button>
