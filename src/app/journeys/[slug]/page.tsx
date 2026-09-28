@@ -10,11 +10,11 @@ import { getSession } from "@/lib/session";
 import { formatCostRange, formatListingPrice } from "@/lib/currency";
 
 const STOP_TYPE_LABEL: Record<string, string> = {
-  stay: "🛏️ Stay",
-  do: "🎟️ Do",
-  eat: "🍽️ Eat",
-  move: "🚗 Move",
-  rest: "🧘 Rest",
+  stay: "Stay",
+  do: "Do",
+  eat: "Eat",
+  move: "Move",
+  rest: "Rest",
 };
 
 export default async function JourneyDetailPage({
@@ -52,7 +52,7 @@ export default async function JourneyDetailPage({
   const theme = journeyTheme(journey.slug);
 
   return (
-    <main>
+    <main className="font-editorial-body bg-paper">
       <section
         className="relative overflow-hidden py-16 text-white"
         style={{ backgroundColor: theme.hero }}
@@ -72,56 +72,50 @@ export default async function JourneyDetailPage({
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
         <div className="relative mx-auto max-w-4xl px-4 md:px-6">
-          <Link href="/journeys" className="text-sm text-white/80 hover:underline">
+          <Link href="/journeys" className="eyebrow text-white/70 hover:text-white">
             ← All journeys
           </Link>
-          <h1 className="mt-3 font-display text-3xl font-semibold md:text-5xl">
-            {journey.name}
-          </h1>
-          <p className="mt-2 text-white/90">{journey.tagline}</p>
-          <div className="mt-4 flex flex-wrap gap-2 text-sm">
-            <span className="rounded-full bg-white/15 px-3 py-1">{journey.location}</span>
-            <span className="rounded-full bg-white/15 px-3 py-1">{journey.targetAudience}</span>
-            {journeyHasCostRange(journey) && (
-              <span className="rounded-full bg-white/15 px-3 py-1 font-semibold">
-                {formatCostRange(journey.estCostMinMinor!, journey.estCostMaxMinor!, journey.currency)}
-              </span>
-            )}
-            {journey.durationDays && (
-              <span className="rounded-full bg-white/15 px-3 py-1">
-                {journey.durationDays} {journey.durationDays === 1 ? "day" : "days"}
-              </span>
-            )}
-            {journey.difficulty && <span className="rounded-full bg-white/15 px-3 py-1">{journey.difficulty}</span>}
-          </div>
+          <h1 className="font-serif-editorial mt-4 text-4xl md:text-6xl">{journey.name}</h1>
+          <p className="mt-2 text-lg text-white/85">{journey.tagline}</p>
+          <p className="font-mono-data mt-5 text-[11px] uppercase tracking-[0.15em] text-white/60">
+            {journey.location}
+            {" · "}
+            {journey.targetAudience}
+            {journeyHasCostRange(journey) &&
+              ` · ${formatCostRange(journey.estCostMinMinor!, journey.estCostMaxMinor!, journey.currency)}`}
+            {journey.durationDays &&
+              ` · ${journey.durationDays} ${journey.durationDays === 1 ? "day" : "days"}`}
+            {journey.difficulty && ` · ${journey.difficulty}`}
+          </p>
           {journey.bestSeason && <p className="mt-2 text-sm text-white/70">Best: {journey.bestSeason}</p>}
         </div>
       </section>
 
-      <section className="mx-auto max-w-4xl px-4 py-10 md:px-6">
-        <p className="max-w-2xl text-forest-800/80">{journey.description}</p>
+      <section className="mx-auto max-w-4xl px-4 py-12 md:px-6">
+        <p className="max-w-2xl text-ink/60">{journey.description}</p>
 
         {days.length > 0 && (
-          <div className="mt-6">
-            <h2 className="font-display text-xl font-semibold text-forest-900">The itinerary</h2>
-            <div className="mt-3 space-y-4">
+          <div className="mt-8">
+            <h2 className="font-serif-editorial text-2xl text-ink">The itinerary</h2>
+            <div className="mt-4 border-t border-ink/10">
               {days.map((day) => (
-                <div key={day}>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-forest-800/50">Day {day}</p>
-                  <div className="mt-2 space-y-2">
+                <div key={day} className="border-b border-ink/10 py-5">
+                  <p className="eyebrow text-ember">Day {day}</p>
+                  <div className="mt-3 space-y-3">
                     {stopsByDay.get(day)!.map(({ stop, listing, event }) => {
                       const href = listing ? `/explore/${listing.id}` : event ? `/events/${event.id}` : null;
                       const title = listing?.title ?? event?.title ?? stop.customName ?? "Stop";
                       const content = (
-                        <div className="rounded-xl border border-forest-900/10 bg-white p-3">
-                          <p className="text-sm font-medium text-forest-900">
-                            {STOP_TYPE_LABEL[stop.stopType] ?? stop.stopType} {title}
+                        <div>
+                          <p className="text-sm text-ink">
+                            <span className="font-mono-data text-ink/40">{STOP_TYPE_LABEL[stop.stopType] ?? stop.stopType}</span>{" "}
+                            {title}
                           </p>
-                          {stop.note && <p className="mt-0.5 text-xs text-forest-800/60">{stop.note}</p>}
+                          {stop.note && <p className="mt-0.5 text-xs text-ink/50">{stop.note}</p>}
                         </div>
                       );
                       return href ? (
-                        <Link key={stop.id} href={href} className="block transition hover:border-forest-900/20">
+                        <Link key={stop.id} href={href} className="block transition-colors hover:text-ember">
                           {content}
                         </Link>
                       ) : (
@@ -136,39 +130,33 @@ export default async function JourneyDetailPage({
         )}
 
         {session?.role === "traveller" && (
-          <p
-            className={`mt-4 inline-flex rounded-full px-3 py-1 text-sm font-medium ${
-              unlocked ? "bg-forest-100 text-forest-800" : "bg-marigold-100 text-marigold-800"
-            }`}
-          >
+          <p className={`mt-6 border-l-2 pl-4 text-sm ${unlocked ? "border-ember text-ink" : "border-ink/20 text-ink/60"}`}>
             {unlocked
               ? "You've earned this journey's stamp — discounts below are unlocked."
               : "Book any partner below to earn this journey's stamp and unlock its discounts."}
           </p>
         )}
 
-        <h2 className="mt-8 font-display text-xl font-semibold text-forest-900">
-          Wano-verified businesses
-        </h2>
+        <h2 className="font-serif-editorial mt-10 text-2xl text-ink">Wano-verified businesses</h2>
 
-        <div className="mt-4 space-y-4">
+        <div className="mt-4 border-t border-ink/10">
           {partners.length === 0 && (
-            <p className="rounded-xl border border-forest-900/10 bg-white p-5 text-sm text-forest-800/60">
+            <p className="border-b border-ink/10 py-5 text-sm text-ink/50">
               Businesses for this journey are still being onboarded — check back soon.
             </p>
           )}
           {partners.map(({ listing, offer, vendor, promo }) => (
             <div
               key={listing.id}
-              className="rounded-2xl border border-forest-900/10 bg-white p-5 sm:flex sm:items-start sm:justify-between sm:gap-6"
+              className="border-b border-ink/10 py-6 sm:flex sm:items-start sm:justify-between sm:gap-6"
             >
               <div className="flex-1">
-                <p className="font-display text-lg font-semibold text-forest-900">
+                <p className="font-serif-editorial text-xl text-ink">
                   {listing.title}
                 </p>
-                <p className="text-sm text-forest-800/70">{vendor.businessName}</p>
-                <p className="mt-1 text-sm text-forest-800/60">{listing.description}</p>
-                <p className="mt-2 text-sm font-medium" style={{ color: theme.hero }}>
+                <p className="text-sm text-ink/60">{vendor.businessName}</p>
+                <p className="mt-1 text-sm text-ink/50">{listing.description}</p>
+                <p className="font-mono-data mt-2 text-sm font-semibold" style={{ color: theme.hero }}>
                   {formatListingPrice(listing)}
                 </p>
               </div>
@@ -214,12 +202,12 @@ export default async function JourneyDetailPage({
                 ) : (
                   <Link
                     href={session ? "/" : `/login?next=/journeys/${journey.slug}`}
-                    className="w-full rounded-full border border-forest-800/20 px-4 py-2 text-center text-sm font-semibold text-forest-800 transition hover:bg-forest-800/5"
+                    className="w-full rounded-full border border-ink/20 px-4 py-2 text-center text-sm font-semibold text-ink transition-colors hover:bg-ink/5"
                   >
                     {session ? "Vendors browse, not book" : "Log in to book"}
                   </Link>
                 )}
-                <p className="text-center text-[11px] text-forest-800/50">
+                <p className="text-center text-[11px] text-ink/40">
                   {listing.externalBookingUrl
                     ? `Booking happens on ${vendor.businessName}'s own platform.`
                     : `Booking creates a direct contract with ${vendor.businessName}.`}
