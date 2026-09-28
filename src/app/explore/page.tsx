@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { AfconPromoCard } from "@/components/afcon/afcon-promo-card";
+import { CornerMarks } from "@/components/corner-marks";
 import { JourneyArt } from "@/components/journey-art";
 import { PartnerCard } from "@/components/partner-card";
 import { PartnerSearchForm } from "@/components/partner-search-form";
@@ -188,11 +189,12 @@ export default async function ExplorePage({
                           fill
                           sizes="176px"
                           unoptimized
-                          className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.02]"
+                          className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.02]"
                         />
                       ) : (
                         <JourneyArt slug={journey.slug} className="h-full w-full opacity-35" />
                       )}
+                      <CornerMarks inset={8} size={12} className="text-white/60" />
                     </div>
                     <h3 className="font-serif-editorial mt-3 text-lg text-ink transition-colors group-hover:text-ember">
                       {journey.name}
@@ -251,8 +253,11 @@ export default async function ExplorePage({
               rather than curated editorial content, so a tight, scannable
               layout is the honest choice against the generous whitespace
               above, not a shortcut. */}
-          <p className="eyebrow mt-8 text-ink/40">
-            {results.length} Wano-verified {results.length === 1 ? "place" : "places"} found
+          <p className="mt-8 flex items-center gap-2 text-ink/40">
+            <span className="live-dot text-ember" />
+            <span className="font-mono-data text-[11px] uppercase tracking-[0.2em]">
+              {results.length} Wano-verified {results.length === 1 ? "place" : "places"} found
+            </span>
           </p>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

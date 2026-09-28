@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { AfconPromoCard } from "@/components/afcon/afcon-promo-card";
+import { CornerMarks } from "@/components/corner-marks";
 import { JourneyArt } from "@/components/journey-art";
 import { PartnerCard } from "@/components/partner-card";
 import { getBirthdayPerksForListings } from "@/lib/data/birthday";
@@ -140,7 +141,10 @@ export default async function LandingPage() {
       <section className="border-b border-ink/10">
         <div className="mx-auto grid max-w-7xl grid-cols-1 lg:grid-cols-12">
           <div className="order-2 flex flex-col justify-center px-4 py-12 sm:px-6 lg:order-1 lg:col-span-6 lg:px-10 lg:py-0 xl:col-span-5 xl:px-16">
-            <p className="eyebrow text-ember">Kampala · Uganda</p>
+            <div className="flex items-baseline gap-3">
+              <p className="eyebrow text-ember">Kampala · Uganda</p>
+              <p className="font-mono-data text-[11px] text-ink/35">0.3476°N 32.5825°E</p>
+            </div>
             <h1 className="font-serif-editorial mt-5 text-5xl leading-[0.94] text-ink sm:text-6xl lg:text-[3.7rem] xl:text-7xl">
               What do you want to do in Uganda?
             </h1>
@@ -168,7 +172,9 @@ export default async function LandingPage() {
                 className="object-cover"
               />
             </div>
-            <div className="pointer-events-none absolute inset-4 border border-white/25 lg:inset-8" />
+            <div className="pointer-events-none absolute inset-4 lg:inset-8">
+              <CornerMarks className="text-white/70" />
+            </div>
             <div className="pointer-events-none absolute inset-0 border border-ink/10" />
           </div>
         </div>
@@ -201,7 +207,7 @@ export default async function LandingPage() {
               <Link
                 key={event.id}
                 href={`/events/${event.id}`}
-                className="group border border-ink/10 bg-white p-6 transition-colors hover:border-ember"
+                className="group border border-ink/10 bg-white p-6 transition-colors duration-200 hover:border-ember"
               >
                 <p className="eyebrow text-ember">
                   {new Date(event.startAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
@@ -307,7 +313,7 @@ export default async function LandingPage() {
                       fill
                       sizes="(min-width: 1024px) 55vw, 100vw"
                       unoptimized
-                      className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.045]"
+                      className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03]"
                     />
                   ) : (
                     <JourneyArt slug={leadJourney.slug} className="h-full w-full opacity-40" />
@@ -316,6 +322,7 @@ export default async function LandingPage() {
                     className="absolute inset-0"
                     style={{ background: "linear-gradient(0deg, rgba(20,14,9,0.78) 0%, rgba(20,14,9,0.05) 55%)" }}
                   />
+                  <CornerMarks className="text-white/50" />
                   <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8">
                     <span
                       className="eyebrow inline-flex px-0 text-white/70"
@@ -346,7 +353,7 @@ export default async function LandingPage() {
                         fill
                         sizes="(min-width: 1024px) 18vw, 50vw"
                         unoptimized
-                        className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.06]"
+                        className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.04]"
                       />
                     ) : (
                       <JourneyArt slug={journey.slug} className="h-full w-full opacity-40" />

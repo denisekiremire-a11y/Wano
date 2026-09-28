@@ -265,6 +265,42 @@
   font-family: var(--font-editorial-body), system-ui, sans-serif;
 }
 
+/* .font-mono-data: tabular-figure monospace for counts, coordinates and
+   other read-outs — the "high-tech" data voice sitting next to .eyebrow's
+   label voice, both on the same mono face. */
+@utility font-mono-data {
+  font-family: var(--font-editorial-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* .live-dot: a small solid status dot with a tight opacity pulse — reads
+   as a precise, mechanical "live" signal (closer to a recording indicator
+   than a soft glowing badge), so it fits the anti-AI-slop rule against
+   glow/blur effects. */
+@keyframes wano-live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@utility live-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: currentColor;
+  animation: wano-live-pulse 2s ease-in-out infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
