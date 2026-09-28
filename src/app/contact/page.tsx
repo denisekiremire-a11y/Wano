@@ -18,7 +18,7 @@ export default function ContactPage() {
     <main className="font-editorial-body bg-paper">
       <section className="mx-auto max-w-4xl px-4 pt-14 md:px-6">
         <p className="eyebrow text-ember">Contact</p>
-        <h1 className="font-editorial mt-3 text-4xl font-bold leading-[0.95] text-ink md:text-5xl">
+        <h1 className="font-serif-editorial mt-3 text-4xl leading-[0.98] text-ink md:text-5xl">
           Let&apos;s talk Wano.
         </h1>
         <p className="mt-4 max-w-xl text-ink/70">
@@ -30,19 +30,19 @@ export default function ContactPage() {
       <section className="mx-auto max-w-4xl px-4 py-10 md:px-6">
         <div className="grid gap-6 md:grid-cols-[1fr_1.3fr]">
           <div className="space-y-4">
-            <div className="rounded-2xl border border-line bg-white p-5">
+            <div className="border border-ink/10 bg-white p-5">
               <p className="eyebrow text-ink/45">Email</p>
-              <a href={`mailto:${CONTACT_EMAIL}`} className="mt-1 block font-editorial text-lg font-bold text-ink">
+              <a href={`mailto:${CONTACT_EMAIL}`} className="font-serif-editorial mt-1 block text-lg text-ink">
                 {CONTACT_EMAIL}
               </a>
             </div>
-            <div className="rounded-2xl border border-line bg-white p-5">
+            <div className="border border-ink/10 bg-white p-5">
               <p className="eyebrow text-ink/45">Based in</p>
-              <p className="mt-1 font-editorial text-lg font-bold text-ink">Kampala, Uganda</p>
+              <p className="font-serif-editorial mt-1 text-lg text-ink">Kampala, Uganda</p>
             </div>
-            <div className="rounded-2xl bg-ink p-5 text-white">
+            <div className="border border-ink/10 bg-ink p-5 text-white">
               <p className="eyebrow text-ember">List your business</p>
-              <p className="font-editorial mt-1.5 text-lg font-bold">Get verified on Wano</p>
+              <p className="font-serif-editorial mt-1.5 text-lg text-white">Get verified on Wano</p>
               <p className="mt-1.5 text-sm text-white/70">
                 Restaurants, stays, salons, tour operators and experiences — reach travellers and
                 locals who book directly with you.

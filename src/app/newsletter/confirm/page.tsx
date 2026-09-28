@@ -25,18 +25,23 @@ export default async function ConfirmNewsletterPage({
   }
 
   return (
-    <main className="mx-auto max-w-lg px-4 py-16 text-center md:px-6">
-      <h1 className="font-display text-2xl font-semibold text-forest-900">
-        {confirmed ? "You're subscribed!" : "That link isn't valid"}
-      </h1>
-      <p className="mt-2 text-sm text-forest-800/70">
-        {confirmed
-          ? "You'll get an email when there's a new Wano Journal post worth reading."
-          : "This confirmation link has already been used or doesn't exist."}
-      </p>
-      <Link href="/journal" className="mt-6 inline-flex rounded-full bg-forest-800 px-4 py-2 text-sm font-semibold text-white">
-        Read the Journal
-      </Link>
+    <main className="font-editorial-body bg-paper">
+      <section className="mx-auto max-w-lg px-4 py-16 text-center md:px-6">
+        <h1 className="font-serif-editorial text-3xl text-ink">
+          {confirmed ? "You're subscribed!" : "That link isn't valid"}
+        </h1>
+        <p className="mt-2 text-sm text-ink/60">
+          {confirmed
+            ? "You'll get an email when there's a new Wano Journal post worth reading."
+            : "This confirmation link has already been used or doesn't exist."}
+        </p>
+        <Link
+          href="/journal"
+          className="mt-6 inline-flex rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink/85"
+        >
+          Read the Journal
+        </Link>
+      </section>
     </main>
   );
 }

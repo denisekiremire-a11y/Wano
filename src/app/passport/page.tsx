@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { BirthdayEditor } from "@/components/birthday-editor";
 import { FeedActivityToggle } from "@/components/feed-activity-toggle";
-import { CameraIcon, StampIcon, TrophyIcon, UserIcon } from "@/components/icons";
+import { CameraIcon } from "@/components/icons";
 import { HowYouGotHereSection } from "@/components/how-you-got-here-section";
 import { LiteModeToggle } from "@/components/lite-mode-toggle";
 import { LogoutButton } from "@/components/logout-button";
@@ -58,14 +58,14 @@ export default async function PassportPage({
 
   if (!session || session.role !== "traveller") {
     return (
-      <main className="mx-auto flex max-w-4xl flex-col items-center justify-center px-4 py-16 text-center md:px-6">
+      <main className="font-editorial-body bg-paper mx-auto flex max-w-4xl flex-col items-center justify-center px-4 py-16 text-center md:px-6">
         <Link
           href="/signup"
-          className="flex w-full max-w-md flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-forest-900/20 bg-white p-8 transition hover:bg-forest-50/40"
+          className="flex w-full max-w-md flex-col items-center gap-3 border border-dashed border-ink/20 bg-white p-8 transition-colors hover:bg-ink/5"
         >
-          <StampIcon className="h-8 w-8 text-ember" />
-          <p className="font-display text-lg font-bold text-forest-900">Create your Wano Passport</p>
-          <p className="text-sm text-forest-800/60">
+          <p className="eyebrow text-ember">Wano Passport</p>
+          <p className="font-serif-editorial text-2xl text-ink">Create your Wano Passport</p>
+          <p className="text-sm text-ink/60">
             Collect stamps for every Wano Journey, save places, track bookings, and earn rewards —
             free to start.
           </p>
@@ -150,35 +150,35 @@ export default async function PassportPage({
     : null;
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-8 md:px-6">
+    <main className="font-editorial-body bg-paper mx-auto max-w-4xl px-4 py-8 md:px-6">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="relative flex-none">
-            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-forest-100 text-forest-500">
-              <UserIcon className="h-8 w-8" />
+            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-ink/5 text-2xl font-semibold text-ink/70">
+              {travellerProfile.displayName.charAt(0).toUpperCase()}
             </span>
             <Link
               href="/passport?tab=account"
               aria-label="Change profile photo"
-              className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-forest-800 text-white"
+              className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-paper bg-ink text-white"
             >
               <CameraIcon className="h-3.5 w-3.5" />
             </Link>
           </div>
           <div>
-            <h1 className="font-display text-2xl font-semibold text-forest-900">
+            <h1 className="font-serif-editorial text-2xl text-ink">
               {travellerProfile.displayName}
             </h1>
-            <p className="text-sm text-forest-800/60">
+            <p className="text-sm text-ink/60">
               @{user?.username ?? "member"}
               {travellerProfile.city ? ` · ${travellerProfile.city}` : ""}
               {joined ? ` · Joined ${joined}` : ""}
             </p>
           </div>
         </div>
-        <div className="flex-none rounded-2xl border border-marigold-300 bg-marigold-50 px-4 py-2 text-right">
-          <p className="text-lg font-semibold text-marigold-900">{rewardsSummary.totalPoints}</p>
-          <p className="text-xs text-marigold-800/70">points</p>
+        <div className="flex-none border border-ink/10 bg-white px-4 py-2 text-right">
+          <p className="font-mono-data text-lg font-semibold text-ember">{rewardsSummary.totalPoints}</p>
+          <p className="eyebrow text-ink/40">points</p>
         </div>
       </div>
 
@@ -266,35 +266,35 @@ function StampsTab({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-display text-xl font-semibold text-forest-900">Wano Passport</h2>
-        <p className="mt-1 text-sm text-forest-800/60">
+        <h2 className="font-serif-editorial text-2xl text-ink">Wano Passport</h2>
+        <p className="mt-1 text-sm text-ink/60">
           Every Wano Journey you book stamps your Passport. Collect all {totalJourneys} for the grand
           prize draw.
         </p>
       </div>
-      <section className="rounded-2xl border border-forest-900/10 bg-white p-6">
+      <section className="border border-ink/10 bg-white p-6">
         <PassportGrid progress={progress} />
-        <div className="mt-6 h-2.5 w-full overflow-hidden rounded-full bg-forest-50">
+        <div className="mt-6 h-[3px] w-full bg-ink/10">
           <div
-            className="h-full rounded-full bg-forest-700 transition-all"
+            className="h-full bg-ember transition-all"
             style={{ width: `${(stampCount / totalJourneys) * 100}%` }}
           />
         </div>
-        <p className="mt-2 text-sm text-forest-800/60">
+        <p className="font-mono-data mt-2 text-sm text-ink/60">
           {stampCount} / {totalJourneys} stamps
         </p>
       </section>
       <section
-        className={`flex items-center gap-4 rounded-2xl border p-5 ${
-          grandPrizeQualified ? "border-marigold-400 bg-marigold-50" : "border-forest-900/10 bg-white"
+        className={`flex items-start gap-4 border p-5 ${
+          grandPrizeQualified ? "border-ember bg-ink/5" : "border-ink/10 bg-white"
         }`}
       >
-        <TrophyIcon className={`h-9 w-9 ${grandPrizeQualified ? "text-marigold-700" : "text-forest-300"}`} />
         <div>
-          <h3 className="font-display font-semibold text-forest-900">
+          <p className="eyebrow text-ember">{grandPrizeQualified ? "Entered" : "Grand prize draw"}</p>
+          <h3 className="font-serif-editorial mt-1 text-xl text-ink">
             {grandPrizeQualified ? "You're entered in the grand prize draw!" : "Grand prize draw"}
           </h3>
-          <p className="text-sm text-forest-800/70">
+          <p className="mt-1 text-sm text-ink/70">
             {grandPrizeQualified
               ? "A free return trip, a final-match ticket, and a feature on official channels — good luck."
               : `Collect all ${totalJourneys} stamps to unlock your entry.`}
@@ -325,8 +325,8 @@ function SavedTab({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-display text-xl font-semibold text-forest-900">Saved places</h2>
-        <p className="mt-1 text-sm text-forest-800/60">
+        <h2 className="font-serif-editorial text-2xl text-ink">Saved places</h2>
+        <p className="mt-1 text-sm text-ink/60">
           Everywhere you&apos;ve tapped the heart on, in one list.
         </p>
       </div>
@@ -349,12 +349,12 @@ function SavedTab({
           );
         })}
         {items.length === 0 && (
-          <div className="col-span-full rounded-2xl border border-forest-900/10 bg-white p-8 text-center">
-            <p className="text-forest-900">Nothing saved yet.</p>
-            <p className="mt-1 text-sm text-forest-800/60">Tap the heart on any place to add it here.</p>
+          <div className="col-span-full border border-ink/10 bg-white p-8 text-center">
+            <p className="text-ink">Nothing saved yet.</p>
+            <p className="mt-1 text-sm text-ink/60">Tap the heart on any place to add it here.</p>
             <Link
               href="/explore"
-              className="mt-4 inline-flex rounded-full bg-forest-800 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-forest-700"
+              className="mt-4 inline-flex rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-ink/85"
             >
               Start exploring
             </Link>
@@ -381,18 +381,18 @@ function BookingsTab({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-display text-xl font-semibold text-forest-900">Your bookings</h2>
-        <p className="mt-1 text-sm text-forest-800/60">
+        <h2 className="font-serif-editorial text-2xl text-ink">Your bookings</h2>
+        <p className="mt-1 text-sm text-ink/60">
           Each booking is a direct contract between you and the Wano-verified business.
         </p>
       </div>
 
       {bookingRows.length === 0 ? (
-        <div className="rounded-2xl border border-forest-900/10 bg-white p-6 text-center">
-          <p className="text-sm text-forest-800/60">You haven&apos;t made a booking yet.</p>
+        <div className="border border-ink/10 bg-white p-6 text-center">
+          <p className="text-sm text-ink/60">You haven&apos;t made a booking yet.</p>
           <Link
             href="/explore"
-            className="mt-3 inline-flex rounded-full bg-forest-800 px-4 py-2 text-sm font-semibold text-white"
+            className="mt-3 inline-flex rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink/85"
           >
             Explore places
           </Link>
@@ -419,36 +419,36 @@ function BookingGroup({
 }) {
   if (rows.length === 0) return null;
   return (
-    <section className="space-y-3">
-      <h3 className="font-display text-lg font-semibold text-forest-900">{title}</h3>
-      {[...rows].reverse().map(({ booking, listing, event, journey }) => (
-        <div key={booking.id} id={`booking-${booking.id}`} className="scroll-mt-20 rounded-2xl border border-forest-900/10 bg-white p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-forest-900">{listing?.title ?? event?.title}</p>
-              <p className="text-sm text-forest-800/60">
-                {journey ? `${journey.name} · ` : ""}
-                <Link href={`/bookings/${booking.bookingRef}`} className="hover:underline">
-                  ref {booking.bookingRef}
-                </Link>
-              </p>
-              {(booking.visitDate || booking.partySize) && (
-                <p className="text-xs text-forest-800/50">
-                  {booking.visitDate ? `${booking.visitDate}${booking.visitTime ? ` at ${booking.visitTime}` : ""}` : ""}
-                  {booking.visitDate && booking.partySize ? " · " : ""}
-                  {booking.partySize ? `Party of ${booking.partySize}` : ""}
+    <section>
+      <h3 className="font-serif-editorial text-lg text-ink">{title}</h3>
+      <div className="mt-3 border-t border-ink/10">
+        {[...rows].reverse().map(({ booking, listing, event, journey }) => (
+          <div key={booking.id} id={`booking-${booking.id}`} className="scroll-mt-20 border-b border-ink/10 py-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="font-medium text-ink">{listing?.title ?? event?.title}</p>
+                <p className="text-sm text-ink/60">
+                  {journey ? `${journey.name} · ` : ""}
+                  <Link href={`/bookings/${booking.bookingRef}`} className="hover:text-ember hover:underline">
+                    ref {booking.bookingRef}
+                  </Link>
                 </p>
-              )}
+                {(booking.visitDate || booking.partySize) && (
+                  <p className="text-xs text-ink/50">
+                    {booking.visitDate ? `${booking.visitDate}${booking.visitTime ? ` at ${booking.visitTime}` : ""}` : ""}
+                    {booking.visitDate && booking.partySize ? " · " : ""}
+                    {booking.partySize ? `Party of ${booking.partySize}` : ""}
+                  </p>
+                )}
+              </div>
+              <span className="eyebrow flex-none capitalize text-ink/40">{booking.status}</span>
             </div>
-            <span className="rounded-full bg-forest-100 px-3 py-1 text-xs font-medium capitalize text-forest-800">
-              {booking.status}
-            </span>
+            {listing && reviewableBookingIds.has(booking.id) && (
+              <ReviewForm bookingId={booking.id} listingTitle={listing.title} />
+            )}
           </div>
-          {listing && reviewableBookingIds.has(booking.id) && (
-            <ReviewForm bookingId={booking.id} listingTitle={listing.title} />
-          )}
-        </div>
-      ))}
+        ))}
+      </div>
     </section>
   );
 }
@@ -486,64 +486,66 @@ function RewardsTab({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-display text-xl font-semibold text-forest-900">Rewards</h2>
-        <p className="mt-1 text-sm text-forest-800/60">
+        <h2 className="font-serif-editorial text-2xl text-ink">Rewards</h2>
+        <p className="mt-1 text-sm text-ink/60">
           Earned from booking, reviewing, and referring friends to Wano — spend them on the rewards below.
         </p>
       </div>
 
-      <div className="rounded-2xl bg-gradient-to-br from-forest-800 to-forest-600 p-6 text-white">
-        <p className="text-xs font-medium uppercase tracking-wide text-white/70">Points to spend</p>
-        <p className="mt-1 font-display text-4xl font-bold">{summary.availablePoints.toLocaleString()} pts</p>
-        <p className="mt-1.5 text-xs text-white/70">{summary.totalPoints.toLocaleString()} pts earned lifetime</p>
+      <div className="border border-ink/10 bg-ink p-6 text-white">
+        <p className="eyebrow text-white/60">Points to spend</p>
+        <p className="font-mono-data mt-1 text-4xl font-semibold">{summary.availablePoints.toLocaleString()} pts</p>
+        <p className="mt-1.5 text-xs text-white/60">{summary.totalPoints.toLocaleString()} pts earned lifetime</p>
       </div>
 
-      <section className="space-y-3">
-        <h3 className="font-display text-lg font-semibold text-forest-900">Redeem your points</h3>
+      <section>
+        <h3 className="font-serif-editorial text-lg text-ink">Redeem your points</h3>
         {pointsShopCatalog.length === 0 ? (
-          <p className="text-sm text-forest-800/60">No rewards to redeem yet — check back soon.</p>
+          <p className="mt-3 text-sm text-ink/60">No rewards to redeem yet — check back soon.</p>
         ) : (
-          pointsShopCatalog.map((reward) => {
-            const affordable = summary.availablePoints >= (reward.pointsCost ?? Infinity);
-            const percent = reward.pointsCost
-              ? Math.min(100, Math.round((summary.availablePoints / reward.pointsCost) * 100))
-              : 0;
-            return (
-              <div key={reward.id} className="rounded-xl border border-forest-900/10 bg-white p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-medium text-forest-900">{reward.title}</p>
-                    <p className="text-xs text-forest-800/60">
-                      {formatRewardDiscount(reward.discountType, reward.discountValue)}
-                      {reward.target ? ` · ${reward.target.title}` : ""}
-                    </p>
+          <div className="mt-3 border-t border-ink/10">
+            {pointsShopCatalog.map((reward) => {
+              const affordable = summary.availablePoints >= (reward.pointsCost ?? Infinity);
+              const percent = reward.pointsCost
+                ? Math.min(100, Math.round((summary.availablePoints / reward.pointsCost) * 100))
+                : 0;
+              return (
+                <div key={reward.id} className="border-b border-ink/10 py-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-ink">{reward.title}</p>
+                      <p className="text-xs text-ink/60">
+                        {formatRewardDiscount(reward.discountType, reward.discountValue)}
+                        {reward.target ? ` · ${reward.target.title}` : ""}
+                      </p>
+                    </div>
+                    {affordable ? (
+                      <RedeemPointsRewardButton
+                        rewardId={reward.id}
+                        title={reward.title}
+                        discountLabel={formatRewardDiscount(reward.discountType, reward.discountValue)}
+                        pointsCost={reward.pointsCost ?? 0}
+                      />
+                    ) : (
+                      <span className="font-mono-data flex-none text-xs text-ink/40">
+                        Need {((reward.pointsCost ?? 0) - summary.availablePoints).toLocaleString()} more pts
+                      </span>
+                    )}
                   </div>
-                  {affordable ? (
-                    <RedeemPointsRewardButton
-                      rewardId={reward.id}
-                      title={reward.title}
-                      discountLabel={formatRewardDiscount(reward.discountType, reward.discountValue)}
-                      pointsCost={reward.pointsCost ?? 0}
-                    />
-                  ) : (
-                    <span className="flex-none rounded-full bg-forest-100 px-3 py-1.5 text-xs font-semibold text-forest-800/60">
-                      Need {((reward.pointsCost ?? 0) - summary.availablePoints).toLocaleString()} more pts
-                    </span>
+                  {!affordable && (
+                    <div className="mt-2.5">
+                      <div className="h-[3px] w-full bg-ink/10">
+                        <div className="h-full bg-ember" style={{ width: `${percent}%` }} />
+                      </div>
+                      <p className="font-mono-data mt-1 text-[11px] text-ink/50">
+                        {summary.availablePoints.toLocaleString()} / {(reward.pointsCost ?? 0).toLocaleString()} pts
+                      </p>
+                    </div>
                   )}
                 </div>
-                {!affordable && (
-                  <div className="mt-2.5">
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-forest-100">
-                      <div className="h-full rounded-full bg-marigold-400" style={{ width: `${percent}%` }} />
-                    </div>
-                    <p className="mt-1 text-[11px] text-forest-800/50">
-                      {summary.availablePoints.toLocaleString()} / {(reward.pointsCost ?? 0).toLocaleString()} pts
-                    </p>
-                  </div>
-                )}
-              </div>
-            );
-          })
+              );
+            })}
+          </div>
         )}
       </section>
 
@@ -552,11 +554,11 @@ function RewardsTab({
       {summary.referralCode && <ShareReferralBlock code={summary.referralCode} />}
 
       <section className="space-y-3">
-        <h3 className="font-display text-lg font-semibold text-forest-900">
-          Active {wallet.active.length > 0 && `(${wallet.active.length})`}
+        <h3 className="font-serif-editorial text-lg text-ink">
+          Active {wallet.active.length > 0 && <span className="font-mono-data">({wallet.active.length})</span>}
         </h3>
         {wallet.active.length === 0 ? (
-          <p className="text-sm text-forest-800/60">No active vouchers — claim one on a place or event page.</p>
+          <p className="text-sm text-ink/60">No active vouchers — claim one on a place or event page.</p>
         ) : (
           wallet.active.map(({ userReward, reward, target }) => (
             <VoucherCard
@@ -576,43 +578,43 @@ function RewardsTab({
 
       <PastVouchersSection rows={pastVoucherRows} />
 
-      <section className="space-y-3">
-        <h3 className="font-display text-lg font-semibold text-forest-900">Free deals</h3>
+      <section>
+        <h3 className="font-serif-editorial text-lg text-ink">Free deals</h3>
         {deals.length === 0 ? (
-          <p className="text-sm text-forest-800/60">No deals available right now.</p>
+          <p className="mt-3 text-sm text-ink/60">No deals available right now.</p>
         ) : (
-          deals.map(({ promo, listing }) => {
-            const claimed = claimedIds.has(promo.id);
-            return (
-              <div
-                key={promo.id}
-                className="flex items-center justify-between rounded-xl border border-forest-900/10 bg-white p-4"
-              >
-                <div>
-                  <p className="text-sm font-medium text-forest-900">{promo.title}</p>
-                  <p className="text-xs text-forest-800/60">
-                    {promo.discountText}
-                    {listing ? ` · ${listing.title}` : ""}
-                  </p>
+          <div className="mt-3 border-t border-ink/10">
+            {deals.map(({ promo, listing }) => {
+              const claimed = claimedIds.has(promo.id);
+              return (
+                <div
+                  key={promo.id}
+                  className="flex items-center justify-between gap-4 border-b border-ink/10 py-4"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-ink">{promo.title}</p>
+                    <p className="text-xs text-ink/60">
+                      {promo.discountText}
+                      {listing ? ` · ${listing.title}` : ""}
+                    </p>
+                  </div>
+                  {claimed ? (
+                    <span className="eyebrow text-ink/40">Claimed</span>
+                  ) : (
+                    <form action={claimDealFormAction}>
+                      <input type="hidden" name="promoCodeId" value={promo.id} />
+                      <button
+                        type="submit"
+                        className="rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-ink/85"
+                      >
+                        Claim
+                      </button>
+                    </form>
+                  )}
                 </div>
-                {claimed ? (
-                  <span className="rounded-full bg-forest-100 px-3 py-1 text-xs font-medium text-forest-800">
-                    Claimed
-                  </span>
-                ) : (
-                  <form action={claimDealFormAction}>
-                    <input type="hidden" name="promoCodeId" value={promo.id} />
-                    <button
-                      type="submit"
-                      className="rounded-full bg-marigold-500 px-3 py-1.5 text-xs font-semibold text-forest-950 transition hover:bg-marigold-400"
-                    >
-                      Claim
-                    </button>
-                  </form>
-                )}
-              </div>
-            );
-          })
+              );
+            })}
+          </div>
         )}
       </section>
     </div>
@@ -631,36 +633,36 @@ function AccountTab({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-display text-xl font-semibold text-forest-900">Account</h2>
-        <p className="mt-1 text-sm text-forest-800/60">Your profile, preferences, and security.</p>
+        <h2 className="font-serif-editorial text-2xl text-ink">Account</h2>
+        <p className="mt-1 text-sm text-ink/60">Your profile, preferences, and security.</p>
       </div>
 
-      <section className="space-y-4 rounded-2xl border border-forest-900/10 bg-white p-5">
-        <h3 className="font-display text-lg font-semibold text-forest-900">Profile</h3>
+      <section className="space-y-4 border border-ink/10 bg-white p-5">
+        <h3 className="font-serif-editorial text-lg text-ink">Profile</h3>
         <BirthdayEditor dateOfBirth={dateOfBirth} />
       </section>
 
-      <section className="space-y-4 rounded-2xl border border-forest-900/10 bg-white p-5">
-        <h3 className="font-display text-lg font-semibold text-forest-900">Preferences</h3>
+      <section className="space-y-4 border border-ink/10 bg-white p-5">
+        <h3 className="font-serif-editorial text-lg text-ink">Preferences</h3>
         <LiteModeToggle />
         <FeedActivityToggle initialValue={showActivityInFeed} />
       </section>
 
-      <section className="space-y-4 rounded-2xl border border-forest-900/10 bg-white p-5">
-        <h3 className="font-display text-lg font-semibold text-forest-900">Blocked accounts</h3>
+      <section className="space-y-4 border border-ink/10 bg-white p-5">
+        <h3 className="font-serif-editorial text-lg text-ink">Blocked accounts</h3>
         <BlockedAccountsList blockedList={blockedList} />
       </section>
 
-      <div className="rounded-xl border border-forest-900/10 bg-white p-4 text-sm text-forest-800/70">
-        <Link href="/community-guidelines" className="text-forest-900 underline">
+      <div className="border border-ink/10 bg-white p-4 text-sm text-ink/70">
+        <Link href="/community-guidelines" className="text-ink underline">
           Community Guidelines
         </Link>
         {" · "}
-        <Link href="/privacy" className="text-forest-900 underline">
+        <Link href="/privacy" className="text-ink underline">
           Privacy Policy
         </Link>
         {" · "}
-        <Link href="/terms" className="text-forest-900 underline">
+        <Link href="/terms" className="text-ink underline">
           Terms of Service
         </Link>
       </div>

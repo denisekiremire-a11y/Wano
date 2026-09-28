@@ -66,82 +66,86 @@ export default async function JournalPostPage({ params }: { params: Promise<{ sl
   };
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-8 md:px-6">
-      {/* eslint-disable-next-line react/no-danger */}
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+    <main className="font-editorial-body bg-paper">
+      <section className="mx-auto max-w-2xl px-4 py-12 md:px-6">
+        {/* eslint-disable-next-line react/no-danger */}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
-      <p className="text-xs font-medium uppercase tracking-wide text-nile-700">{post.category}</p>
-      <h1 className="mt-1 font-display text-3xl font-semibold text-forest-900">{post.title}</h1>
-      <p className="mt-2 text-sm text-forest-800/60">
-        {authorName} ·{" "}
-        {post.publishedAt
-          ? new Date(post.publishedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
-          : ""}{" "}
-        · {readingTimeMinutes(post.body)} min read
-      </p>
+        <p className="eyebrow text-ember">{post.category}</p>
+        <h1 className="font-serif-editorial mt-2 text-4xl text-ink md:text-5xl">{post.title}</h1>
+        <p className="eyebrow mt-3 text-ink/35">
+          {authorName} ·{" "}
+          {post.publishedAt
+            ? new Date(post.publishedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+            : ""}{" "}
+          · {readingTimeMinutes(post.body)} min read
+        </p>
 
-      {post.coverImage && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={post.coverImage} alt="" className="mt-5 w-full rounded-2xl object-cover" />
-      )}
+        {post.coverImage && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={post.coverImage} alt="" className="mt-6 w-full border border-ink/10 object-cover" />
+        )}
 
-      <div className="journal-body mt-6" dangerouslySetInnerHTML={{ __html: renderMarkdown(post.body) }} />
+        <div className="journal-body mt-8" dangerouslySetInnerHTML={{ __html: renderMarkdown(post.body) }} />
 
-      <div className="mt-8 flex flex-wrap items-center gap-2 border-t border-forest-900/10 pt-5">
-        <span className="text-xs font-medium text-forest-800/50">Share:</span>
-        <a
-          href={`https://wa.me/?text=${shareText}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded-full border border-forest-900/15 px-3 py-1.5 text-xs font-semibold text-forest-800 hover:bg-forest-50"
-        >
-          WhatsApp
-        </a>
-        <a
-          href={`https://twitter.com/intent/tweet?text=${shareText}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded-full border border-forest-900/15 px-3 py-1.5 text-xs font-semibold text-forest-800 hover:bg-forest-50"
-        >
-          X
-        </a>
-        <a
-          href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded-full border border-forest-900/15 px-3 py-1.5 text-xs font-semibold text-forest-800 hover:bg-forest-50"
-        >
-          Facebook
-        </a>
-        <Link
-          href={`/social?context_type=journal_post&context_id=${post.id}`}
-          className="rounded-full bg-forest-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-forest-700"
-        >
-          Share this on Wano
-        </Link>
-      </div>
+        <div className="mt-10 flex flex-wrap items-center gap-2 border-t border-ink/10 pt-6">
+          <span className="eyebrow text-ink/40">Share:</span>
+          <a
+            href={`https://wa.me/?text=${shareText}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-full border border-ink/15 px-3 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-ink/5"
+          >
+            WhatsApp
+          </a>
+          <a
+            href={`https://twitter.com/intent/tweet?text=${shareText}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-full border border-ink/15 px-3 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-ink/5"
+          >
+            X
+          </a>
+          <a
+            href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-full border border-ink/15 px-3 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-ink/5"
+          >
+            Facebook
+          </a>
+          <Link
+            href={`/social?context_type=journal_post&context_id=${post.id}`}
+            className="rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-ink/85"
+          >
+            Share this on Wano
+          </Link>
+        </div>
 
-      <div className="mt-8">
-        <NewsletterForm source={`journal_post_${post.slug}`} />
-      </div>
+        <div className="mt-8">
+          <NewsletterForm source={`journal_post_${post.slug}`} />
+        </div>
 
-      {related.length > 0 && (
-        <section className="mt-10">
-          <h2 className="font-display text-lg font-semibold text-forest-900">Related</h2>
-          <div className="mt-3 space-y-3">
-            {related.map((r) => (
-              <Link
-                key={r.id}
-                href={`/journal/${r.slug}`}
-                className="block rounded-xl border border-forest-900/10 bg-white p-4 hover:border-forest-900/20"
-              >
-                <p className="text-sm font-medium text-forest-900">{r.title}</p>
-                <p className="text-xs text-forest-800/60">{r.excerpt}</p>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+        {related.length > 0 && (
+          <section className="mt-10 border-t border-ink/10 pt-6">
+            <h2 className="font-serif-editorial text-2xl text-ink">Related</h2>
+            <div className="mt-3 border-t border-ink/10">
+              {related.map((r) => (
+                <Link
+                  key={r.id}
+                  href={`/journal/${r.slug}`}
+                  className="group/row block border-b border-ink/10 py-4 transition-colors"
+                >
+                  <p className="text-sm font-medium text-ink transition-colors group-hover/row:text-ember">
+                    {r.title}
+                  </p>
+                  <p className="mt-0.5 text-xs text-ink/55">{r.excerpt}</p>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+      </section>
     </main>
   );
 }

@@ -9,7 +9,7 @@ export function MessageComposer({ conversationId }: { conversationId: string }) 
   const formRef = useRef<HTMLFormElement>(null);
 
   return (
-    <div className="mt-3 border-t border-forest-900/10 pt-3">
+    <div className="mt-3 border-t border-ink/10 pt-3">
       <form
         ref={formRef}
         action={async (formData) => {
@@ -26,9 +26,9 @@ export function MessageComposer({ conversationId }: { conversationId: string }) 
           required
           maxLength={2000}
           autoComplete="off"
-          className="flex-1 rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="flex-1 border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ink"
         />
-        <button type="submit" className="rounded-lg bg-forest-800 px-4 py-2 text-sm font-semibold text-white">
+        <button type="submit" className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink/85">
           Send
         </button>
       </form>

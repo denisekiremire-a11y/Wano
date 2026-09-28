@@ -44,19 +44,17 @@ export default async function AfconVenuePage({ params }: { params: Promise<{ ven
   ]);
 
   return (
-    <main>
-      <section className="relative overflow-hidden bg-forest-950">
+    <main className="font-editorial-body bg-paper">
+      <section className="relative overflow-hidden bg-ink">
         <div className="relative mx-auto max-w-5xl px-4 py-14 md:px-6">
-          <Link href="/afcon" className="text-sm text-white/70 hover:underline">
+          <Link href="/afcon" className="eyebrow text-white/70 hover:text-white">
             ← AFCON 2027
           </Link>
-          <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium uppercase tracking-wide text-marigold-300">
-            {stadium.circuit}
-          </p>
-          <h1 className="mt-3 max-w-2xl font-display text-3xl font-semibold text-white md:text-4xl">
+          <p className="eyebrow mt-4 text-ember">{stadium.circuit}</p>
+          <h1 className="font-editorial mt-3 max-w-2xl text-3xl font-bold text-white md:text-4xl">
             {stadium.label}
           </h1>
-          <p className="mt-3 max-w-xl text-forest-100/80">{stadium.circuitDescription}</p>
+          <p className="mt-3 max-w-xl text-white/70">{stadium.circuitDescription}</p>
           <div className="mt-6">
             <VenueAnchorButton venueId={venueParam} label={stadium.shortLabel} />
           </div>
@@ -64,9 +62,9 @@ export default async function AfconVenuePage({ params }: { params: Promise<{ ven
       </section>
 
       <section className="mx-auto max-w-5xl px-4 py-10 md:px-6">
-        <h2 className="font-display text-xl font-semibold text-forest-900">Match timetable</h2>
+        <h2 className="font-editorial text-2xl font-bold text-ink">Match timetable</h2>
         {matches.length === 0 ? (
-          <p className="mt-3 rounded-xl border border-forest-900/10 bg-white p-5 text-sm text-forest-800/60">
+          <p className="mt-3 border border-ink/10 bg-white p-5 text-sm text-ink/60">
             No matches confirmed for this venue yet — CAF hasn&apos;t made the draw. Check back once
             fixtures are announced.
           </p>
@@ -82,7 +80,7 @@ export default async function AfconVenuePage({ params }: { params: Promise<{ ven
             ))}
           </div>
         )}
-        <p className="mt-2 text-xs text-forest-800/50">
+        <p className="mt-2 text-xs text-ink/40">
           Open a match to book your Wano XP seat{session?.role === "traveller" ? "" : " (sign in as a traveller first)"}.
         </p>
       </section>
@@ -100,10 +98,10 @@ export default async function AfconVenuePage({ params }: { params: Promise<{ ven
 
         return (
           <section key={category.type} className="mx-auto max-w-5xl px-4 pb-10 md:px-6">
-            <h2 className="font-display text-xl font-semibold text-forest-900">{category.title}</h2>
-            <p className="mt-1 text-xs text-forest-800/50">Distance is an estimate from {stadium.label}.</p>
+            <h2 className="font-editorial text-2xl font-bold text-ink">{category.title}</h2>
+            <p className="mt-1 text-xs text-ink/40">Distance is an estimate from {stadium.label}.</p>
             {withDistance.length === 0 ? (
-              <p className="mt-3 rounded-xl border border-forest-900/10 bg-white p-5 text-sm text-forest-800/60">
+              <p className="mt-3 border border-ink/10 bg-white p-5 text-sm text-ink/50">
                 {category.emptyMessage}
               </p>
             ) : (
@@ -111,7 +109,7 @@ export default async function AfconVenuePage({ params }: { params: Promise<{ ven
                 {withDistance.map(({ item, distanceKm }) => (
                   <div key={item.listing.id}>
                     {distanceKm != null && (
-                      <p className="mb-1 text-xs font-medium text-nile-700">about {formatKm(distanceKm)} away</p>
+                      <p className="font-mono-data mb-1 text-xs font-medium text-ember">about {formatKm(distanceKm)} away</p>
                     )}
                     <PartnerCard
                       item={item}

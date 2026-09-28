@@ -8,18 +8,18 @@ export default async function StartAClubPage() {
   const interests = await getAllInterests();
 
   return (
-    <main className="mx-auto max-w-lg px-4 py-8 md:px-6">
-      <Link href="/social" className="text-sm text-nile-700 hover:underline">
+    <main className="font-editorial-body mx-auto max-w-lg bg-paper px-4 py-8 md:px-6">
+      <Link href="/social" className="eyebrow text-ink/40 hover:text-ink">
         ← Social
       </Link>
 
-      <h1 className="mt-3 font-display text-2xl font-semibold text-forest-900">Start a club</h1>
-      <p className="mt-1 text-sm text-forest-800/60">
+      <h1 className="font-serif-editorial mt-3 text-4xl text-ink md:text-5xl">Start a club</h1>
+      <p className="mt-3 max-w-md text-ink/60">
         Don&apos;t see your category, or want a second club in one that exists? Tell us about it — an admin
         reviews every application.
       </p>
 
-      <div className="mt-6">
+      <div className="mt-8">
         <ApplyClubForm interests={interests.map((i) => ({ id: i.id, label: i.label }))} />
       </div>
     </main>

@@ -11,18 +11,22 @@ export default async function ClaimPage({ params }: { params: Promise<{ code: st
 
   if (!row) {
     return (
-      <main className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 text-center">
-        <h1 className="font-display text-xl font-semibold text-forest-900">Link not found</h1>
-        <p className="mt-2 text-sm text-forest-800/60">This claim link doesn&apos;t exist.</p>
+      <main className="font-editorial-body bg-paper flex min-h-[60vh] items-center justify-center px-4">
+        <div className="max-w-md text-center">
+          <h1 className="font-serif-editorial text-2xl text-ink">Link not found</h1>
+          <p className="mt-2 text-sm text-ink/60">This claim link doesn&apos;t exist.</p>
+        </div>
       </main>
     );
   }
 
   if (row.claim.status !== "pending") {
     return (
-      <main className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 text-center">
-        <h1 className="font-display text-xl font-semibold text-forest-900">Already claimed</h1>
-        <p className="mt-2 text-sm text-forest-800/60">This prize has already been claimed.</p>
+      <main className="font-editorial-body bg-paper flex min-h-[60vh] items-center justify-center px-4">
+        <div className="max-w-md text-center">
+          <h1 className="font-serif-editorial text-2xl text-ink">Already claimed</h1>
+          <p className="mt-2 text-sm text-ink/60">This prize has already been claimed.</p>
+        </div>
       </main>
     );
   }
@@ -37,28 +41,33 @@ export default async function ClaimPage({ params }: { params: Promise<{ code: st
   }
 
   return (
-    <main className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">
-      <h1 className="font-display text-2xl font-semibold text-forest-900">You won a prize! 🎉</h1>
-      <p className="mt-2 text-forest-800/70">
-        {row.reward.title} — {formatRewardDiscount(row.reward.discountType, row.reward.discountValue)}
-      </p>
-      <p className="mt-4 text-sm text-forest-800/60">
-        Sign up or log in with the account you want the voucher on — it&apos;ll be waiting in your
-        Passport wallet.
-      </p>
-      <div className="mt-6 flex gap-3">
-        <Link
-          href={`/signup?claim=${code}`}
-          className="rounded-full bg-marigold-500 px-5 py-2.5 text-sm font-semibold text-forest-950 transition hover:bg-marigold-400"
-        >
-          Sign up
-        </Link>
-        <Link
-          href={`/login?next=${encodeURIComponent(`/claim/${code}`)}`}
-          className="rounded-full border border-forest-900/15 px-5 py-2.5 text-sm font-semibold text-forest-900 transition hover:bg-forest-50"
-        >
-          Log in
-        </Link>
+    <main className="font-editorial-body bg-paper flex min-h-[60vh] items-center justify-center px-4 py-12">
+      <div className="max-w-md text-center">
+        <p className="eyebrow text-ember">You won a prize</p>
+        <h1 className="font-serif-editorial mt-3 text-3xl text-ink">
+          {row.reward.title} —{" "}
+          <span className="font-mono-data">
+            {formatRewardDiscount(row.reward.discountType, row.reward.discountValue)}
+          </span>
+        </h1>
+        <p className="mt-4 text-sm text-ink/60">
+          Sign up or log in with the account you want the voucher on — it&apos;ll be waiting in your
+          Passport wallet.
+        </p>
+        <div className="mt-6 flex justify-center gap-3">
+          <Link
+            href={`/signup?claim=${code}`}
+            className="rounded-full bg-gold px-5 py-2.5 text-sm font-semibold text-ink transition hover:bg-gold/90"
+          >
+            Sign up
+          </Link>
+          <Link
+            href={`/login?next=${encodeURIComponent(`/claim/${code}`)}`}
+            className="rounded-full border border-ink/20 px-5 py-2.5 text-sm font-semibold text-ink transition hover:bg-ink/5"
+          >
+            Log in
+          </Link>
+        </div>
       </div>
     </main>
   );
