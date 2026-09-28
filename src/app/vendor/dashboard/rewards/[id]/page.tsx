@@ -30,17 +30,20 @@ export default async function EditVendorRewardPage({ params }: PageProps<"/vendo
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-semibold text-forest-900">{reward.title}</h1>
-        <p className="mt-1 text-sm text-forest-800/60">
+        <h1 className="font-serif-editorial text-2xl text-ink">{reward.title}</h1>
+        <p className="mt-1 text-sm text-ink/60">
           Changes here go to the Wano team for review — this reward keeps its current terms until then.
         </p>
       </div>
 
       {pendingSubmission && (
-        <div className="rounded-xl border border-marigold-300 bg-marigold-50 p-4 text-sm text-marigold-900">
-          You have an edit waiting on review, submitted{" "}
-          {new Date(pendingSubmission.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}.
-          Submitting again below replaces that draft.
+        <div className="border border-ink/10 bg-white p-4 text-sm text-ink/70">
+          <p className="eyebrow text-ember">Pending review</p>
+          <p className="mt-1">
+            You have an edit waiting on review, submitted{" "}
+            {new Date(pendingSubmission.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}.
+            Submitting again below replaces that draft.
+          </p>
         </div>
       )}
 

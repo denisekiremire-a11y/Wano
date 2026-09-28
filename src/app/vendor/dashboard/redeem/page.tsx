@@ -20,68 +20,69 @@ export default async function VendorRedeemPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-semibold text-forest-900">Redeem</h1>
-        <p className="mt-1 text-sm text-forest-800/60">
+        <h1 className="font-serif-editorial text-2xl text-ink">Redeem</h1>
+        <p className="mt-1 text-sm text-ink/60">
           A traveller&apos;s camera opens their QR straight to this venue&apos;s verify page — or type
           their code in below if a scan fails. Either way, your PIN is required to mark it redeemed.
         </p>
-        <Link href="/vendor/dashboard/redeem/tickets" className="mt-2 inline-block text-sm text-nile-700 hover:underline">
+        <Link href="/vendor/dashboard/redeem/tickets" className="mt-2 inline-block text-sm text-ember hover:underline">
           Checking in event tickets instead? →
         </Link>
       </div>
 
-      <section className="space-y-3 rounded-2xl border border-forest-900/10 bg-white p-5">
-        <h2 className="font-display text-lg font-semibold text-forest-900">Venue PIN</h2>
-        <p className="text-sm text-forest-800/60">
+      <section className="space-y-3 border border-ink/10 bg-white p-5">
+        <h2 className="font-serif-editorial text-lg text-ink">Venue PIN</h2>
+        <p className="text-sm text-ink/60">
           Staff enter this at the counter — they never need your login password.
         </p>
         <PinForm hasPin={Boolean(vendorProfile.staffPinHash)} />
         {vendorProfile.pinRotatedAt && (
-          <p className="text-xs text-forest-800/45">
+          <p className="eyebrow text-ink/40">
             Last set {vendorProfile.pinRotatedAt.toLocaleDateString()}.
           </p>
         )}
       </section>
 
-      <section className="space-y-3 rounded-2xl border border-forest-900/10 bg-white p-5">
-        <h2 className="font-display text-lg font-semibold text-forest-900">Enter a code</h2>
+      <section className="space-y-3 border border-ink/10 bg-white p-5">
+        <h2 className="font-serif-editorial text-lg text-ink">Enter a code</h2>
         <RedeemByCode />
       </section>
 
       <section className="space-y-3">
-        <h2 className="font-display text-lg font-semibold text-forest-900">Today&apos;s redemptions</h2>
+        <h2 className="font-serif-editorial text-lg text-ink">Today&apos;s redemptions</h2>
         {redemptionsToday.length === 0 ? (
-          <p className="text-sm text-forest-800/60">Nothing redeemed yet today.</p>
+          <p className="text-sm text-ink/60">Nothing redeemed yet today.</p>
         ) : (
-          redemptionsToday.map(({ userReward, reward }) => (
-            <div
-              key={userReward.id}
-              className="flex items-center justify-between rounded-xl border border-forest-900/10 bg-white p-3"
-            >
-              <p className="text-sm font-medium text-forest-900">{reward.title}</p>
-              <p className="text-xs text-forest-800/50">
-                {userReward.redeemedAt?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-              </p>
-            </div>
-          ))
+          <div className="border-t border-ink/10">
+            {redemptionsToday.map(({ userReward, reward }) => (
+              <div key={userReward.id} className="flex items-center justify-between border-b border-ink/10 py-3">
+                <p className="text-sm font-medium text-ink">{reward.title}</p>
+                <p className="font-mono-data text-xs text-ink/50">
+                  {userReward.redeemedAt?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </p>
+              </div>
+            ))}
+          </div>
         )}
       </section>
 
       <section className="space-y-3">
-        <h2 className="font-display text-lg font-semibold text-forest-900">Active reward campaigns</h2>
+        <h2 className="font-serif-editorial text-lg text-ink">Active reward campaigns</h2>
         {campaigns.length === 0 ? (
-          <p className="text-sm text-forest-800/60">
+          <p className="text-sm text-ink/60">
             No rewards are attached to your listing right now — the Wano team sets these up.
           </p>
         ) : (
-          campaigns.map((reward) => (
-            <div key={reward.id} className="rounded-xl border border-forest-900/10 bg-white p-3">
-              <p className="text-sm font-medium text-forest-900">{reward.title}</p>
-              <p className="text-xs text-forest-800/50">
-                {formatRewardDiscount(reward.discountType, reward.discountValue)}
-              </p>
-            </div>
-          ))
+          <div className="border-t border-ink/10">
+            {campaigns.map((reward) => (
+              <div key={reward.id} className="flex items-center justify-between border-b border-ink/10 py-3">
+                <p className="text-sm font-medium text-ink">{reward.title}</p>
+                <p className="font-mono-data text-xs text-ember">
+                  {formatRewardDiscount(reward.discountType, reward.discountValue)}
+                </p>
+              </div>
+            ))}
+          </div>
         )}
       </section>
     </div>

@@ -13,8 +13,11 @@ export default async function NewVendorListingPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-semibold text-forest-900">New listing</h1>
-        <p className="mt-1 text-sm text-forest-800/60">Tell us about the place or experience — we&apos;ll review it before it goes live.</p>
+        <p className="eyebrow text-ember">Vendor dashboard</p>
+        <h1 className="font-serif-editorial mt-2 text-2xl text-ink">New listing</h1>
+        <p className="mt-1 text-sm text-ink/60">
+          Tell us about the place or experience — we&apos;ll review it before it goes live.
+        </p>
       </div>
 
       <VendorListingForm
