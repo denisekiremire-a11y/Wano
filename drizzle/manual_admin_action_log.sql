@@ -5,7 +5,13 @@
 -- (super-only — see ADMIN_MIN_LEVEL in src/lib/admin-permissions.ts),
 -- which also includes accreditation decisions for one unified view.
 
-CREATE TABLE admin_action_log (
+-- IF NOT EXISTS on all three: schema.ts declares this table (and these
+-- same-named indexes) too, so a fresh database provisioned via
+-- `drizzle-kit push` already has them by the time this file runs — this
+-- file's job on that path is only the RLS policy below, which push can't
+-- express. Kept idempotent so it also still works standalone, as it did
+-- historically before the table was formalized in schema.ts.
+CREATE TABLE IF NOT EXISTS admin_action_log (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   actor_user_id uuid NOT NULL REFERENCES users(id),
   action text NOT NULL,
@@ -15,8 +21,8 @@ CREATE TABLE admin_action_log (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX admin_action_log_created_idx ON admin_action_log (created_at);
-CREATE INDEX admin_action_log_actor_idx ON admin_action_log (actor_user_id);
+CREATE INDEX IF NOT EXISTS admin_action_log_created_idx ON admin_action_log (created_at);
+CREATE INDEX IF NOT EXISTS admin_action_log_actor_idx ON admin_action_log (actor_user_id);
 
 -- This table has no legitimate non-admin read or write path at all (it
 -- exists purely so admins can audit each other), so it gets the same
