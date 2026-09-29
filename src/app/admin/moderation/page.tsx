@@ -6,10 +6,12 @@ import {
   getPostForModeration,
   getUserForModeration,
 } from "@/lib/data/moderation";
+import { requireAdminPage } from "@/lib/auth";
 import { ModerationQueueRow } from "./moderation-queue-row";
 import { PendingPostRow } from "./pending-post-row";
 
 export default async function AdminModerationPage() {
+  await requireAdminPage("/admin/moderation");
   const [reportRows, pendingPosts, log] = await Promise.all([
     getOpenReports(),
     getPendingReviewPosts(),
@@ -38,16 +40,16 @@ export default async function AdminModerationPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="font-display text-2xl font-semibold text-forest-900">Moderation</h1>
-        <p className="mt-1 text-sm text-forest-800/60">Reports and new-account posts waiting for review.</p>
+        <h1 className="font-serif-editorial text-2xl text-ink md:text-3xl">Moderation</h1>
+        <p className="mt-1 text-sm text-ink/60">Reports and new-account posts waiting for review.</p>
       </div>
 
       <section className="space-y-3">
-        <h2 className="font-display text-lg font-semibold text-forest-900">
-          New-account posts ({pendingPosts.length})
+        <h2 className="font-serif-editorial text-lg text-ink">
+          New-account posts <span className="font-mono-data text-ink/40">({pendingPosts.length})</span>
         </h2>
         {pendingPosts.length === 0 ? (
-          <p className="text-sm text-forest-800/60">Nothing pending.</p>
+          <p className="text-sm text-ink/50">Nothing pending.</p>
         ) : (
           pendingPosts.map(({ post, author, authorUser }) => (
             <PendingPostRow
@@ -63,11 +65,11 @@ export default async function AdminModerationPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="font-display text-lg font-semibold text-forest-900">
-          Open reports ({reportsWithContext.length})
+        <h2 className="font-serif-editorial text-lg text-ink">
+          Open reports <span className="font-mono-data text-ink/40">({reportsWithContext.length})</span>
         </h2>
         {reportsWithContext.length === 0 ? (
-          <p className="text-sm text-forest-800/60">No open reports.</p>
+          <p className="text-sm text-ink/50">No open reports.</p>
         ) : (
           reportsWithContext.map(({ report, reporter, preview }) => (
             <ModerationQueueRow
@@ -85,17 +87,19 @@ export default async function AdminModerationPage() {
       </section>
 
       <section className="space-y-2">
-        <h2 className="font-display text-lg font-semibold text-forest-900">Recent actions</h2>
+        <h2 className="font-serif-editorial text-lg text-ink">Recent actions</h2>
         {log.length === 0 ? (
-          <p className="text-sm text-forest-800/60">Nothing actioned yet.</p>
+          <p className="text-sm text-ink/50">Nothing actioned yet.</p>
         ) : (
-          <div className="space-y-1 text-xs text-forest-800/70">
+          <div className="border-t border-ink/10 text-xs text-ink/70">
             {log.map(({ action, performedBy }) => (
-              <p key={action.id}>
+              <p key={action.id} className="border-b border-ink/10 py-2">
                 {action.performedByUserId === performedBy.id ? performedBy.name : "Admin"} {action.action}d a{" "}
                 {action.targetType}
                 {action.reason ? ` — ${action.reason}` : ""} ·{" "}
-                {new Date(action.createdAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
+                <span className="font-mono-data">
+                  {new Date(action.createdAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
+                </span>
               </p>
             ))}
           </div>

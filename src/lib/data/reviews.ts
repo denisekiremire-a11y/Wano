@@ -1,6 +1,7 @@
 import { desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { bookings, listings, reviews, travellerProfiles, users } from "@/db/schema";
+import { withRlsContext } from "@/lib/db-context";
 
 export type RatingSummary = { average: number; count: number };
 
@@ -57,11 +58,13 @@ export async function getReviewsByTraveller(travellerId: string) {
 /** Completed bookings for a traveller that don't have a review yet — these
  * are what prompts a "leave a review" call-to-action. */
 export async function getReviewableBookings(travellerId: string) {
-  const completedBookings = await db
-    .select({ booking: bookings, listing: listings })
-    .from(bookings)
-    .innerJoin(listings, eq(bookings.listingId, listings.id))
-    .where(eq(bookings.travellerId, travellerId));
+  const completedBookings = await withRlsContext({ role: "traveller", travellerProfileId: travellerId }, (tx) =>
+    tx
+      .select({ booking: bookings, listing: listings })
+      .from(bookings)
+      .innerJoin(listings, eq(bookings.listingId, listings.id))
+      .where(eq(bookings.travellerId, travellerId)),
+  );
 
   const existingReviews = await db
     .select({ bookingId: reviews.bookingId })

@@ -7,16 +7,18 @@ import {
   LIKES_PER_EARNINGS_TIER,
   MONETIZABLE_POST_LIKE_THRESHOLD,
 } from "@/lib/influencer";
+import { requireAdminPage } from "@/lib/auth";
 import { SeedInfluencerButton } from "./seed-influencer-button";
 
 export default async function AdminInfluencersPage() {
+  await requireAdminPage("/admin/influencers");
   const influencers = await getInfluencersWithMonetizablePosts();
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-semibold text-forest-900">Influencers</h1>
-        <p className="mt-1 max-w-2xl text-sm text-forest-800/60">
+        <h1 className="font-serif-editorial text-2xl text-ink">Influencers</h1>
+        <p className="mt-1 max-w-2xl text-sm text-ink/60">
           Anyone with {INFLUENCER_FOLLOWER_THRESHOLD.toLocaleString()}+ followers gets Influencer
           status. Once they have it, any of their posts that reach{" "}
           {MONETIZABLE_POST_LIKE_THRESHOLD.toLocaleString()}+ likes earns{" "}
@@ -28,36 +30,36 @@ export default async function AdminInfluencersPage() {
       <SeedInfluencerButton />
 
       {influencers.length === 0 ? (
-        <p className="rounded-2xl border border-forest-900/10 bg-white p-6 text-center text-sm text-forest-800/60">
+        <p className="border border-ink/10 bg-white p-6 text-center text-sm text-ink/50">
           No one has crossed {INFLUENCER_FOLLOWER_THRESHOLD.toLocaleString()} followers yet.
         </p>
       ) : (
         <div className="space-y-3">
           {influencers.map(({ traveller, user, followers, eligiblePosts, totalEarningsMinor }) => (
-            <div key={traveller.id} className="rounded-2xl border border-forest-900/10 bg-white p-4">
+            <div key={traveller.id} className="border border-ink/10 bg-white p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <Link
                     href={user.username ? `/profile/${user.username}` : "#"}
-                    className="font-medium text-forest-900 hover:underline"
+                    className="font-medium text-ink hover:underline"
                   >
                     {traveller.displayName}
                   </Link>
-                  <p className="text-xs text-forest-800/50">
+                  <p className="font-mono-data text-xs text-ink/50">
                     @{user.username} · {followers.toLocaleString()} followers
                   </p>
                 </div>
-                <span className="rounded-full bg-marigold-100 px-2.5 py-1 text-xs font-semibold text-marigold-800">
+                <span className="font-mono-data text-sm font-semibold text-ember">
                   {formatMinor(totalEarningsMinor)}
                 </span>
               </div>
 
               {eligiblePosts.length > 0 && (
-                <div className="mt-3 space-y-2 border-t border-forest-900/5 pt-3">
+                <div className="mt-3 space-y-2 border-t border-ink/10 pt-3">
                   {eligiblePosts.map((post) => (
                     <div key={post.id} className="flex items-start justify-between gap-3 text-sm">
-                      <p className="text-forest-800/80">{post.content}</p>
-                      <span className="flex-none text-right text-xs font-medium text-forest-800/50">
+                      <p className="text-ink/70">{post.content}</p>
+                      <span className="font-mono-data flex-none text-right text-xs text-ink/50">
                         {post.likes.toLocaleString()} likes
                         <br />
                         {formatMinor(post.earningsMinor)}

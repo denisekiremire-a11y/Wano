@@ -4,7 +4,9 @@ import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { blocks, moderationActions, posts, reports } from "@/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requireAdminLevel, requireRole } from "@/lib/auth";
+import { logAdminAction } from "@/lib/admin-action-log";
+import { withRlsContext } from "@/lib/db-context";
 import { generateUserPostItem } from "@/lib/feed-generators";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { countInLastHour, RATE_LIMITS } from "@/lib/rate-limit";
@@ -45,7 +47,13 @@ export async function createReportAction(targetType: ReportTargetType, targetId:
     if (total >= AUTO_HIDE_REPORT_THRESHOLD) {
       const [post] = await db.select().from(posts).where(eq(posts.id, targetId)).limit(1);
       if (post && post.status === "visible") {
-        await db.update(posts).set({ status: "hidden" }).where(eq(posts.id, targetId));
+        // This is the platform's own auto-moderation policy acting on
+        // someone else's post, not the reporting traveller editing it
+        // themselves — treated as a system/admin-equivalent write for RLS,
+        // same reasoning as slot-booking.ts's withSystemRls.
+        await withRlsContext({ userId: session.userId, role: "admin" }, async (tx) => {
+          await tx.update(posts).set({ status: "hidden" }).where(eq(posts.id, targetId));
+        });
         await db.insert(moderationActions).values({
           targetType: "post",
           targetId,
@@ -98,17 +106,19 @@ export async function resolveReportAction(
   reportId: string,
   action: "dismiss" | "hide" | "remove" | "warn" | "suspend",
 ) {
-  const session = await requireRole("admin");
+  const session = await requireAdminLevel("support");
 
   const [report] = await db.select().from(reports).where(eq(reports.id, reportId)).limit(1);
   if (!report) throw new Error("Report not found.");
 
   if (action === "hide" || action === "remove") {
     if (report.targetType === "post") {
-      await db
-        .update(posts)
-        .set({ status: action === "hide" ? "hidden" : "removed" })
-        .where(eq(posts.id, report.targetId));
+      await withRlsContext({ userId: session.userId, role: "admin" }, async (tx) => {
+        await tx
+          .update(posts)
+          .set({ status: action === "hide" ? "hidden" : "removed" })
+          .where(eq(posts.id, report.targetId));
+      });
     } else if (report.targetType === "comment") {
       // Comments have no status column to hide-but-keep — both actions
       // just delete the row.
@@ -147,6 +157,12 @@ export async function resolveReportAction(
     action,
     performedByUserId: session.userId,
   });
+  await logAdminAction(
+    session.userId,
+    "moderation.report_resolved",
+    action === "suspend" ? "Suspended a user's account over a report" : `Resolved a report: ${action}`,
+    { type: report.targetType, id: report.targetId },
+  );
 
   revalidatePath("/admin/moderation");
   revalidatePath("/social");
@@ -155,14 +171,16 @@ export async function resolveReportAction(
 /** Approve or remove a post sitting in pending_review (new-account
  * auto-flag) — separate from report resolution since it has no report row. */
 export async function reviewPendingPostAction(postId: string, decision: "approve" | "remove") {
-  const session = await requireRole("admin");
+  const session = await requireAdminLevel("support");
   const [post] = await db.select().from(posts).where(eq(posts.id, postId)).limit(1);
   if (!post) throw new Error("Post not found.");
 
-  await db
-    .update(posts)
-    .set({ status: decision === "approve" ? "visible" : "removed" })
-    .where(eq(posts.id, postId));
+  await withRlsContext({ userId: session.userId, role: "admin" }, async (tx) => {
+    await tx
+      .update(posts)
+      .set({ status: decision === "approve" ? "visible" : "removed" })
+      .where(eq(posts.id, postId));
+  });
 
   if (decision === "approve" && post.travellerId) {
     const { travellerProfiles } = await import("@/db/schema");
@@ -176,6 +194,10 @@ export async function reviewPendingPostAction(postId: string, decision: "approve
     action: decision === "approve" ? "dismiss" : "remove",
     reason: "New-account first post review",
     performedByUserId: session.userId,
+  });
+  await logAdminAction(session.userId, "moderation.pending_post_reviewed", `${decision === "approve" ? "Approved" : "Removed"} a new-account pending post`, {
+    type: "post",
+    id: postId,
   });
 
   revalidatePath("/admin/moderation");

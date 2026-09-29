@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ListingTypeIcon } from "@/components/listing-type-icon";
 import { ListingItemCard } from "@/components/listing-item-card";
 import { ImageLightbox } from "@/components/image-lightbox";
 import { PostComposer } from "@/components/post-composer";
@@ -9,6 +8,7 @@ import { SaveButton } from "@/components/save-button";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { GettingThere, type TransportOption } from "@/components/afcon/getting-there";
 import { getBirthdayPerksForListing } from "@/lib/data/birthday";
+import { CANCELLATION_CUTOFF_HOURS } from "@/lib/booking-config";
 import { formatListingPrice, formatMinor } from "@/lib/currency";
 import { AFCON_CLUB_ENABLED } from "@/lib/feature-flags";
 import {
@@ -20,9 +20,12 @@ import {
 } from "@/lib/data/journeys";
 import { getListingImageIdsFor } from "@/lib/data/listing-images";
 import { getListingItemImageIds, getListingItems } from "@/lib/data/listing-items";
+import { getListingSlots } from "@/lib/data/slots";
 import { getRatingSummary, getReviewsForListing } from "@/lib/data/reviews";
+import { withRlsContext } from "@/lib/db-context";
 import { getClaimableRewardsForTarget, getMyClaimedRewardsForTarget } from "@/lib/data/rewards";
 import { BookingForm } from "@/components/booking/booking-form";
+import { SlotPicker } from "@/components/booking/slot-picker";
 import { bookingActionLabel, computeBookingTotals, decodeBookingDraft } from "@/lib/booking-shared";
 import {
   getCommentsForPost,
@@ -101,8 +104,12 @@ export default async function ListingDetailPage({
       const [savedRows, allBookings, claimable, myClaimed] = await Promise.all([
         getSavedListingsForTraveller(travellerProfile.id),
         getTravellerBookings(travellerProfile.id),
-        getClaimableRewardsForTarget("listing", listing.id),
-        getMyClaimedRewardsForTarget(travellerProfile.id, "listing", listing.id),
+        withRlsContext({ userId: session.userId, role: "traveller", travellerProfileId: travellerProfile.id }, (tx) =>
+          getClaimableRewardsForTarget("listing", listing.id, tx),
+        ),
+        withRlsContext({ userId: session.userId, role: "traveller", travellerProfileId: travellerProfile.id }, (tx) =>
+          getMyClaimedRewardsForTarget(travellerProfile.id, "listing", listing.id, tx),
+        ),
       ]);
       saved = savedRows.some((s) => s.listing.id === listing.id);
       hasBirthdaySet = travellerProfile.dateOfBirth != null;
@@ -114,7 +121,7 @@ export default async function ListingDetailPage({
     }
   }
 
-  const [tags, birthdayPerks, rating, reviews, interested, media, typeDetails, imageIds, transportListings, items] =
+  const [tags, birthdayPerks, rating, reviews, interested, media, typeDetails, imageIds, transportListings, items, slots] =
     await Promise.all([
       getJourneysFeaturingListing(listing.id),
       getBirthdayPerksForListing(listing.id),
@@ -126,7 +133,9 @@ export default async function ListingDetailPage({
       getListingImageIdsFor(listing.id),
       AFCON_CLUB_ENABLED ? searchListings({ type: "transport" }) : Promise.resolve([]),
       getListingItems(listing.id),
+      listing.bookingMode === "instant" ? getListingSlots(listing.id) : Promise.resolve([]),
     ]);
+  const slotPickerElement = listing.bookingMode === "instant" ? <SlotPicker slots={slots} /> : undefined;
 
   const itemImageIdsMap = await getListingItemImageIds(items.map((i) => i.id));
   const itemsBySection = new Map<string, typeof items>();
@@ -166,7 +175,9 @@ export default async function ListingDetailPage({
   const bookingJourneyId = tags.some((j) => j.id === requestedJourneyId) ? requestedJourneyId : null;
 
   const activeSocials = socialLinks.filter((s) => vendor[s.key]);
-  const myUpcoming = myBookings.filter((b) => b.booking.status === "pending" || b.booking.status === "confirmed");
+  const myUpcoming = myBookings.filter(
+    (b) => b.booking.status === "pending" || b.booking.status === "held" || b.booking.status === "confirmed",
+  );
   const myPast = myBookings.filter((b) => b.booking.status === "completed" || b.booking.status === "cancelled");
 
   const reviewDraft = isReviewMode ? decodeBookingDraft(rawSearchParams) : null;
@@ -185,19 +196,16 @@ export default async function ListingDetailPage({
     : null;
 
   return (
-    <main>
+    <main className="font-editorial-body bg-paper">
       <section className={`bg-gradient-to-br ${listingTypeGradient[type]} py-14 text-white`}>
         <div className="mx-auto max-w-3xl px-4 md:px-6">
-          <Link href="/explore" className="text-sm text-white/80 hover:underline">
+          <Link href="/explore" className="eyebrow text-white/70 hover:text-white">
             ← Explore
           </Link>
-          <div className="mt-4 flex items-center gap-2">
-            <ListingTypeIcon type={type} className="h-6 w-6 text-white/80" />
-            <span className="text-sm font-medium">{listingTypeLabels[type]}</span>
-          </div>
-          <h1 className="mt-2 font-display text-3xl font-semibold md:text-4xl">{listing.title}</h1>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            <p className="text-white/90">
+          <p className="eyebrow mt-4 text-white/70">{listingTypeLabels[type]}</p>
+          <h1 className="font-serif-editorial mt-2 text-4xl md:text-5xl">{listing.title}</h1>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <p className="text-white/85">
               {vendor.businessName} · {vendor.location}
             </p>
             <VerifiedBadge status={vendor.accreditationStatus} className="bg-white/15 text-white" />
@@ -211,16 +219,16 @@ export default async function ListingDetailPage({
       </section>
 
       {!isReviewMode && (
-        <nav className="sticky top-0 z-10 border-b border-forest-900/10 bg-white/95 backdrop-blur">
+        <nav className="sticky top-0 z-10 border-b border-ink/10 bg-paper/95 backdrop-blur">
           <div className="mx-auto flex max-w-3xl gap-1 overflow-x-auto px-4 md:px-6">
             {DETAIL_TABS.map((tab) => (
               <Link
                 key={tab}
                 href={tabHref(tab)}
-                className={`flex-none border-b-2 px-3 py-3 text-sm font-medium transition ${
+                className={`eyebrow flex-none border-b-2 px-3 py-4 transition-colors ${
                   activeTab === tab
-                    ? "border-forest-800 text-forest-900"
-                    : "border-transparent text-forest-800/50 hover:text-forest-800"
+                    ? "border-ember text-ink"
+                    : "border-transparent text-ink/40 hover:text-ink"
                 }`}
               >
                 {tab === "overview" ? "Overview" : tab === "items" ? itemsSectionLabel : tab === "photos" ? "Photos" : "Reviews"}
@@ -230,45 +238,45 @@ export default async function ListingDetailPage({
         </nav>
       )}
 
-      <section className="mx-auto max-w-3xl px-4 py-8 md:px-6">
+      <section className="mx-auto max-w-3xl px-4 py-10 md:px-6">
         {isReviewMode && reviewDraft && reviewTotals ? (
           <div className="max-w-md">
-            <Link href={`/explore/${listing.id}#book`} className="text-sm text-forest-800/60 hover:underline">
+            <Link href={`/explore/${listing.id}#book`} className="eyebrow text-ink/40 hover:text-ink">
               ← Edit booking
             </Link>
-            <h2 className="mt-3 font-display text-xl font-semibold text-forest-900">Your booking</h2>
-            <div className="mt-3 space-y-2 rounded-2xl border border-forest-900/10 bg-white p-4 text-sm">
-              <p className="font-display text-lg font-semibold text-forest-900">{listing.title}</p>
+            <h2 className="font-serif-editorial mt-3 text-2xl text-ink">Your booking</h2>
+            <div className="mt-4 space-y-2 border-t border-ink/10 pt-4 text-sm">
+              <p className="font-serif-editorial text-xl text-ink">{listing.title}</p>
               {reviewDraft.visitDate && (
-                <p className="text-forest-800/80">
+                <p className="text-ink/60">
                   {reviewDraft.visitDate}
                   {reviewDraft.visitTime ? ` · ${reviewDraft.visitTime}` : ""}
                   {reviewDraft.endDate ? ` → ${reviewDraft.endDate}` : ""}
                 </p>
               )}
               {reviewDraft.partySize != null && (
-                <p className="text-forest-800/80">
+                <p className="text-ink/60">
                   {reviewDraft.partySize} {reviewDraft.partySize === 1 ? "guest" : "guests"}
                   {reviewDraft.childrenCount ? ` + ${reviewDraft.childrenCount} children` : ""}
                 </p>
               )}
               {(reviewDraft.pickupLocation || reviewDraft.dropoffLocation) && (
-                <p className="text-forest-800/80">
+                <p className="text-ink/60">
                   {reviewDraft.pickupLocation} {reviewDraft.dropoffLocation ? `→ ${reviewDraft.dropoffLocation}` : ""}
                 </p>
               )}
               {Object.entries(reviewDraft.details).map(([key, value]) => (
-                <p key={key} className="text-forest-800/60">
+                <p key={key} className="text-ink/50">
                   {value}
                 </p>
               ))}
-              {reviewDraft.notes && <p className="text-forest-800/60">“{reviewDraft.notes}”</p>}
+              {reviewDraft.notes && <p className="text-ink/50">“{reviewDraft.notes}”</p>}
 
               {reviewTotals.lineItems.length > 0 && (
-                <div className="border-t border-forest-900/10 pt-2">
-                  <p className="text-xs font-medium uppercase tracking-wide text-forest-800/50">Selected</p>
+                <div className="border-t border-ink/10 pt-2">
+                  <p className="eyebrow text-ink/40">Selected</p>
                   {reviewTotals.lineItems.map((li, i) => (
-                    <p key={i} className="mt-1 flex justify-between text-forest-800/80">
+                    <p key={i} className="font-mono-data mt-1 flex justify-between text-ink/60">
                       <span>
                         {li.quantity} × {li.item?.name ?? "Item"}
                       </span>
@@ -278,25 +286,32 @@ export default async function ListingDetailPage({
                 </div>
               )}
 
-              <div className="space-y-1 border-t border-forest-900/10 pt-2">
-                <p className="flex justify-between text-forest-800/80">
+              <div className="font-mono-data space-y-1 border-t border-ink/10 pt-2">
+                <p className="flex justify-between text-ink/60">
                   <span>Subtotal</span>
                   <span>{formatMinor(reviewTotals.subtotalMinor)}</span>
                 </p>
                 {reviewTotals.discountMinor > 0 && reviewAppliedReward && (
-                  <p className="flex justify-between text-nile-700">
+                  <p className="flex justify-between text-ember">
                     <span>{reviewAppliedReward.reward.title}</span>
                     <span>
                       -{formatMinor(reviewTotals.discountMinor)}
                     </span>
                   </p>
                 )}
-                <p className="flex justify-between text-base font-semibold text-forest-900">
+                <p className="flex justify-between text-base font-semibold text-ink">
                   <span>Total</span>
                   <span>{formatMinor(reviewTotals.totalMinor)}</span>
                 </p>
               </div>
             </div>
+
+            {listing.bookingMode === "instant" && (
+              <p className="mt-4 border-l-2 border-ink/20 pl-3 text-xs text-ink/60">
+                Free cancellation up to {CANCELLATION_CUTOFF_HOURS} hours before your slot. After that, this
+                booking is non-refundable.
+              </p>
+            )}
 
             <form action={bookListingFormAction} className="mt-4">
               <input type="hidden" name="listingId" value={listing.id} />
@@ -313,6 +328,7 @@ export default async function ListingDetailPage({
               {reviewDraft.notes && <input type="hidden" name="notes" value={reviewDraft.notes} />}
               {reviewDraft.userRewardId && <input type="hidden" name="userRewardId" value={reviewDraft.userRewardId} />}
               {reviewDraft.journeyId && <input type="hidden" name="journeyId" value={reviewDraft.journeyId} />}
+              {reviewDraft.slotId && <input type="hidden" name="slotId" value={reviewDraft.slotId} />}
               {Object.keys(reviewDraft.details).length > 0 && (
                 <input type="hidden" name="details" value={JSON.stringify(reviewDraft.details)} />
               )}
@@ -325,7 +341,7 @@ export default async function ListingDetailPage({
               )}
               <button
                 type="submit"
-                className="w-full rounded-full bg-forest-800 px-5 py-3 text-sm font-semibold text-white transition hover:bg-forest-700"
+                className="w-full rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-ink/85"
               >
                 {bookingActionLabel[type]} →
               </button>
@@ -336,10 +352,10 @@ export default async function ListingDetailPage({
         {activeTab === "overview" && (
           <>
             <div className="flex items-start justify-between gap-4">
-              <p className="max-w-2xl text-forest-800/80">{listing.description}</p>
+              <p className="max-w-2xl text-ink/60">{listing.description}</p>
               {session?.role === "traveller" && <SaveButton listingId={listing.id} initialSaved={saved} />}
             </div>
-            <p className="mt-2 font-medium text-nile-700">{formatListingPrice(listing)}</p>
+            <p className="font-mono-data mt-2 font-medium text-ember">{formatListingPrice(listing)}</p>
 
             {imageIds.length > 0 && (
               <div className="mt-4 min-w-0">
@@ -350,14 +366,14 @@ export default async function ListingDetailPage({
                       key={imgId}
                       src={`/api/listing-images/${imgId}`}
                       alt={listing.title}
-                      className="h-40 w-60 flex-none rounded-xl object-cover"
+                      className="h-40 w-60 flex-none border border-ink/10 object-cover"
                     />
                   ))}
                 </div>
                 {imageIds.length > 3 && (
                   <Link
                     href={tabHref("photos")}
-                    className="mt-2 inline-block text-sm font-medium text-nile-700 hover:underline"
+                    className="mt-2 inline-block text-sm font-medium text-ember hover:underline"
                   >
                     View all {imageIds.length} photos →
                   </Link>
@@ -368,21 +384,21 @@ export default async function ListingDetailPage({
             {items.length > 0 && (
               <Link
                 href={tabHref("items")}
-                className="mt-4 block rounded-xl border border-forest-900/10 bg-white p-3 text-sm font-medium text-forest-900 transition hover:border-forest-900/25"
+                className="mt-4 block border border-ink/10 bg-white p-3 text-sm font-medium text-ink transition-colors hover:border-ink/25"
               >
                 See {itemsSectionLabel.toLowerCase()} ({items.length}) →
               </Link>
             )}
 
             {tags.length > 0 && (
-              <div className="mt-3">
-                <p className="text-xs font-medium text-forest-800/50">Featured in these journeys</p>
-                <div className="mt-1 flex flex-wrap gap-1.5">
+              <div className="mt-4">
+                <p className="eyebrow text-ink/40">Featured in these journeys</p>
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
                   {tags.map((t) => (
                     <Link
                       key={t.id}
                       href={`/journeys/${t.slug}`}
-                      className="rounded-full bg-marigold-50 px-2 py-0.5 text-[11px] font-medium text-marigold-800"
+                      className="text-sm font-medium text-ember hover:underline"
                     >
                       {t.name}
                     </Link>
@@ -394,32 +410,32 @@ export default async function ListingDetailPage({
             {/* Venue-level facts (not individually selectable/bookable —
                 those live in the items tab now). */}
             {(typeDetails.hotel || typeDetails.restaurant || typeDetails.experience) && (
-              <div className="mt-4 rounded-xl border border-forest-900/10 bg-white p-4">
-                <h2 className="font-display text-sm font-semibold text-forest-900">
+              <div className="mt-4 border border-ink/10 bg-white p-4">
+                <h2 className="eyebrow text-ink/40">
                   {type === "hotel" ? "Amenities & hours" : type === "restaurant" ? "Cuisine & hours" : "What's included"}
                 </h2>
                 {typeDetails.hotel && (
-                  <dl className="mt-2 space-y-1 text-sm text-forest-800/80">
-                    {typeDetails.hotel.amenities && <p>✨ {typeDetails.hotel.amenities}</p>}
+                  <dl className="mt-2 space-y-1 text-sm text-ink/70">
+                    {typeDetails.hotel.amenities && <p>{typeDetails.hotel.amenities}</p>}
                     {(typeDetails.hotel.checkInTime || typeDetails.hotel.checkOutTime) && (
                       <p>
-                        🕒 Check-in {typeDetails.hotel.checkInTime ?? "—"} · Check-out{" "}
+                        Check-in {typeDetails.hotel.checkInTime ?? "—"} · Check-out{" "}
                         {typeDetails.hotel.checkOutTime ?? "—"}
                       </p>
                     )}
                   </dl>
                 )}
                 {typeDetails.restaurant && (
-                  <dl className="mt-2 space-y-1 text-sm text-forest-800/80">
-                    {typeDetails.restaurant.cuisine && <p>🍽️ {typeDetails.restaurant.cuisine}</p>}
-                    {typeDetails.restaurant.hours && <p>🕒 {typeDetails.restaurant.hours}</p>}
+                  <dl className="mt-2 space-y-1 text-sm text-ink/70">
+                    {typeDetails.restaurant.cuisine && <p>{typeDetails.restaurant.cuisine}</p>}
+                    {typeDetails.restaurant.hours && <p>{typeDetails.restaurant.hours}</p>}
                   </dl>
                 )}
                 {typeDetails.experience && (
-                  <dl className="mt-2 space-y-1 text-sm text-forest-800/80">
-                    {typeDetails.experience.durationText && <p>⏱️ {typeDetails.experience.durationText}</p>}
-                    {typeDetails.experience.groupSizeText && <p>👥 {typeDetails.experience.groupSizeText}</p>}
-                    {typeDetails.experience.whatsIncluded && <p>✅ {typeDetails.experience.whatsIncluded}</p>}
+                  <dl className="mt-2 space-y-1 text-sm text-ink/70">
+                    {typeDetails.experience.durationText && <p>{typeDetails.experience.durationText}</p>}
+                    {typeDetails.experience.groupSizeText && <p>{typeDetails.experience.groupSizeText}</p>}
+                    {typeDetails.experience.whatsIncluded && <p>{typeDetails.experience.whatsIncluded}</p>}
                   </dl>
                 )}
               </div>
@@ -431,7 +447,7 @@ export default async function ListingDetailPage({
                   href={listing.externalBookingUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex rounded-full bg-forest-800 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-forest-700"
+                  className="inline-flex rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-ink/85"
                 >
                   Book on {vendor.businessName} →
                 </a>
@@ -448,11 +464,12 @@ export default async function ListingDetailPage({
                   birthdayPerks={birthdayPerks}
                   hasBirthdaySet={hasBirthdaySet}
                   allowsPreorder={typeDetails.restaurant?.allowsPreorder ?? false}
+                  slotPicker={slotPickerElement}
                 />
               ) : (
                 <Link
                   href={`/login?next=/explore/${listing.id}`}
-                  className="inline-flex rounded-full bg-forest-800 px-5 py-2.5 text-sm font-semibold text-white"
+                  className="inline-flex rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white"
                 >
                   Log in to book
                 </Link>
@@ -460,19 +477,17 @@ export default async function ListingDetailPage({
             </div>
 
             {myBookings.length > 0 && (
-              <section className="mt-8 rounded-2xl border border-forest-900/10 bg-white p-5">
-                <h2 className="font-display text-lg font-semibold text-forest-900">Your bookings here</h2>
-                <div className="mt-3 space-y-2">
+              <section className="mt-10 border-t border-ink/10 pt-6">
+                <h2 className="font-serif-editorial text-2xl text-ink">Your bookings here</h2>
+                <div className="mt-3 border-t border-ink/10">
                   {[...myUpcoming, ...myPast].map(({ booking }) => (
                     <Link
                       key={booking.id}
                       href={`/bookings/${booking.bookingRef}`}
-                      className="flex items-center justify-between rounded-xl border border-forest-900/10 p-3 transition hover:bg-forest-50/50"
+                      className="flex items-center justify-between border-b border-ink/10 py-3 transition-colors hover:text-ember"
                     >
-                      <p className="text-sm text-forest-800/80">ref {booking.bookingRef}</p>
-                      <span className="rounded-full bg-forest-100 px-2.5 py-1 text-xs font-medium capitalize text-forest-800">
-                        {booking.status}
-                      </span>
+                      <p className="font-mono-data text-sm text-ink/70">ref {booking.bookingRef}</p>
+                      <span className="eyebrow capitalize text-ink/40">{booking.status}</span>
                     </Link>
                   ))}
                 </div>
@@ -486,18 +501,18 @@ export default async function ListingDetailPage({
               promo={promo}
             />
 
-            <section className="mt-8 rounded-2xl border border-forest-900/10 bg-white p-5">
-              <h2 className="font-display text-lg font-semibold text-forest-900">About {vendor.businessName}</h2>
-              <p className="mt-2 text-sm text-forest-800/80">{vendor.description}</p>
+            <section className="mt-10 border-t border-ink/10 pt-6">
+              <h2 className="font-serif-editorial text-2xl text-ink">About {vendor.businessName}</h2>
+              <p className="mt-2 text-sm text-ink/60">{vendor.description}</p>
               {activeSocials.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-3">
+                <div className="mt-3 flex flex-wrap gap-4">
                   {activeSocials.map((s) => (
                     <a
                       key={s.key}
                       href={vendor[s.key]!}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-sm font-medium text-nile-700 hover:underline"
+                      className="text-sm font-medium text-ember hover:underline"
                     >
                       {s.label} ↗
                     </a>
@@ -506,22 +521,18 @@ export default async function ListingDetailPage({
               )}
             </section>
 
-            <div className="mt-8 rounded-2xl border border-forest-900/10 bg-white p-5">
-              <h2 className="font-display text-lg font-semibold text-forest-900">People interested</h2>
-              <p className="mt-1 text-sm text-forest-800/60">
-                {interested.length} {interested.length === 1 ? "person has" : "people have"} saved this place.
+            <div className="mt-10 border-t border-ink/10 pt-6">
+              <h2 className="font-serif-editorial text-2xl text-ink">People interested</h2>
+              <p className="mt-2 flex items-center gap-2 text-ink/50">
+                <span className="live-dot text-ember" />
+                <span className="font-mono-data text-[11px] uppercase tracking-[0.15em]">
+                  {interested.length} {interested.length === 1 ? "person has" : "people have"} saved this place
+                </span>
               </p>
               {interested.length > 0 && (
-                <ul className="mt-3 flex flex-wrap gap-2">
-                  {interested.slice(0, 20).map((i) => (
-                    <li
-                      key={i.traveller.id}
-                      className="rounded-full bg-forest-50 px-3 py-1 text-xs font-medium text-forest-800"
-                    >
-                      {i.traveller.displayName}
-                    </li>
-                  ))}
-                </ul>
+                <p className="mt-3 text-sm text-ink/50">
+                  {interested.slice(0, 20).map((i) => i.traveller.displayName).join(" · ")}
+                </p>
               )}
             </div>
 
@@ -531,17 +542,17 @@ export default async function ListingDetailPage({
 
         {activeTab === "items" && (
           <div>
-            <h2 className="font-display text-xl font-semibold text-forest-900">{itemsSectionLabel}</h2>
+            <h2 className="font-serif-editorial text-2xl text-ink">{itemsSectionLabel}</h2>
             {items.length === 0 ? (
-              <p className="mt-4 rounded-xl border border-forest-900/10 bg-white p-6 text-center text-sm text-forest-800/60">
+              <p className="mt-4 border border-ink/10 bg-white p-6 text-center text-sm text-ink/50">
                 Nothing listed here yet.
               </p>
             ) : selectedItem ? (
               <div className="mt-4">
-                <Link href={tabHref("items")} className="text-sm text-forest-800/60 hover:underline">
+                <Link href={tabHref("items")} className="eyebrow text-ink/40 hover:text-ink">
                   ← Back to {itemsSectionLabel.toLowerCase()}
                 </Link>
-                <div className="mt-3 overflow-hidden rounded-2xl border border-forest-900/10 bg-white">
+                <div className="mt-3 overflow-hidden border border-ink/10 bg-white">
                   {(itemImageIdsMap.get(selectedItem.id) ?? []).length > 0 ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -550,29 +561,29 @@ export default async function ListingDetailPage({
                       className="h-56 w-full object-cover"
                     />
                   ) : (
-                    <div className={`flex h-40 items-center justify-center bg-gradient-to-br ${listingTypeGradient[type]}`}>
-                      <ListingTypeIcon type={type} className="h-10 w-10 text-white/70" />
+                    <div className="eyebrow flex h-40 items-center justify-center bg-ink/5 text-ink/30">
+                      {itemsSectionLabel}
                     </div>
                   )}
                   <div className="p-4">
-                    <p className="font-display text-xl font-semibold text-forest-900">{selectedItem.name}</p>
+                    <p className="font-serif-editorial text-2xl text-ink">{selectedItem.name}</p>
                     {selectedItem.description && (
-                      <p className="mt-1 text-sm text-forest-800/70">{selectedItem.description}</p>
+                      <p className="mt-1 text-sm text-ink/60">{selectedItem.description}</p>
                     )}
                     {(selectedItem.durationText || selectedItem.capacityText) && (
-                      <p className="mt-2 text-sm text-forest-800/50">
+                      <p className="mt-2 text-sm text-ink/50">
                         {[selectedItem.durationText, selectedItem.capacityText].filter(Boolean).join(" · ")}
                       </p>
                     )}
                     {selectedItem.priceMinor != null && (
-                      <p className="mt-2 text-lg font-semibold text-ember">
+                      <p className="font-mono-data mt-2 text-lg font-semibold text-ember">
                         {formatMinor(selectedItem.priceMinor)}
                         {selectedItem.priceUnit ?? ""}
                       </p>
                     )}
                     <Link
                       href={`${tabHref("overview")}${tabHref("overview").includes("?") ? "&" : "?"}item=${selectedItem.id}#book`}
-                      className="mt-4 inline-flex rounded-full bg-forest-800 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-forest-700"
+                      className="mt-4 inline-flex rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-ink/85"
                     >
                       Select →
                     </Link>
@@ -584,7 +595,7 @@ export default async function ListingDetailPage({
                 {[...itemsBySection.entries()].map(([section, sectionItems]) => (
                   <div key={section || "_"}>
                     {section && (
-                      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-forest-800/50">
+                      <h3 className="eyebrow mb-2 text-ink/40">
                         {section}
                       </h3>
                     )}
@@ -608,9 +619,9 @@ export default async function ListingDetailPage({
 
         {activeTab === "photos" && (
           <div>
-            <h2 className="font-display text-xl font-semibold text-forest-900">Photos</h2>
+            <h2 className="font-serif-editorial text-2xl text-ink">Photos</h2>
             {imageIds.length === 0 ? (
-              <p className="mt-4 rounded-xl border border-forest-900/10 bg-white p-6 text-center text-sm text-forest-800/60">
+              <p className="mt-4 border border-ink/10 bg-white p-6 text-center text-sm text-ink/50">
                 No photos yet.
               </p>
             ) : (
@@ -627,37 +638,37 @@ export default async function ListingDetailPage({
         {activeTab === "reviews" && (
           <div>
             <section>
-              <h2 className="font-display text-lg font-semibold text-forest-900">Reviews</h2>
-              <div className="mt-3 space-y-3">
+              <h2 className="font-serif-editorial text-2xl text-ink">Reviews</h2>
+              <div className="mt-3 border-t border-ink/10">
                 {reviews.length === 0 ? (
-                  <p className="rounded-xl border border-forest-900/10 bg-white p-6 text-center text-sm text-forest-800/60">
+                  <p className="border-b border-ink/10 py-5 text-sm text-ink/50">
                     No reviews yet.
                   </p>
                 ) : (
                   reviews.map(({ review, travellerUser }) => (
-                    <div key={review.id} className="rounded-xl border border-forest-900/10 bg-white p-4">
+                    <div key={review.id} className="border-b border-ink/10 py-5">
                       <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-forest-900">@{travellerUser.username}</p>
-                        <span className="text-sm font-medium text-marigold-700">{"★".repeat(review.rating)}</span>
+                        <p className="text-sm font-medium text-ink">@{travellerUser.username}</p>
+                        <span className="font-mono-data text-sm font-medium text-ember">{"★".repeat(review.rating)}</span>
                       </div>
                       {review.safetyRating != null && (
-                        <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-forest-800/60 sm:grid-cols-4">
+                        <div className="font-mono-data mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-ink/50 sm:grid-cols-4">
                           <span>Safety {review.safetyRating}★</span>
                           <span>Reliability {review.reliabilityRating}★</span>
                           <span>Value {review.valueRating}★</span>
                           <span>Communication {review.communicationRating}★</span>
                         </div>
                       )}
-                      {review.comment && <p className="mt-2 text-sm text-forest-800/80">{review.comment}</p>}
+                      {review.comment && <p className="mt-2 text-sm text-ink/70">{review.comment}</p>}
                     </div>
                   ))
                 )}
               </div>
             </section>
 
-            <section className="mt-8">
-              <h2 className="font-display text-lg font-semibold text-forest-900">What people are saying</h2>
-              <p className="mt-1 text-sm text-forest-800/60">
+            <section className="mt-10 border-t border-ink/10 pt-6">
+              <h2 className="font-serif-editorial text-2xl text-ink">What people are saying</h2>
+              <p className="mt-1 text-sm text-ink/50">
                 Posts and moments about this place — from travellers and from {vendor.businessName}.
               </p>
               {session?.role === "traveller" && (
@@ -670,7 +681,7 @@ export default async function ListingDetailPage({
               )}
               <div className="mt-4 space-y-3">
                 {media.length === 0 ? (
-                  <p className="rounded-xl border border-forest-900/10 bg-white p-6 text-center text-sm text-forest-800/60">
+                  <p className="border border-ink/10 bg-white p-6 text-center text-sm text-ink/50">
                     Nothing posted yet.
                   </p>
                 ) : (

@@ -10,7 +10,7 @@ export function BottomNav({
   session: SessionPayload | null;
   navBadges?: Record<string, number>;
 }) {
-  const items = mobileNavItemsFor(session?.role ?? "guest");
+  const items = mobileNavItemsFor(session?.role ?? "guest", session?.adminLevel);
 
   // Five or fewer items sit comfortably in an equal-width row (the
   // traveller/guest case). Above that (vendor, and especially admin's 13

@@ -19,8 +19,8 @@ export default async function VendorReferralsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-semibold text-forest-900">Referral stats</h1>
-        <p className="mt-1 text-sm text-forest-800/60">
+        <h1 className="font-serif-editorial text-2xl text-ink md:text-3xl">Referral stats</h1>
+        <p className="mt-1 text-sm text-ink/60">
           Bookings made through Wano for your listing. Fulfillment happens directly
           between you and the member — this is the referral and commission record. Only
           confirmed bookings count toward commission owed.
@@ -30,20 +30,22 @@ export default async function VendorReferralsPage() {
       {stats.pendingCount > 0 && (
         <Link
           href="/vendor/dashboard/bookings"
-          className="block rounded-xl border border-marigold-300 bg-marigold-50 p-4 text-sm text-marigold-900 hover:bg-marigold-100"
+          className="block border border-dashed border-ink/15 bg-white p-4 text-sm text-ink/70 transition hover:border-ink/30"
         >
-          {stats.pendingCount} booking request{stats.pendingCount === 1 ? "" : "s"} waiting on your
-          response →
+          <span className="font-semibold text-ember">
+            {stats.pendingCount} booking request{stats.pendingCount === 1 ? "" : "s"} waiting on your response
+          </span>{" "}
+          →
         </Link>
       )}
 
       <div className="grid gap-4 sm:grid-cols-3">
         {cards.map((card) => (
-          <div key={card.label} className="rounded-2xl border border-forest-900/10 bg-white p-5">
-            <p className="text-xs font-medium uppercase tracking-wide text-forest-800/50">
+          <div key={card.label} className="border border-ink/10 bg-white p-5">
+            <p className="eyebrow text-ink/40">
               {card.label}
             </p>
-            <p className="mt-2 font-display text-3xl font-semibold text-forest-900">
+            <p className="font-mono-data mt-2 text-3xl font-semibold text-ink">
               {card.value}
             </p>
           </div>

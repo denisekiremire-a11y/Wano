@@ -8,7 +8,7 @@ export default async function TicketTokenPage({ params }: { params: Promise<{ to
 
   return (
     <div className="mx-auto max-w-md space-y-4 py-6">
-      <Link href="/vendor/dashboard/redeem/tickets" className="text-sm text-forest-700 hover:underline">
+      <Link href="/vendor/dashboard/redeem/tickets" className="eyebrow text-ink/40 hover:text-ink">
         ← Tickets
       </Link>
       <TicketCheckInPanel check={check} bookingId={check.bookingId} />

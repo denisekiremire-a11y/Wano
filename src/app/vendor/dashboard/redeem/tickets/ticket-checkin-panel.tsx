@@ -30,8 +30,8 @@ export function TicketCheckInPanel({ check, bookingId }: { check: TicketCheck; b
 
   if (!check.ok) {
     return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 p-5">
-        <p className="text-sm font-semibold text-red-800">Can&apos;t check in this ticket</p>
+      <div className="border border-red-200 bg-red-50 p-5">
+        <p className="eyebrow text-red-600">Can&apos;t check in this ticket</p>
         <p className="mt-1 text-sm text-red-700">
           {REJECTION_COPY[check.reason]}
           {check.reason === "already_checked_in" && check.detail ? ` (${check.detail})` : ""}
@@ -42,9 +42,9 @@ export function TicketCheckInPanel({ check, bookingId }: { check: TicketCheck; b
 
   if (justCheckedIn) {
     return (
-      <div className="rounded-2xl border border-forest-300 bg-forest-50 p-5 text-center">
-        <p className="text-sm font-semibold text-forest-900">Checked in</p>
-        <p className="mt-1 text-sm text-forest-800/70">
+      <div className="border border-ink/10 bg-ink/5 p-5 text-center">
+        <p className="eyebrow text-ink">Checked in</p>
+        <p className="mt-1 text-sm text-ink/70">
           {check.title} — {check.travellerName}
           {check.partySize ? ` (party of ${check.partySize})` : ""}
         </p>
@@ -53,23 +53,23 @@ export function TicketCheckInPanel({ check, bookingId }: { check: TicketCheck; b
   }
 
   return (
-    <div className="rounded-2xl border border-forest-900/10 bg-white p-5">
-      <p className="text-xs font-medium uppercase tracking-wide text-forest-800/50">Checking in</p>
-      <p className="mt-1 font-display text-xl font-semibold text-forest-900">{check.travellerName}</p>
-      <p className="mt-2 text-sm text-forest-800/80">{check.title}</p>
-      {check.partySize && <p className="text-sm text-forest-800/60">Party of {check.partySize}</p>}
-      <p className="mt-1 font-mono text-xs text-forest-800/50">ref {check.bookingRef}</p>
+    <div className="border border-ink/10 bg-white p-5">
+      <p className="eyebrow text-ink/40">Checking in</p>
+      <p className="font-serif-editorial mt-1 text-xl text-ink">{check.travellerName}</p>
+      <p className="mt-2 text-sm text-ink/70">{check.title}</p>
+      {check.partySize && <p className="text-sm text-ink/50">Party of {check.partySize}</p>}
+      <p className="font-mono-data mt-1 text-xs text-ink/40">ref {check.bookingRef}</p>
 
       <form action={formAction} className="mt-4">
         <input type="hidden" name="bookingId" value={bookingId} />
         <button
           type="submit"
           disabled={pending}
-          className="rounded-full bg-marigold-500 px-4 py-2.5 text-sm font-semibold text-forest-950 transition hover:bg-marigold-400 disabled:opacity-60"
+          className="rounded-full bg-ink px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-ink/85 disabled:opacity-60"
         >
           {pending ? "Checking in…" : "Check in"}
         </button>
-        {state.error && <p className="mt-2 text-xs text-red-700">{state.error}</p>}
+        {state.error && <p className="mt-2 text-xs text-red-600">{state.error}</p>}
       </form>
     </div>
   );

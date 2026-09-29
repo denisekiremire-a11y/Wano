@@ -12,6 +12,7 @@ export function RentalBookingForm({
   listingType,
   preselectedItemId,
   myClaimedRewards,
+  slotPicker,
 }: BookingFormProps) {
   return (
     <BookingFormShell listingId={listingId} journeyId={journeyId} submitLabel={bookingActionLabel.rental}>
@@ -31,14 +32,16 @@ export function RentalBookingForm({
           <TextInput id="dropoffLocation" name="dropoffLocation" required />
         </Field>
       </div>
-      <div className="flex gap-2">
-        <Field label="Pickup date" htmlFor="visitDate">
-          <TextInput id="visitDate" type="date" name="visitDate" required />
-        </Field>
-        <Field label="Pickup time" htmlFor="visitTime">
-          <TextInput id="visitTime" type="time" name="visitTime" required />
-        </Field>
-      </div>
+      {slotPicker ?? (
+        <div className="flex gap-2">
+          <Field label="Pickup date" htmlFor="visitDate">
+            <TextInput id="visitDate" type="date" name="visitDate" required />
+          </Field>
+          <Field label="Pickup time" htmlFor="visitTime">
+            <TextInput id="visitTime" type="time" name="visitTime" required />
+          </Field>
+        </div>
+      )}
       <div className="flex gap-2">
         <Field label="Return date" htmlFor="endDate">
           <TextInput id="endDate" type="date" name="endDate" required />

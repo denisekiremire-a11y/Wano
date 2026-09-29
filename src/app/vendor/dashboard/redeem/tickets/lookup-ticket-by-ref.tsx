@@ -21,7 +21,7 @@ export function LookupTicketByRef() {
     <div className="space-y-3">
       <div className="flex items-end gap-3">
         <div>
-          <label className="text-sm font-medium text-forest-900">Confirmation code</label>
+          <label className="text-sm font-medium text-ink">Confirmation code</label>
           <input
             value={ref}
             onChange={(e) => {
@@ -29,14 +29,14 @@ export function LookupTicketByRef() {
               setResult(null);
             }}
             placeholder="e.g. PAM-AB12CD"
-            className="mt-1 w-40 rounded-lg border border-forest-900/15 px-3 py-2 text-sm uppercase outline-none focus:border-forest-600"
+            className="font-mono-data mt-1 w-40 rounded-lg border border-ink/15 px-3 py-2 text-sm uppercase outline-none focus:border-ember"
           />
         </div>
         <button
           type="button"
           onClick={lookup}
           disabled={pending || !ref.trim()}
-          className="rounded-full bg-forest-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-forest-700 disabled:opacity-60"
+          className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white transition hover:bg-ink/85 disabled:opacity-60"
         >
           {pending ? "Looking up…" : "Look up"}
         </button>

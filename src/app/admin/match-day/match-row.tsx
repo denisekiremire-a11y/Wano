@@ -44,35 +44,33 @@ export function MatchRow({
   }
 
   return (
-    <div className="space-y-3 rounded-2xl border border-forest-900/10 bg-white p-4">
+    <div className="space-y-3 border border-ink/10 bg-white p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-forest-900">{title}</p>
-          <p className="text-xs text-forest-800/60">
+          <p className="text-sm font-semibold text-ink">{title}</p>
+          <p className="text-xs text-ink/50">
             {location} · {new Date(startAt).toLocaleString()}
           </p>
         </div>
         <div className="flex flex-none flex-col items-end gap-1">
-          <span className="rounded-full bg-forest-100 px-3 py-1 text-xs font-semibold text-forest-800">
+          <span className="font-mono-data text-xs text-ink/50">
             {seatsTaken}/{WANO_XP_SEAT_CAP} seats
           </span>
           {pendingCount > 0 && (
-            <span className="rounded-full bg-marigold-100 px-3 py-1 text-xs font-semibold text-marigold-800">
-              {pendingCount} awaiting payment
-            </span>
+            <span className="eyebrow text-ember">{pendingCount} awaiting payment</span>
           )}
         </div>
       </div>
 
       {alreadyDrawn ? (
-        <p className="text-sm text-forest-800/70">
-          Drawn: <span className="font-semibold text-forest-900">{drawWinnerName}</span> won{" "}
+        <p className="text-sm text-ink/60">
+          Drawn: <span className="font-semibold text-ink">{drawWinnerName}</span> won{" "}
           {drawPrizeTitle}.
         </p>
       ) : confirmedCount === 0 ? (
-        <p className="text-xs text-forest-800/50">No confirmed bookings yet — nothing to draw from.</p>
+        <p className="text-xs text-ink/40">No confirmed bookings yet — nothing to draw from.</p>
       ) : prizeOptions.length === 0 ? (
-        <p className="text-xs text-forest-800/50">
+        <p className="text-xs text-ink/40">
           Add an active reward with source &quot;XP draw&quot; in /admin/rewards first.
         </p>
       ) : (
@@ -80,7 +78,7 @@ export function MatchRow({
           <select
             value={prizeId}
             onChange={(e) => setPrizeId(e.target.value)}
-            className="rounded-lg border border-forest-900/15 bg-white px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm outline-none focus:border-ember"
           >
             {prizeOptions.map((p) => (
               <option key={p.id} value={p.id}>
@@ -92,14 +90,14 @@ export function MatchRow({
             type="button"
             onClick={draw}
             disabled={pending}
-            className="rounded-full bg-marigold-500 px-4 py-2 text-sm font-semibold text-forest-950 transition hover:bg-marigold-400 disabled:opacity-60"
+            className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink/85 disabled:opacity-60"
           >
             {pending ? "Drawing…" : `Draw winner (1 in ${confirmedCount})`}
           </button>
         </div>
       )}
       {result?.error && <p className="text-xs text-red-700">{result.error}</p>}
-      {result?.winnerName && <p className="text-xs text-forest-700">{result.winnerName} won!</p>}
+      {result?.winnerName && <p className="text-xs text-ink">{result.winnerName} won!</p>}
     </div>
   );
 }

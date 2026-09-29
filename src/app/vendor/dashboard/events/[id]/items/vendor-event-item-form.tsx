@@ -45,29 +45,29 @@ export function VendorEventItemForm({ eventId, existing }: { eventId: string; ex
       {existing && <input type="hidden" name="itemId" value={existing.id} />}
 
       <div>
-        <label className="text-sm font-medium text-forest-900">Ticket name</label>
+        <label className="text-sm font-medium text-ink">Ticket name</label>
         <input
           name="name"
           required
           placeholder="e.g. General Admission, VIP"
           defaultValue={existing?.name}
-          className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
         />
       </div>
 
       <div>
-        <label className="text-sm font-medium text-forest-900">Description (optional)</label>
+        <label className="text-sm font-medium text-ink">Description (optional)</label>
         <textarea
           name="description"
           rows={2}
           defaultValue={existing?.description ?? ""}
-          className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
         />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="text-sm font-medium text-forest-900">Price — whole UGX</label>
+          <label className="text-sm font-medium text-ink">Price — whole UGX</label>
           <input
             name="priceMinor"
             type="number"
@@ -76,16 +76,16 @@ export function VendorEventItemForm({ eventId, existing }: { eventId: string; ex
             required
             placeholder="e.g. 40000"
             defaultValue={existing?.priceMinor ?? ""}
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
         <div>
-          <label className="text-sm font-medium text-forest-900">Price unit (optional)</label>
+          <label className="text-sm font-medium text-ink">Price unit (optional)</label>
           <input
             name="priceUnit"
             placeholder="e.g. /person"
             defaultValue={existing?.priceUnit ?? ""}
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
       </div>
@@ -96,14 +96,14 @@ export function VendorEventItemForm({ eventId, existing }: { eventId: string; ex
         <button
           type="submit"
           disabled={pending}
-          className="rounded-full bg-forest-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-forest-700 disabled:opacity-60"
+          className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink/85 disabled:opacity-60"
         >
           {pending ? "Saving…" : existing ? "Save changes" : "Add ticket"}
         </button>
         {existing && (
           <a
             href={`/vendor/dashboard/events/${eventId}/items`}
-            className="text-sm font-medium text-forest-800/60 hover:text-forest-900"
+            className="text-sm font-medium text-ink/50 hover:text-ink"
           >
             Cancel
           </a>

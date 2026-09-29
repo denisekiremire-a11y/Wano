@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { rejectUnauthorizedCron } from "@/lib/cron-auth";
 import { and, eq, lt } from "drizzle-orm";
-import { db } from "@/db";
 import { userRewards } from "@/db/schema";
+import { withRlsContext } from "@/lib/db-context";
 
 // Flips "claimed" vouchers past their expiresAt to "expired". Redemption
 // also re-checks expiresAt itself (see markRewardRedeemedAction) so a
@@ -16,11 +16,13 @@ export async function GET(request: Request) {
   const rejected = rejectUnauthorizedCron(request);
   if (rejected) return rejected;
 
-  const result = await db
-    .update(userRewards)
-    .set({ status: "expired" })
-    .where(and(eq(userRewards.status, "claimed"), lt(userRewards.expiresAt, new Date())))
-    .returning({ id: userRewards.id });
+  const result = await withRlsContext({ role: "admin" }, (tx) =>
+    tx
+      .update(userRewards)
+      .set({ status: "expired" })
+      .where(and(eq(userRewards.status, "claimed"), lt(userRewards.expiresAt, new Date())))
+      .returning({ id: userRewards.id }),
+  );
 
   return NextResponse.json({ ok: true, expired: result.length });
 }

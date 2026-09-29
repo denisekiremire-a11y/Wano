@@ -42,23 +42,30 @@ export default async function PartnersPage({
   const imagesByListing = await getListingImageIds(results.map((r) => r.listing.id));
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-12 md:px-6">
-      <p className="text-xs font-medium uppercase tracking-wide text-nile-700">Wano Places</p>
-      <h1 className="mt-2 font-display text-3xl font-semibold text-forest-900 md:text-4xl">
-        Every verified place, all in one spot.
-      </h1>
-      <p className="mt-3 max-w-2xl text-forest-800/75">
-        Museums, parks, game hubs and play areas · hotels, spas and salons · restaurants and
-        transport. Every place listed here has gone through Wano&apos;s verification process —
-        the same trust as the five Wano Journeys, just browsable directly by what you&apos;re in
-        the mood for.
-      </p>
+    <main className="font-editorial-body bg-paper">
+      <section className="border-b border-ink/10">
+        <div className="mx-auto max-w-4xl px-4 py-12 md:px-6">
+          <p className="eyebrow text-ember">Wano Places</p>
+          <h1 className="font-serif-editorial mt-3 text-4xl leading-[0.98] text-ink md:text-5xl">
+            Every verified place, all in one spot.
+          </h1>
+          <p className="mt-4 max-w-2xl text-ink/60">
+            Museums, parks, game hubs and play areas · hotels, spas and salons · restaurants and
+            transport. Every place listed here has gone through Wano&apos;s verification process —
+            the same trust as the five Wano Journeys, just browsable directly by what you&apos;re in
+            the mood for.
+          </p>
+        </div>
+      </section>
 
-      <div className="mt-6">
+      <section className="mx-auto max-w-4xl px-4 py-12 md:px-6">
         <PartnerSearchForm locations={locations} filters={{ type: validType, location, q }} />
 
-        <p className="mt-4 text-sm text-forest-800/60">
-          {results.length} verified {results.length === 1 ? "place" : "places"} found
+        <p className="mt-6 flex items-center gap-2 text-ink/40">
+          <span className="live-dot text-ember" />
+          <span className="font-mono-data text-[11px] uppercase tracking-[0.2em]">
+            {results.length} Wano-verified {results.length === 1 ? "place" : "places"} found
+          </span>
         </p>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -80,12 +87,12 @@ export default async function PartnersPage({
             );
           })}
           {results.length === 0 && (
-            <p className="col-span-2 rounded-xl border border-forest-900/10 bg-white p-6 text-center text-sm text-forest-800/60">
+            <p className="col-span-2 border border-ink/10 bg-white p-6 text-center text-sm text-ink/50">
               No places match those filters yet.
             </p>
           )}
         </div>
-      </div>
+      </section>
     </main>
   );
 }

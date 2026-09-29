@@ -6,5 +6,9 @@ export default async function VendorDashboardLayout({
   children: React.ReactNode;
 }) {
   await requireRole("vendor");
-  return <div className="mx-auto max-w-4xl px-4 py-8 md:px-6">{children}</div>;
+  return (
+    <div className="font-editorial-body bg-paper min-h-screen">
+      <div className="mx-auto max-w-4xl px-4 py-8 md:px-6">{children}</div>
+    </div>
+  );
 }

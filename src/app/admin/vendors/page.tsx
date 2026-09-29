@@ -1,16 +1,19 @@
 import { getVendorApprovalQueue } from "@/lib/data/admin";
+import { requireAdminPage } from "@/lib/auth";
+import { withRlsContext } from "@/lib/db-context";
 import { VendorRow } from "./vendor-row";
 
 export default async function AdminVendorsPage() {
-  const rows = await getVendorApprovalQueue();
+  const session = await requireAdminPage("/admin/vendors");
+  const rows = await withRlsContext({ userId: session.userId, role: "admin" }, (tx) => getVendorApprovalQueue(tx));
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-semibold text-forest-900">
+        <h1 className="font-serif-editorial text-2xl text-ink md:text-3xl">
           Business verification
         </h1>
-        <p className="mt-1 text-sm text-forest-800/60">
+        <p className="mt-1 text-sm text-ink/60">
           Review KYC documents and onboard businesses. Open a business to verify documents, set up
           their listing, and approve or reject verification.
         </p>

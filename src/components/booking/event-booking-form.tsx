@@ -11,9 +11,11 @@ export function EventBookingForm({
   listingType,
   preselectedItemId,
   myClaimedRewards,
+  slotPicker,
 }: BookingFormProps) {
   return (
     <BookingFormShell listingId={listingId} journeyId={journeyId} submitLabel={bookingActionLabel.event}>
+      {slotPicker}
       <SingleItemPicker
         items={items}
         itemImageIds={itemImageIds}

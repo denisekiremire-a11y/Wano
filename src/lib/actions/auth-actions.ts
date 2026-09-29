@@ -15,6 +15,7 @@ import {
 import { hashPassword, verifyPassword } from "@/lib/auth";
 import { logEvent } from "@/lib/analytics";
 import { finalizeFunzoneClaim } from "@/lib/actions/funzone-actions";
+import { withRlsContext } from "@/lib/db-context";
 import { notifyAdmin } from "@/lib/notify";
 import { generateReferralCode } from "@/lib/referral";
 import { clearSessionCookie, createSessionCookie } from "@/lib/session";
@@ -83,6 +84,7 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
     role: user.role,
     email: user.email,
     name: user.name,
+    adminLevel: user.adminLevel,
   });
 
   // Skip notifying on the admin's own logins — the point is visibility into
@@ -160,16 +162,19 @@ export async function signupAction(_prev: ActionState, formData: FormData): Prom
       referrer = row ?? null;
     }
 
-    const [newProfile] = await db
-      .insert(travellerProfiles)
-      .values({
-        userId: user.id,
-        displayName: parsed.data.name,
-        referralCode: await uniqueReferralCode(),
-        referredByTravellerId: referrer?.id ?? null,
-        referredAt: referrer ? new Date() : null,
-      })
-      .returning();
+    const newProfile = await withRlsContext({ userId: user.id, role: "traveller" }, async (tx) => {
+      const [row] = await tx
+        .insert(travellerProfiles)
+        .values({
+          userId: user.id,
+          displayName: parsed.data.name,
+          referralCode: await uniqueReferralCode(),
+          referredByTravellerId: referrer?.id ?? null,
+          referredAt: referrer ? new Date() : null,
+        })
+        .returning();
+      return row;
+    });
 
     if (typeof claimCode === "string" && claimCode.trim()) {
       await finalizeFunzoneClaim(claimCode.trim(), newProfile.id);
@@ -242,6 +247,8 @@ export async function signupAction(_prev: ActionState, formData: FormData): Prom
     role: user.role,
     email: user.email,
     name: user.name,
+    // Signup never creates admin accounts (see requireAdminLevel).
+    adminLevel: null,
   });
 
   redirect(parsed.data.role === "vendor" ? "/vendor/dashboard" : "/onboarding");

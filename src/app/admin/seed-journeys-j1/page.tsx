@@ -1,6 +1,8 @@
+import { requireAdminPage } from "@/lib/auth";
 import { BackfillButton } from "./backfill-button";
 
-export default function SeedJourneysJ1Page() {
+export default async function SeedJourneysJ1Page() {
+  await requireAdminPage("/admin/seed-journeys-j1");
   return (
     <div className="space-y-4">
       <div>

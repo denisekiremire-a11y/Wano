@@ -23,22 +23,22 @@ export function PromoRow({
   const [pending, startTransition] = useTransition();
 
   return (
-    <div className="flex items-center justify-between rounded-2xl border border-forest-900/10 bg-white p-4">
+    <div className="flex items-center justify-between border border-ink/10 bg-white p-4">
       <div>
-        <p className="font-mono text-sm font-semibold text-forest-900">{code}</p>
-        <p className="text-sm text-forest-800/80">{title}</p>
-        <p className="text-xs text-forest-800/60">
+        <p className="font-mono-data text-sm font-semibold text-ink">{code}</p>
+        <p className="text-sm text-ink/80">{title}</p>
+        <p className="text-xs text-ink/60">
           {discountText}
           {freebieText ? ` + ${freebieText}` : ""}
         </p>
-        <p className="text-[11px] text-forest-800/45">{scopeLabel}</p>
+        <p className="text-[11px] text-ink/40">{scopeLabel}</p>
       </div>
       <button
         type="button"
         disabled={pending}
         onClick={() => startTransition(() => togglePromoCodeAction(promoId, !active))}
         className={`rounded-full px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${
-          active ? "bg-forest-100 text-forest-800" : "bg-forest-800 text-white"
+          active ? "border border-ink/20 text-ink hover:bg-ink/5" : "bg-ink text-white hover:bg-ink/85"
         }`}
       >
         {active ? "Active — deactivate" : "Inactive — activate"}

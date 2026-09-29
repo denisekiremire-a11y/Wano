@@ -1,17 +1,25 @@
 import { and, count, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { listings, rewards, users, vendorProfiles, vendorSubmissions } from "@/db/schema";
+import type { DbOrTx } from "@/lib/db-context";
 
-export async function getPendingSubmissionsCount() {
-  const [row] = await db.select({ total: count() }).from(vendorSubmissions).where(eq(vendorSubmissions.status, "pending"));
+// vendor_submissions has no public-read RLS policy (it's a vendor's
+// private pending-edit queue) — every function here takes an optional
+// trailing `client`, defaulting to `db` for callers that don't need it
+// (nothing to read yet, or the table isn't RLS-covered at their call
+// site), but every real caller must pass the `tx` from an open
+// withRlsContext or these return nothing once RLS is enabled.
+
+export async function getPendingSubmissionsCount(client: DbOrTx = db) {
+  const [row] = await client.select({ total: count() }).from(vendorSubmissions).where(eq(vendorSubmissions.status, "pending"));
   return row?.total ?? 0;
 }
 
 /** The vendor's own submissions (listing/reward creates and edits), newest
  * first — shown on their dashboard so they can see what's pending, what
  * was approved, and why anything was rejected. */
-export async function getSubmissionsForVendor(vendorProfileId: string) {
-  return db
+export async function getSubmissionsForVendor(vendorProfileId: string, client: DbOrTx = db) {
+  return client
     .select()
     .from(vendorSubmissions)
     .where(eq(vendorSubmissions.vendorProfileId, vendorProfileId))
@@ -27,8 +35,9 @@ export async function getPendingEditSubmission(
   vendorProfileId: string,
   entityType: "listing" | "reward",
   entityId: string,
+  client: DbOrTx = db,
 ) {
-  const [row] = await db
+  const [row] = await client
     .select()
     .from(vendorSubmissions)
     .where(
@@ -46,9 +55,13 @@ export async function getPendingEditSubmission(
 /** Pending submissions tied to a specific listing/reward — for the vendor's
  * own edit-form page to show "you have an edit awaiting review" alongside
  * the still-live approved content. */
-export async function getPendingSubmissionsForEntities(entityType: "listing" | "reward", entityIds: string[]) {
+export async function getPendingSubmissionsForEntities(
+  entityType: "listing" | "reward",
+  entityIds: string[],
+  client: DbOrTx = db,
+) {
   if (entityIds.length === 0) return new Map<string, typeof vendorSubmissions.$inferSelect>();
-  const rows = await db
+  const rows = await client
     .select()
     .from(vendorSubmissions)
     .where(and(eq(vendorSubmissions.entityType, entityType), eq(vendorSubmissions.status, "pending")));
@@ -59,16 +72,16 @@ export async function getPendingSubmissionsForEntities(entityType: "listing" | "
   return map;
 }
 
-export async function getSubmissionById(id: string) {
-  const [row] = await db.select().from(vendorSubmissions).where(eq(vendorSubmissions.id, id)).limit(1);
+export async function getSubmissionById(id: string, client: DbOrTx = db) {
+  const [row] = await client.select().from(vendorSubmissions).where(eq(vendorSubmissions.id, id)).limit(1);
   return row ?? null;
 }
 
 /** Admin review queue — every pending submission, newest first, with the
  * vendor's business name and (for edits) the listing/reward's current
  * title so admin can tell what's being proposed at a glance. */
-export async function getPendingSubmissions() {
-  const rows = await db
+export async function getPendingSubmissions(client: DbOrTx = db) {
+  const rows = await client
     .select({ submission: vendorSubmissions, vendor: vendorProfiles })
     .from(vendorSubmissions)
     .innerJoin(vendorProfiles, eq(vendorProfiles.id, vendorSubmissions.vendorProfileId))
@@ -80,10 +93,10 @@ export async function getPendingSubmissions() {
       let currentTitle: string | null = null;
       if (submission.entityId) {
         if (submission.entityType === "listing") {
-          const [l] = await db.select({ title: listings.title }).from(listings).where(eq(listings.id, submission.entityId)).limit(1);
+          const [l] = await client.select({ title: listings.title }).from(listings).where(eq(listings.id, submission.entityId)).limit(1);
           currentTitle = l?.title ?? null;
         } else {
-          const [r] = await db.select({ title: rewards.title }).from(rewards).where(eq(rewards.id, submission.entityId)).limit(1);
+          const [r] = await client.select({ title: rewards.title }).from(rewards).where(eq(rewards.id, submission.entityId)).limit(1);
           currentTitle = r?.title ?? null;
         }
       }

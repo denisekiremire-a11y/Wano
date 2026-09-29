@@ -20,7 +20,7 @@ export function LeadStatusSelect({ leadId, status }: { leadId: string; status: s
           router.refresh();
         })
       }
-      className="rounded-lg border border-forest-900/15 bg-white px-2 py-1 text-xs text-forest-800"
+      className="rounded-lg border border-ink/15 bg-white px-2 py-1 text-xs text-ink outline-none focus:border-ember disabled:opacity-50"
     >
       {STATUSES.map((s) => (
         <option key={s} value={s}>

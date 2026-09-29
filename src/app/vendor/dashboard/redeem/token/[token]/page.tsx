@@ -8,7 +8,7 @@ export default async function RedeemTokenPage({ params }: { params: Promise<{ to
 
   return (
     <div className="mx-auto max-w-md space-y-4 py-6">
-      <Link href="/vendor/dashboard/redeem" className="text-sm text-forest-700 hover:underline">
+      <Link href="/vendor/dashboard/redeem" className="eyebrow text-ink/40 hover:text-ink">
         ← Redeem
       </Link>
       <RedeemVoucherPanel check={check} userRewardId={check.userRewardId} />

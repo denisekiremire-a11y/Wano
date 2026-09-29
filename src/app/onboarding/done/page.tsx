@@ -30,21 +30,23 @@ export default async function OnboardingDonePage() {
   const action = firstActionByPersona[persona];
 
   return (
-    <main className="mx-auto flex min-h-[70vh] max-w-lg flex-col justify-center px-4 py-12 text-center md:px-6">
-      <p className="text-xs font-medium uppercase tracking-wide text-nile-700">You’re all set</p>
-      <h1 className="mt-2 font-display text-2xl font-semibold text-forest-900">{action.title}</h1>
-      <p className="mt-2 text-sm text-forest-800/70">{action.body}</p>
+    <main className="font-editorial-body bg-paper flex min-h-[70vh] flex-col justify-center px-4 py-12 text-center md:px-6">
+      <div className="mx-auto w-full max-w-lg">
+        <p className="eyebrow text-ember">You&apos;re all set</p>
+        <h1 className="font-serif-editorial mt-3 text-3xl text-ink">{action.title}</h1>
+        <p className="mt-2 text-sm text-ink/60">{action.body}</p>
 
-      <div className="mt-6 flex flex-col gap-2">
-        <Link
-          href={action.href}
-          className="rounded-full bg-forest-800 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-forest-700"
-        >
-          {action.cta}
-        </Link>
-        <Link href="/explore" className="text-sm font-medium text-forest-800/60 hover:text-forest-900">
-          Just take me to Explore →
-        </Link>
+        <div className="mt-8 flex flex-col gap-3">
+          <Link
+            href={action.href}
+            className="rounded-full bg-ink px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-ink/85"
+          >
+            {action.cta}
+          </Link>
+          <Link href="/explore" className="text-sm font-medium text-ink/50 hover:text-ink">
+            Just take me to Explore →
+          </Link>
+        </div>
       </div>
     </main>
   );

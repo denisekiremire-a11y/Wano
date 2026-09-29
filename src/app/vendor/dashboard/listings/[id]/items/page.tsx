@@ -33,60 +33,53 @@ export default async function VendorListingItemsPage({
   const editingItem = edit ? items.find((item) => item.id === edit) : undefined;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
         <Link
           href={`/vendor/dashboard/listings/${listing.id}`}
-          className="text-sm font-medium text-nile-700 hover:underline"
+          className="eyebrow text-ink/40 hover:text-ink"
         >
           ← Back to {listing.title}
         </Link>
-        <h1 className="mt-2 font-display text-2xl font-semibold text-forest-900">Manage {sectionLabel}</h1>
-        <p className="mt-1 text-sm text-forest-800/60">
+        <h1 className="font-serif-editorial mt-3 text-2xl text-ink">Manage {sectionLabel}</h1>
+        <p className="mt-1 text-sm text-ink/60">
           These show on your listing page — add, edit, or remove them any time, no review needed.
         </p>
       </div>
 
       {items.length > 0 && (
-        <section className="space-y-3">
+        <section className="border-t border-ink/10">
           {items.map((item) => {
             const imageIds = imageIdsByItem.get(item.id) ?? [];
             const priceText =
               item.priceMinor != null ? `${formatMinor(item.priceMinor, listing.currency)}${item.priceUnit ?? ""}` : null;
 
             return (
-              <div
-                key={item.id}
-                className="flex items-start gap-4 rounded-2xl border border-forest-900/10 bg-white p-4"
-              >
+              <div key={item.id} className="flex items-start gap-4 border-b border-ink/10 py-4">
                 {imageIds[0] ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={`/api/listing-item-images/${imageIds[0]}`}
                     alt=""
-                    className="h-16 w-16 flex-none rounded-lg border border-forest-900/10 object-cover"
+                    className="h-16 w-16 flex-none border border-ink/10 object-cover"
                   />
                 ) : (
-                  <div className="h-16 w-16 flex-none rounded-lg bg-forest-50" />
+                  <div className="h-16 w-16 flex-none bg-ink/5" />
                 )}
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-medium text-forest-900">{item.name}</p>
-                    {item.sectionLabel && (
-                      <span className="rounded-full bg-forest-100 px-2 py-0.5 text-[11px] font-medium text-forest-800/70">
-                        {item.sectionLabel}
-                      </span>
-                    )}
+                    <p className="font-medium text-ink">{item.name}</p>
+                    {item.sectionLabel && <span className="eyebrow text-ink/40">{item.sectionLabel}</span>}
                   </div>
                   {item.description && (
-                    <p className="mt-0.5 text-sm text-forest-800/60 line-clamp-2">{item.description}</p>
+                    <p className="mt-0.5 text-sm text-ink/60 line-clamp-2">{item.description}</p>
                   )}
-                  <p className="mt-1 text-sm font-medium text-nile-700">{priceText ?? "No price set"}</p>
+                  <p className="font-mono-data mt-1 text-sm font-medium text-ember">{priceText ?? "No price set"}</p>
                 </div>
                 <div className="flex flex-none flex-col items-end gap-2">
                   <Link
                     href={`/vendor/dashboard/listings/${listing.id}/items?edit=${item.id}`}
-                    className="text-sm font-medium text-nile-700 hover:underline"
+                    className="text-sm font-medium text-ember hover:underline"
                   >
                     Edit
                   </Link>
@@ -98,13 +91,13 @@ export default async function VendorListingItemsPage({
         </section>
       )}
 
-      <section className="rounded-2xl border border-forest-900/10 bg-white p-5">
-        <h2 className="font-display text-lg font-semibold text-forest-900">
+      <section className="border border-ink/10 bg-white p-5">
+        <h2 className="font-serif-editorial text-lg text-ink">
           {editingItem ? `Edit ${editingItem.name}` : `Add to ${sectionLabel}`}
         </h2>
         <VendorItemForm key={editingItem?.id ?? "new"} listingId={listing.id} existing={editingItem} />
         {editingItem && (
-          <div className="mt-4 border-t border-forest-900/10 pt-4">
+          <div className="mt-4 border-t border-ink/10 pt-4">
             <VendorItemPhotoManager itemId={editingItem.id} existingImages={imageIdsByItem.get(editingItem.id) ?? []} />
           </div>
         )}

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { clubMemberships, follows, postComments, postImages, postLikes, posts, savedPosts } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
+import { withRlsContext } from "@/lib/db-context";
 import { generateUserPostItem } from "@/lib/feed-generators";
 import { getBlockedTravellerIds } from "@/lib/data/moderation";
 import { searchMentionables, type SuggestedAttachment } from "@/lib/data/post-context";
@@ -56,17 +57,23 @@ export async function createPostAction(_prev: ActionState, formData: FormData): 
   const contextId = parsed.data.contextId || null;
   const audienceClubId = parsed.data.audienceClubId || null;
 
-  const [post] = await db
-    .insert(posts)
-    .values({
-      travellerId: travellerProfile.id,
-      content: parsed.data.content,
-      contextType: contextType && contextId ? contextType : null,
-      contextId: contextType && contextId ? contextId : null,
-      audienceClubId,
-      status: "visible",
-    })
-    .returning();
+  const post = await withRlsContext(
+    { userId: session.userId, role: "traveller", travellerProfileId: travellerProfile.id },
+    async (tx) => {
+      const [row] = await tx
+        .insert(posts)
+        .values({
+          travellerId: travellerProfile.id,
+          content: parsed.data.content,
+          contextType: contextType && contextId ? contextType : null,
+          contextId: contextType && contextId ? contextId : null,
+          audienceClubId,
+          status: "visible",
+        })
+        .returning();
+      return row;
+    },
+  );
 
   for (let i = 0; i < images.length; i++) {
     const buffer = Buffer.from(await images[i].arrayBuffer());
@@ -112,7 +119,12 @@ export async function editPostAction(_prev: ActionState, formData: FormData): Pr
     return { error: "The 15-minute edit window has passed." };
   }
 
-  await db.update(posts).set({ content }).where(eq(posts.id, postId));
+  await withRlsContext(
+    { userId: session.userId, role: "traveller", travellerProfileId: travellerProfile.id },
+    async (tx) => {
+      await tx.update(posts).set({ content }).where(eq(posts.id, postId));
+    },
+  );
   revalidatePath("/social");
   revalidatePath("/passport");
   return {};
@@ -126,7 +138,12 @@ export async function deletePostAction(postId: string) {
   const [post] = await db.select().from(posts).where(eq(posts.id, postId)).limit(1);
   if (!post || post.travellerId !== travellerProfile.id) throw new Error("Post not found.");
 
-  await db.delete(posts).where(eq(posts.id, postId));
+  await withRlsContext(
+    { userId: session.userId, role: "traveller", travellerProfileId: travellerProfile.id },
+    async (tx) => {
+      await tx.delete(posts).where(eq(posts.id, postId));
+    },
+  );
   revalidatePath("/social");
   revalidatePath("/passport");
 }
@@ -139,7 +156,12 @@ export async function changePostAudienceAction(postId: string, audienceClubId: s
   const [post] = await db.select().from(posts).where(eq(posts.id, postId)).limit(1);
   if (!post || post.travellerId !== travellerProfile.id) throw new Error("Post not found.");
 
-  await db.update(posts).set({ audienceClubId }).where(eq(posts.id, postId));
+  await withRlsContext(
+    { userId: session.userId, role: "traveller", travellerProfileId: travellerProfile.id },
+    async (tx) => {
+      await tx.update(posts).set({ audienceClubId }).where(eq(posts.id, postId));
+    },
+  );
 
   // Switching to public for the first time needs a feed item backfilled —
   // switching to a club needs nothing further, getRankedFeed's audience

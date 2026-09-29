@@ -14,6 +14,7 @@ export function HotelBookingForm({
   myClaimedRewards,
   birthdayPerks,
   hasBirthdaySet,
+  slotPicker,
 }: BookingFormProps) {
   return (
     <BookingFormShell listingId={listingId} journeyId={journeyId} submitLabel={bookingActionLabel.hotel}>
@@ -25,14 +26,16 @@ export function HotelBookingForm({
         label="Room"
         preselectedId={preselectedItemId}
       />
-      <div className="flex gap-2">
-        <Field label="Check-in" htmlFor="visitDate">
-          <TextInput id="visitDate" type="date" name="visitDate" required />
-        </Field>
-        <Field label="Check-out" htmlFor="endDate">
-          <TextInput id="endDate" type="date" name="endDate" />
-        </Field>
-      </div>
+      {slotPicker ?? (
+        <div className="flex gap-2">
+          <Field label="Check-in" htmlFor="visitDate">
+            <TextInput id="visitDate" type="date" name="visitDate" required />
+          </Field>
+          <Field label="Check-out" htmlFor="endDate">
+            <TextInput id="endDate" type="date" name="endDate" />
+          </Field>
+        </div>
+      )}
       <div className="flex gap-2">
         <Field label="Adults" htmlFor="partySize" className="w-20">
           <TextInput id="partySize" type="number" name="partySize" min={1} defaultValue={2} required />

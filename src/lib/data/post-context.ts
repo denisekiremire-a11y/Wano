@@ -12,6 +12,7 @@ import {
   promoCodes,
   vendorProfiles,
 } from "@/db/schema";
+import { withRlsContext } from "@/lib/db-context";
 import { listingPublishConditions } from "@/lib/listing-publish";
 import { listingTypeLabels, type ListingType } from "@/lib/listing-type";
 
@@ -162,20 +163,22 @@ export async function getSuggestedAttachments(travellerId: string, limit = 3): P
   }
 
   const [bookingRows, rsvpRows, claimRows] = await Promise.all([
-    db
-      .select({ listing: listings, event: events, createdAt: bookings.createdAt })
-      .from(bookings)
-      .leftJoin(listings, eq(listings.id, bookings.listingId))
-      .leftJoin(events, eq(events.id, bookings.eventId))
-      .where(
-        and(
-          eq(bookings.travellerId, travellerId),
-          or(eq(bookings.status, "confirmed"), eq(bookings.status, "completed")),
-          gte(bookings.createdAt, since),
-        ),
-      )
-      .orderBy(desc(bookings.createdAt))
-      .limit(10),
+    withRlsContext({ role: "traveller", travellerProfileId: travellerId }, (tx) =>
+      tx
+        .select({ listing: listings, event: events, createdAt: bookings.createdAt })
+        .from(bookings)
+        .leftJoin(listings, eq(listings.id, bookings.listingId))
+        .leftJoin(events, eq(events.id, bookings.eventId))
+        .where(
+          and(
+            eq(bookings.travellerId, travellerId),
+            or(eq(bookings.status, "confirmed"), eq(bookings.status, "completed")),
+            gte(bookings.createdAt, since),
+          ),
+        )
+        .orderBy(desc(bookings.createdAt))
+        .limit(10),
+    ),
     db
       .select({ event: events, createdAt: eventAttendance.createdAt })
       .from(eventAttendance)

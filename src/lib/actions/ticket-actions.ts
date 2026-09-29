@@ -6,6 +6,8 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { bookings, events, listings, travellerProfiles } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
+import type { DbOrTx } from "@/lib/db-context";
+import { withRlsContext } from "@/lib/db-context";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { getVendorProfileByUserId } from "@/lib/data/vendor";
 import { signTicketToken, verifyTicketToken } from "@/lib/ticket-token";
@@ -17,8 +19,8 @@ function revalidateTicketPaths() {
   revalidatePath("/vendor/dashboard/redeem/tickets");
 }
 
-async function getTicketBookingRow(bookingId: string) {
-  const [row] = await db
+async function getTicketBookingRow(bookingId: string, client: DbOrTx = db) {
+  const [row] = await client
     .select({
       booking: bookings,
       listing: listings,
@@ -49,8 +51,8 @@ export type TicketCheck =
       detail?: string;
     };
 
-async function checkTicketRedeemable(bookingId: string, vendorProfileId: string): Promise<TicketCheck> {
-  const row = await getTicketBookingRow(bookingId);
+async function checkTicketRedeemable(bookingId: string, vendorProfileId: string, client: DbOrTx = db): Promise<TicketCheck> {
+  const row = await getTicketBookingRow(bookingId, client);
   if (!row) return { ok: false, reason: "invalid" };
   if (!isTicketEligible(row)) return { ok: false, reason: "not_a_ticket" };
 
@@ -78,7 +80,10 @@ export async function generateTicketQrAction(bookingId: string) {
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
   if (!travellerProfile) throw new Error("Traveller profile not found.");
 
-  const row = await getTicketBookingRow(bookingId);
+  const row = await withRlsContext(
+    { userId: session.userId, role: "traveller", travellerProfileId: travellerProfile.id },
+    (tx) => getTicketBookingRow(bookingId, tx),
+  );
   if (!row || row.booking.travellerId !== travellerProfile.id) throw new Error("Booking not found.");
 
   const token = await signTicketToken(bookingId);
@@ -99,7 +104,10 @@ export async function verifyTicketTokenForVendor(token: string): Promise<TicketC
   const decoded = await verifyTicketToken(token);
   if (!decoded) return { ok: false, reason: "invalid" };
 
-  const result = await checkTicketRedeemable(decoded.bookingId, vendorProfile.id);
+  const result = await withRlsContext(
+    { userId: session.userId, role: "vendor", vendorProfileId: vendorProfile.id },
+    (tx) => checkTicketRedeemable(decoded.bookingId, vendorProfile.id, tx),
+  );
   return { ...result, bookingId: decoded.bookingId };
 }
 
@@ -108,14 +116,25 @@ export async function lookupTicketByRefForVendor(bookingRef: string): Promise<Ti
   const vendorProfile = await getVendorProfileByUserId(session.userId);
   if (!vendorProfile) return { ok: false, reason: "invalid" };
 
-  const [row] = await db
-    .select({ id: bookings.id })
-    .from(bookings)
-    .where(eq(bookings.bookingRef, bookingRef.trim().toUpperCase()))
-    .limit(1);
+  // Resolved under an admin-equivalent context, not this vendor's own —
+  // otherwise a ticket for someone else's venue would be invisible to this
+  // lookup entirely (RLS-filtered out) rather than found and correctly
+  // rejected as "wrong_venue" by checkTicketRedeemable just below, same
+  // distinction the UI already relies on.
+  const row = await withRlsContext({ role: "admin" }, (tx) =>
+    tx
+      .select({ id: bookings.id })
+      .from(bookings)
+      .where(eq(bookings.bookingRef, bookingRef.trim().toUpperCase()))
+      .limit(1)
+      .then((rows) => rows[0]),
+  );
   if (!row) return { ok: false, reason: "invalid" };
 
-  const result = await checkTicketRedeemable(row.id, vendorProfile.id);
+  const result = await withRlsContext(
+    { userId: session.userId, role: "vendor", vendorProfileId: vendorProfile.id },
+    (tx) => checkTicketRedeemable(row.id, vendorProfile.id, tx),
+  );
   return { ...result, bookingId: row.id };
 }
 
@@ -127,19 +146,25 @@ export async function checkInTicketAction(_prev: ActionState, formData: FormData
   const vendorProfile = await getVendorProfileByUserId(session.userId);
   if (!vendorProfile) return { error: "Vendor profile not found." };
 
-  const check = await checkTicketRedeemable(bookingId, vendorProfile.id);
-  if (!check.ok) {
+  const result = await withRlsContext(
+    { userId: session.userId, role: "vendor", vendorProfileId: vendorProfile.id },
+    async (tx) => {
+      const check = await checkTicketRedeemable(bookingId, vendorProfile.id, tx);
+      if (!check.ok) return check;
+      await tx.update(bookings).set({ checkedInAt: new Date() }).where(eq(bookings.id, bookingId));
+      return check;
+    },
+  );
+  if (!result.ok) {
     const messages: Record<Exclude<TicketCheck, { ok: true }>["reason"], string> = {
       invalid: "Ticket not found.",
       not_a_ticket: "This booking isn't a ticket.",
-      already_checked_in: `Already checked in${check.detail ? ` (${check.detail})` : ""}.`,
+      already_checked_in: `Already checked in${result.detail ? ` (${result.detail})` : ""}.`,
       wrong_venue: "This ticket isn't for your venue.",
       cancelled: "This booking was cancelled.",
     };
-    return { error: messages[check.reason] };
+    return { error: messages[result.reason] };
   }
-
-  await db.update(bookings).set({ checkedInAt: new Date() }).where(eq(bookings.id, bookingId));
 
   revalidateTicketPaths();
 

@@ -34,11 +34,11 @@ export default async function VendorEventItemsPage({
   return (
     <div className="space-y-6">
       <div>
-        <Link href={`/events/${event.id}`} className="text-sm font-medium text-nile-700 hover:underline">
+        <Link href={`/events/${event.id}`} className="eyebrow text-ink/40 hover:text-ink">
           ← Back to {event.title}
         </Link>
-        <h1 className="mt-2 font-display text-2xl font-semibold text-forest-900">Manage Tickets</h1>
-        <p className="mt-1 text-sm text-forest-800/60">
+        <h1 className="mt-2 font-serif-editorial text-2xl text-ink">Manage Tickets</h1>
+        <p className="mt-1 text-sm text-ink/60">
           These show on your event page — add, edit, or remove them any time, no review needed.
         </p>
       </div>
@@ -50,26 +50,26 @@ export default async function VendorEventItemsPage({
             const priceText = item.priceMinor != null ? `${formatMinor(item.priceMinor)}${item.priceUnit ?? ""}` : null;
 
             return (
-              <div key={item.id} className="flex items-start gap-4 rounded-2xl border border-forest-900/10 bg-white p-4">
+              <div key={item.id} className="flex items-start gap-4 border border-ink/10 bg-white p-4">
                 {imageIds[0] ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={`/api/listing-item-images/${imageIds[0]}`}
                     alt=""
-                    className="h-16 w-16 flex-none rounded-lg border border-forest-900/10 object-cover"
+                    className="h-16 w-16 flex-none border border-ink/10 object-cover"
                   />
                 ) : (
-                  <div className="h-16 w-16 flex-none rounded-lg bg-forest-50" />
+                  <div className="h-16 w-16 flex-none bg-ink/5" />
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium text-forest-900">{item.name}</p>
-                  {item.description && <p className="mt-0.5 line-clamp-2 text-sm text-forest-800/60">{item.description}</p>}
-                  <p className="mt-1 text-sm font-medium text-nile-700">{priceText ?? "No price set"}</p>
+                  <p className="font-medium text-ink">{item.name}</p>
+                  {item.description && <p className="mt-0.5 line-clamp-2 text-sm text-ink/60">{item.description}</p>}
+                  <p className="font-mono-data mt-1 text-sm font-medium text-ember">{priceText ?? "No price set"}</p>
                 </div>
                 <div className="flex flex-none flex-col items-end gap-2">
                   <Link
                     href={`/vendor/dashboard/events/${event.id}/items?edit=${item.id}`}
-                    className="text-sm font-medium text-nile-700 hover:underline"
+                    className="text-sm font-medium text-ember hover:underline"
                   >
                     Edit
                   </Link>
@@ -81,13 +81,13 @@ export default async function VendorEventItemsPage({
         </section>
       )}
 
-      <section className="rounded-2xl border border-forest-900/10 bg-white p-5">
-        <h2 className="font-display text-lg font-semibold text-forest-900">
+      <section className="border border-ink/10 bg-white p-5">
+        <h2 className="font-serif-editorial text-lg text-ink">
           {editingItem ? `Edit ${editingItem.name}` : "Add a ticket tier"}
         </h2>
         <VendorEventItemForm key={editingItem?.id ?? "new"} eventId={event.id} existing={editingItem} />
         {editingItem && (
-          <div className="mt-4 border-t border-forest-900/10 pt-4">
+          <div className="mt-4 border-t border-ink/10 pt-4">
             <VendorItemPhotoManager itemId={editingItem.id} existingImages={imageIdsByItem.get(editingItem.id) ?? []} />
           </div>
         )}

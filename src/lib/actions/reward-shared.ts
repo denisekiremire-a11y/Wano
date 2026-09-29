@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { db } from "@/db";
 import { rewards } from "@/db/schema";
+import type { Tx } from "@/lib/db-context";
 
 // The vendor-facing subset of reward fields — no source/fundedBy, those are
 // ops-level knobs (which flow issues it, who funds it commercially) that
@@ -27,7 +27,7 @@ export type VendorRewardContent = z.infer<typeof vendorRewardContentSchema>;
  * content. Vendor rewards always source "manual" (self-claim) — Fun Zone
  * and XP-draw prizes stay an admin-only concept, picked from the catalog
  * separately, not something a vendor submission can set. */
-export async function applyVendorRewardContent(rewardId: string | null, d: VendorRewardContent): Promise<string> {
+export async function applyVendorRewardContent(tx: Tx, rewardId: string | null, d: VendorRewardContent): Promise<string> {
   const values = {
     title: d.title,
     description: d.description || null,
@@ -39,9 +39,9 @@ export async function applyVendorRewardContent(rewardId: string | null, d: Vendo
   };
 
   if (rewardId) {
-    await db.update(rewards).set(values).where(eq(rewards.id, rewardId));
+    await tx.update(rewards).set(values).where(eq(rewards.id, rewardId));
     return rewardId;
   }
-  const [created] = await db.insert(rewards).values({ ...values, source: "manual" }).returning();
+  const [created] = await tx.insert(rewards).values({ ...values, source: "manual" }).returning();
   return created.id;
 }

@@ -21,63 +21,84 @@ export default async function EventsPage({
   const counts = await getAttendanceCounts(events.map((e) => e.event.id));
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-12 md:px-6">
-      <p className="text-xs font-medium uppercase tracking-wide text-nile-700">Wano Events</p>
-      <h1 className="mt-2 font-display text-3xl font-semibold text-forest-900 md:text-4xl">
-        What&apos;s happening in Kampala.
-      </h1>
-      <p className="mt-3 max-w-2xl text-forest-800/75">
-        Concerts, watch parties, food nights, wellness meetups and more — mark yourself Going,
-        Interested or Maybe and see who else is coming.
-      </p>
+    <main className="font-editorial-body bg-paper">
+      {/* Header — same asymmetric filter-bar pattern as /explore: heavy
+          serif heading left, tabs staggered right rather than stacked
+          full-width below. */}
+      <section className="border-b border-ink/10">
+        <div className="mx-auto max-w-6xl px-4 py-12 md:px-6 md:py-16">
+          <div className="grid gap-8 lg:grid-cols-12 lg:items-end">
+            <div className="lg:col-span-7">
+              <p className="eyebrow text-ember">Wano Events</p>
+              <h1 className="font-serif-editorial mt-3 text-4xl leading-[0.98] text-ink md:text-5xl">
+                What&apos;s happening in Kampala.
+              </h1>
+              <p className="mt-4 max-w-md text-ink/60">
+                Concerts, watch parties, food nights, wellness meetups and more — mark yourself
+                Going, Interested or Maybe and see who else is coming.
+              </p>
+            </div>
 
-      <div className="mt-6 flex flex-wrap gap-2">
-        <Link
-          href="/events"
-          className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
-            !category && !isToday ? "bg-forest-800 text-white" : "bg-forest-50 text-forest-800/70"
-          }`}
-        >
-          All
-        </Link>
-        <Link
-          href="/events?when=today"
-          className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
-            isToday ? "bg-forest-800 text-white" : "bg-forest-50 text-forest-800/70"
-          }`}
-        >
-          Today
-        </Link>
-        {categories.map((c) => (
-          <Link
-            key={c}
-            href={`/events?category=${c}`}
-            className={`rounded-full px-4 py-1.5 text-sm font-semibold capitalize transition ${
-              category === c ? "bg-forest-800 text-white" : "bg-forest-50 text-forest-800/70"
-            }`}
-          >
-            {c}
-          </Link>
-        ))}
-      </div>
+            <nav className="flex flex-wrap items-center gap-x-6 gap-y-3 lg:col-span-5 lg:justify-end">
+              <Link
+                href="/events"
+                className={`eyebrow border-b-2 pb-1 transition-colors ${
+                  !category && !isToday ? "border-ember text-ink" : "border-transparent text-ink/40 hover:text-ink"
+                }`}
+              >
+                All
+              </Link>
+              <Link
+                href="/events?when=today"
+                className={`eyebrow border-b-2 pb-1 transition-colors ${
+                  isToday ? "border-ember text-ink" : "border-transparent text-ink/40 hover:text-ink"
+                }`}
+              >
+                Today
+              </Link>
+              {categories.map((c) => (
+                <Link
+                  key={c}
+                  href={`/events?category=${c}`}
+                  className={`eyebrow border-b-2 pb-1 capitalize transition-colors ${
+                    category === c ? "border-ember text-ink" : "border-transparent text-ink/40 hover:text-ink"
+                  }`}
+                >
+                  {c}
+                </Link>
+              ))}
+            </nav>
+          </div>
+        </div>
+      </section>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {events.map(({ event, organizer }) => (
-          <EventCard
-            key={event.id}
-            event={event}
-            organizerName={organizer?.businessName}
-            counts={counts.get(event.id)}
-          />
-        ))}
-        {events.length === 0 && (
-          <p className="col-span-full rounded-xl border border-forest-900/10 bg-white p-6 text-center text-sm text-forest-800/60">
-            {isToday
-              ? "Nothing left today — check back tomorrow, or see everything upcoming."
-              : "No upcoming events in this category yet — check back soon."}
-          </p>
-        )}
-      </div>
+      <section className="mx-auto max-w-6xl px-4 py-12 md:px-6">
+        <p className="flex items-center gap-2 text-ink/40">
+          <span className="live-dot text-ember" />
+          <span className="font-mono-data text-[11px] uppercase tracking-[0.2em]">
+            {events.length} {events.length === 1 ? "event" : "events"}
+            {isToday ? " today" : category ? ` in ${category}` : " upcoming"}
+          </span>
+        </p>
+
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {events.map(({ event, organizer }) => (
+            <EventCard
+              key={event.id}
+              event={event}
+              organizerName={organizer?.businessName}
+              counts={counts.get(event.id)}
+            />
+          ))}
+          {events.length === 0 && (
+            <p className="col-span-full border border-ink/10 bg-white p-6 text-center text-sm text-ink/50">
+              {isToday
+                ? "Nothing left today — check back tomorrow, or see everything upcoming."
+                : "No upcoming events in this category yet — check back soon."}
+            </p>
+          )}
+        </div>
+      </section>
     </main>
   );
 }

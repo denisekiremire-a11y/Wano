@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { travellerInterests, travellerProfiles } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { logEvent } from "@/lib/analytics";
+import { withRlsContext } from "@/lib/db-context";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 
 const PERSONAS = new Set(["newcomer", "tourist", "local"]);
@@ -20,10 +21,12 @@ export async function savePersonaAction(formData: FormData) {
     redirect("/onboarding");
   }
 
-  await db
-    .update(travellerProfiles)
-    .set({ persona: persona as "newcomer" | "tourist" | "local" })
-    .where(eq(travellerProfiles.id, travellerProfile.id));
+  await withRlsContext({ userId: session.userId, role: "traveller", travellerProfileId: travellerProfile.id }, async (tx) => {
+    await tx
+      .update(travellerProfiles)
+      .set({ persona: persona as "newcomer" | "tourist" | "local" })
+      .where(eq(travellerProfiles.id, travellerProfile.id));
+  });
 
   await logEvent("onboarding_started", { userId: session.userId, role: session.role, metadata: { persona } });
   redirect("/onboarding/city");
@@ -39,10 +42,12 @@ export async function saveCityAction(formData: FormData) {
     redirect("/onboarding/city");
   }
 
-  await db
-    .update(travellerProfiles)
-    .set({ city: (city as string).trim().slice(0, 80) })
-    .where(eq(travellerProfiles.id, travellerProfile.id));
+  await withRlsContext({ userId: session.userId, role: "traveller", travellerProfileId: travellerProfile.id }, async (tx) => {
+    await tx
+      .update(travellerProfiles)
+      .set({ city: (city as string).trim().slice(0, 80) })
+      .where(eq(travellerProfiles.id, travellerProfile.id));
+  });
 
   redirect("/onboarding/interests");
 }

@@ -10,10 +10,10 @@ const docTypeLabels: Record<string, string> = {
   other: "Other",
 };
 
-const statusStyles: Record<string, string> = {
-  pending: "bg-marigold-100 text-marigold-800",
-  approved: "bg-forest-100 text-forest-800",
-  rejected: "bg-red-100 text-red-700",
+const statusTextStyles: Record<string, string> = {
+  pending: "text-ember",
+  approved: "text-ink",
+  rejected: "text-red-600",
 };
 
 export function DocumentReviewRow({
@@ -30,27 +30,25 @@ export function DocumentReviewRow({
   const [pending, startTransition] = useTransition();
 
   return (
-    <div className="flex items-center justify-between rounded-xl border border-forest-900/10 p-3">
+    <div className="flex items-center justify-between gap-4 border border-ink/10 p-3">
       <div>
-        <p className="text-sm font-medium text-forest-900">{docTypeLabels[docType] ?? docType}</p>
+        <p className="text-sm font-medium text-ink">{docTypeLabels[docType] ?? docType}</p>
         <a
           href={`/api/vendor-documents/${documentId}`}
           target="_blank"
           rel="noreferrer"
-          className="text-xs text-nile-700 hover:underline"
+          className="text-xs text-ember hover:underline"
         >
           {fileName ?? "View document"}
         </a>
       </div>
       <div className="flex items-center gap-2">
-        <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${statusStyles[status]}`}>
-          {status}
-        </span>
+        <span className={`eyebrow ${statusTextStyles[status]}`}>{status}</span>
         <button
           type="button"
           disabled={pending || status === "approved"}
           onClick={() => startTransition(() => reviewVendorDocumentAction(documentId, "approved"))}
-          className="rounded-full bg-forest-800 px-2.5 py-1 text-[11px] font-semibold text-white disabled:opacity-50"
+          className="rounded-full bg-ink px-2.5 py-1 text-[11px] font-semibold text-white transition-colors hover:bg-ink/85 disabled:opacity-50"
         >
           Approve
         </button>

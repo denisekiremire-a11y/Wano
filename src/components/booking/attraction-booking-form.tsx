@@ -12,17 +12,20 @@ export function AttractionBookingForm({
   listingType,
   preselectedItemId,
   myClaimedRewards,
+  slotPicker,
 }: BookingFormProps) {
   return (
     <BookingFormShell listingId={listingId} journeyId={journeyId} submitLabel={bookingActionLabel.attraction}>
-      <div className="flex gap-2">
-        <Field label="Date" htmlFor="visitDate">
-          <TextInput id="visitDate" type="date" name="visitDate" required />
-        </Field>
-        <Field label="Time" htmlFor="visitTime">
-          <TextInput id="visitTime" type="time" name="visitTime" required />
-        </Field>
-      </div>
+      {slotPicker ?? (
+        <div className="flex gap-2">
+          <Field label="Date" htmlFor="visitDate">
+            <TextInput id="visitDate" type="date" name="visitDate" required />
+          </Field>
+          <Field label="Time" htmlFor="visitTime">
+            <TextInput id="visitTime" type="time" name="visitTime" required />
+          </Field>
+        </div>
+      )}
       <div className="flex gap-2">
         <Field label="Adults" htmlFor="partySize" className="w-20">
           <TextInput id="partySize" type="number" name="partySize" min={1} defaultValue={1} required />

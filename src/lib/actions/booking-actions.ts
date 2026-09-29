@@ -7,19 +7,35 @@ import { db } from "@/db";
 import { bookingItems, bookings, events, listingItems, listingJourneys, listings, restaurantDetails, rewards, userRewards } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { logEvent } from "@/lib/analytics";
-import { notifyTravellerOfNewBooking, notifyVendorOfNewBooking } from "@/lib/booking-notifications";
+import {
+  notifyTravellerOfBookingStatus,
+  notifyTravellerOfNewBooking,
+  notifyVendorOfInstantBooking,
+  notifyVendorOfNewBooking,
+  notifyVendorOfTravellerCancellation,
+} from "@/lib/booking-notifications";
+import { REQUEST_EXPIRY_HOURS } from "@/lib/booking-config";
 import {
   computeBookingTotals,
   decodeBookingDraft,
   encodeBookingDraft,
+  generateBookingRef,
   parseBookingDraft,
   parseEventBookingDraft,
 } from "@/lib/booking-shared";
+import { withRlsContext } from "@/lib/db-context";
+import { createFlutterwavePayment, isFlutterwaveConfigured, missingFlutterwaveEnv } from "@/lib/flutterwave";
 import type { ListingType } from "@/lib/listing-type";
+import { cancelBooking, confirmHeldBookingWithoutPayment, releaseHeldBooking, reserveSlotHold } from "@/lib/slot-booking";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
+import type { ActionState } from "@/lib/validation";
 
-function generateBookingRef() {
-  return `PAM-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+function revalidateBookingPaths() {
+  revalidatePath("/passport");
+  revalidatePath("/vendor/dashboard/bookings");
+  revalidatePath("/vendor/dashboard/referrals");
 }
 
 function formDataToRecord(formData: FormData): Record<string, string | undefined> {
@@ -47,20 +63,23 @@ async function resolveReward(
   userRewardId: string | null,
 ) {
   if (!userRewardId) return null;
-  const [row] = await db
-    .select({ userReward: userRewards, reward: rewards })
-    .from(userRewards)
-    .innerJoin(rewards, eq(rewards.id, userRewards.rewardId))
-    .where(
-      and(
-        eq(userRewards.id, userRewardId),
-        eq(userRewards.travellerId, travellerId),
-        eq(userRewards.targetType, targetType),
-        eq(userRewards.targetId, targetId),
-        eq(userRewards.status, "claimed"),
-      ),
-    )
-    .limit(1);
+  const row = await withRlsContext({ role: "traveller", travellerProfileId: travellerId }, (tx) =>
+    tx
+      .select({ userReward: userRewards, reward: rewards })
+      .from(userRewards)
+      .innerJoin(rewards, eq(rewards.id, userRewards.rewardId))
+      .where(
+        and(
+          eq(userRewards.id, userRewardId),
+          eq(userRewards.travellerId, travellerId),
+          eq(userRewards.targetType, targetType),
+          eq(userRewards.targetId, targetId),
+          eq(userRewards.status, "claimed"),
+        ),
+      )
+      .limit(1)
+      .then((rows) => rows[0]),
+  );
   return row ?? null;
 }
 
@@ -88,6 +107,9 @@ export async function previewBookingAction(formData: FormData) {
 
   const parsed = parseBookingDraft(formData, type, items, restaurantRow?.allowsPreorder ?? false);
   if ("error" in parsed) throw new Error(parsed.error);
+  if (listing.bookingMode === "instant" && !parsed.data.slotId) {
+    throw new Error("Pick a time slot before continuing.");
+  }
 
   redirect(`/explore/${listingId}?${encodeBookingDraft(parsed.data).toString()}`);
 }
@@ -121,47 +143,122 @@ export async function bookListingFormAction(formData: FormData) {
     rewardRow ? { discountType: rewardRow.reward.discountType, discountValue: rewardRow.reward.discountValue } : null,
   );
 
-  // Bookings start "pending" — the accredited partner has real, finite
-  // capacity, so a Passport stamp and a confirmed booking only happen once
-  // they actually confirm from their dashboard. See respondToBookingAction.
-  const [booking] = await db
-    .insert(bookings)
-    .values({
+  if (listing.bookingMode === "instant") {
+    if (!draft.slotId) throw new Error("Pick a time slot before continuing.");
+
+    const missingPaymentEnv = missingFlutterwaveEnv();
+    if (subtotalMinor > 0 && missingPaymentEnv.length > 0 && process.env.NODE_ENV !== "development") {
+      console.error(`Refusing paid instant booking for listing ${listing.id} — missing ${missingPaymentEnv.join(", ")}.`);
+      throw new Error("Paid bookings aren't available right now — please try again later.");
+    }
+
+    const result = await reserveSlotHold({
       travellerId: travellerProfile.id,
       listingId: listing.id,
-      journeyId,
-      visitDate: draft.visitDate,
-      visitTime: draft.visitTime,
-      endDate: draft.endDate,
-      partySize: draft.partySize,
-      childrenCount: draft.childrenCount,
-      pickupLocation: draft.pickupLocation,
-      dropoffLocation: draft.dropoffLocation,
+      slotId: draft.slotId,
+      partySize: draft.partySize ?? 1,
       bookingName: draft.bookingName ?? travellerProfile.displayName,
       notes: draft.notes,
-      details: Object.keys(draft.details).length > 0 ? draft.details : null,
+      journeyId,
       appliedUserRewardId: rewardRow?.userReward.id ?? null,
-      status: "pending",
-      bookingRef: generateBookingRef(),
-      estimatedCommission: "15.00",
       subtotalMinor: subtotalMinor || null,
       totalMinor: subtotalMinor ? totalMinor : null,
-    })
-    .returning();
+      lineItems: lineItems.filter((li) => li.item).map((li) => ({
+        itemId: li.item!.id,
+        name: li.item!.name,
+        priceMinor: li.item!.priceMinor,
+        quantity: li.quantity,
+      })),
+    });
+    if ("error" in result) throw new Error(result.error);
+    const { booking } = result;
 
-  if (lineItems.length > 0) {
-    await db.insert(bookingItems).values(
-      lineItems
-        .filter((li) => li.item)
-        .map((li) => ({
-          bookingId: booking.id,
-          listingItemId: li.item!.id,
-          nameAtBooking: li.item!.name,
-          priceMinorAtBooking: li.item!.priceMinor,
-          quantity: li.quantity,
-        })),
-    );
+    const paymentConfigured = isFlutterwaveConfigured() && !!booking.totalMinor;
+    if (!paymentConfigured) {
+      console.warn(
+        !isFlutterwaveConfigured()
+          ? "FLUTTERWAVE_SECRET_KEY is not set — instant booking is using the local-dev instant-confirm fallback, no real payment."
+          : "This booking has no price set — confirming instantly with no payment.",
+      );
+      await confirmHeldBookingWithoutPayment(booking.id);
+      await logEvent("booking_completed", {
+        userId: session.userId,
+        role: session.role,
+        metadata: { listingId, bookingRef: booking.bookingRef },
+      });
+      await notifyVendorOfInstantBooking(booking.id);
+      await notifyTravellerOfBookingStatus(booking.id, "confirmed");
+      revalidateBookingPaths();
+      redirect(`/bookings/${booking.bookingRef}`);
+    }
+
+    let checkoutLink: string;
+    try {
+      checkoutLink = await createFlutterwavePayment({
+        txRef: booking.id,
+        amountUgx: booking.totalMinor!,
+        customerEmail: session.email,
+        customerName: travellerProfile.displayName,
+        title: listing.title,
+        customizationTitle: "Wano",
+        redirectUrl: `${APP_URL}/bookings/${booking.bookingRef}?bookingTxRef=${booking.id}`,
+      });
+    } catch (err) {
+      console.error("Failed to create Flutterwave payment for booking", booking.id, err);
+      await releaseHeldBooking(booking.id);
+      throw new Error("Couldn't start payment — try again.");
+    }
+    redirect(checkoutLink);
   }
+
+  // Request mode — unchanged behavior: the vendor confirms from their
+  // dashboard (see respondToBookingAction), auto-expires after
+  // REQUEST_EXPIRY_HOURS if they never respond (see expirePendingRequests).
+  const booking = await withRlsContext(
+    { userId: session.userId, role: "traveller", travellerProfileId: travellerProfile.id },
+    async (tx) => {
+      const [booking] = await tx
+        .insert(bookings)
+        .values({
+          travellerId: travellerProfile.id,
+          listingId: listing.id,
+          journeyId,
+          visitDate: draft.visitDate,
+          visitTime: draft.visitTime,
+          endDate: draft.endDate,
+          partySize: draft.partySize,
+          childrenCount: draft.childrenCount,
+          pickupLocation: draft.pickupLocation,
+          dropoffLocation: draft.dropoffLocation,
+          bookingName: draft.bookingName ?? travellerProfile.displayName,
+          notes: draft.notes,
+          details: Object.keys(draft.details).length > 0 ? draft.details : null,
+          appliedUserRewardId: rewardRow?.userReward.id ?? null,
+          status: "pending",
+          requestExpiresAt: new Date(Date.now() + REQUEST_EXPIRY_HOURS * 60 * 60 * 1000),
+          bookingRef: generateBookingRef(),
+          estimatedCommission: "15.00",
+          subtotalMinor: subtotalMinor || null,
+          totalMinor: subtotalMinor ? totalMinor : null,
+        })
+        .returning();
+
+      if (lineItems.length > 0) {
+        await tx.insert(bookingItems).values(
+          lineItems
+            .filter((li) => li.item)
+            .map((li) => ({
+              bookingId: booking.id,
+              listingItemId: li.item!.id,
+              nameAtBooking: li.item!.name,
+              priceMinorAtBooking: li.item!.priceMinor,
+              quantity: li.quantity,
+            })),
+        );
+      }
+      return booking;
+    },
+  );
 
   await logEvent("booking_completed", {
     userId: session.userId,
@@ -171,10 +268,7 @@ export async function bookListingFormAction(formData: FormData) {
   await notifyVendorOfNewBooking(booking.id);
   await notifyTravellerOfNewBooking(booking.id);
 
-  revalidatePath("/passport");
-  revalidatePath("/vendor/dashboard/bookings");
-  revalidatePath("/vendor/dashboard/referrals");
-
+  revalidateBookingPaths();
   redirect(`/bookings/${booking.bookingRef}`);
 }
 
@@ -227,37 +321,43 @@ export async function buyEventTicketsAction(formData: FormData) {
     rewardRow ? { discountType: rewardRow.reward.discountType, discountValue: rewardRow.reward.discountValue } : null,
   );
 
-  const [booking] = await db
-    .insert(bookings)
-    .values({
-      travellerId: travellerProfile.id,
-      eventId: event.id,
-      bookingName: draft.bookingName ?? travellerProfile.displayName,
-      partySize: draft.partySize,
-      childrenCount: draft.childrenCount,
-      notes: draft.notes,
-      appliedUserRewardId: rewardRow?.userReward.id ?? null,
-      status: "pending",
-      bookingRef: generateBookingRef(),
-      estimatedCommission: "15.00",
-      subtotalMinor: subtotalMinor || null,
-      totalMinor: subtotalMinor ? totalMinor : null,
-    })
-    .returning();
+  const booking = await withRlsContext(
+    { userId: session.userId, role: "traveller", travellerProfileId: travellerProfile.id },
+    async (tx) => {
+      const [booking] = await tx
+        .insert(bookings)
+        .values({
+          travellerId: travellerProfile.id,
+          eventId: event.id,
+          bookingName: draft.bookingName ?? travellerProfile.displayName,
+          partySize: draft.partySize,
+          childrenCount: draft.childrenCount,
+          notes: draft.notes,
+          appliedUserRewardId: rewardRow?.userReward.id ?? null,
+          status: "pending",
+          bookingRef: generateBookingRef(),
+          estimatedCommission: "15.00",
+          subtotalMinor: subtotalMinor || null,
+          totalMinor: subtotalMinor ? totalMinor : null,
+        })
+        .returning();
 
-  if (lineItems.length > 0) {
-    await db.insert(bookingItems).values(
-      lineItems
-        .filter((li) => li.item)
-        .map((li) => ({
-          bookingId: booking.id,
-          listingItemId: li.item!.id,
-          nameAtBooking: li.item!.name,
-          priceMinorAtBooking: li.item!.priceMinor,
-          quantity: li.quantity,
-        })),
-    );
-  }
+      if (lineItems.length > 0) {
+        await tx.insert(bookingItems).values(
+          lineItems
+            .filter((li) => li.item)
+            .map((li) => ({
+              bookingId: booking.id,
+              listingItemId: li.item!.id,
+              nameAtBooking: li.item!.name,
+              priceMinorAtBooking: li.item!.priceMinor,
+              quantity: li.quantity,
+            })),
+        );
+      }
+      return booking;
+    },
+  );
 
   await logEvent("booking_completed", {
     userId: session.userId,
@@ -271,4 +371,27 @@ export async function buyEventTicketsAction(formData: FormData) {
   revalidatePath("/vendor/dashboard/bookings");
 
   redirect(`/bookings/${booking.bookingRef}`);
+}
+
+/** Traveller-initiated cancellation — the actual policy (free up to
+ * CANCELLATION_CUTOFF_HOURS before the slot, non-refundable after) lives
+ * in cancelBooking itself; this is just the auth/ownership check plus the
+ * Next-specific side effects (notify, revalidate) around it. Called
+ * directly via useTransition, not a <form action>, same reasoning as
+ * cancelXpBookingAction — the result needs to update the page in place. */
+export async function cancelBookingAction(bookingId: string): Promise<ActionState> {
+  const session = await requireRole("traveller");
+  const travellerProfile = await getTravellerProfileByUserId(session.userId);
+  if (!travellerProfile) return { error: "Traveller profile not found." };
+
+  const result = await cancelBooking(bookingId, travellerProfile.id);
+  if ("error" in result) return { error: result.error };
+
+  await notifyVendorOfTravellerCancellation(bookingId);
+
+  revalidatePath("/passport");
+  revalidatePath(`/bookings`);
+  revalidatePath("/vendor/dashboard/bookings");
+
+  return {};
 }

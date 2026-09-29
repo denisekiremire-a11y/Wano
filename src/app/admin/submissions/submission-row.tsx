@@ -44,18 +44,18 @@ export function SubmissionRow({
   const description = typeof payload.description === "string" ? payload.description : null;
 
   return (
-    <div className="rounded-2xl border border-forest-900/10 bg-white p-4">
+    <div className="border border-ink/10 p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-wide text-marigold-700">
+          <p className="eyebrow text-ember">
             {entityType} · {isEdit ? "edit" : "new"} · {businessName}
           </p>
-          <p className="mt-1 text-sm font-medium text-forest-900">{title}</p>
+          <p className="mt-1 text-sm font-medium text-ink">{title}</p>
           {isEdit && currentTitle && currentTitle !== title && (
-            <p className="text-xs text-forest-800/50">Currently live as &quot;{currentTitle}&quot;</p>
+            <p className="text-xs text-ink/50">Currently live as &quot;{currentTitle}&quot;</p>
           )}
-          {description && <p className="mt-1 text-sm text-forest-800/70 line-clamp-3">{description}</p>}
-          <p className="mt-1 text-[11px] text-forest-800/40">
+          {description && <p className="mt-1 text-sm text-ink/70 line-clamp-3">{description}</p>}
+          <p className="font-mono-data mt-1 text-[11px] text-ink/40">
             Submitted {new Date(createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
           </p>
         </div>
@@ -64,7 +64,7 @@ export function SubmissionRow({
             type="button"
             disabled={pending}
             onClick={approve}
-            className="rounded-full bg-forest-800 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+            className="rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-ink/85 disabled:opacity-50"
           >
             Approve
           </button>
@@ -72,7 +72,7 @@ export function SubmissionRow({
             type="button"
             disabled={pending}
             onClick={() => setRejecting((v) => !v)}
-            className="rounded-full border border-forest-900/15 px-3 py-1.5 text-xs font-medium text-forest-800 disabled:opacity-50"
+            className="rounded-full border border-ink/20 px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:bg-ink/5 disabled:opacity-50"
           >
             Reject
           </button>
@@ -80,12 +80,12 @@ export function SubmissionRow({
       </div>
 
       {rejecting && (
-        <div className="mt-3 flex gap-2 border-t border-forest-900/5 pt-3">
+        <div className="mt-3 flex gap-2 border-t border-ink/10 pt-3">
           <input
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Why? (shown to the vendor)"
-            className="flex-1 rounded-lg border border-forest-900/15 px-3 py-1.5 text-sm outline-none focus:border-forest-600"
+            className="flex-1 rounded-lg border border-ink/15 px-3 py-1.5 text-sm outline-none focus:border-ember"
           />
           <button
             type="button"

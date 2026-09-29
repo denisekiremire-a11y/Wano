@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { StampIcon } from "@/components/icons";
 import { journeyTheme } from "@/lib/journey-theme";
 
 type Progress = {
@@ -8,10 +7,14 @@ type Progress = {
   earnedAt: Date | null;
 }[];
 
+/** Each stamp reads as a numbered mark rather than an icon-in-a-circle —
+ * the journey's own theme color fills an earned stamp, an unearned one
+ * stays a dashed ink ring (see .stamp-slot in globals.css) around its
+ * number. */
 export function PassportGrid({ progress }: { progress: Progress }) {
   return (
     <div className="grid grid-cols-5 gap-3 sm:gap-4">
-      {progress.map(({ journey, earned }) => {
+      {progress.map(({ journey, earned }, i) => {
         const theme = journeyTheme(journey.slug);
         return (
           <Link
@@ -21,14 +24,14 @@ export function PassportGrid({ progress }: { progress: Progress }) {
           >
             <span
               data-earned={earned}
-              className={`stamp-slot flex h-14 w-14 items-center justify-center rounded-full sm:h-16 sm:w-16 ${
-                earned ? "text-white" : "bg-forest-50 text-forest-300"
+              className={`stamp-slot font-mono-data flex h-14 w-14 items-center justify-center rounded-full text-sm sm:h-16 sm:w-16 ${
+                earned ? "text-white" : "bg-ink/5 text-ink/30"
               }`}
               style={earned ? { backgroundColor: theme.hero } : undefined}
             >
-              <StampIcon className="h-6 w-6" />
+              {String(i + 1).padStart(2, "0")}
             </span>
-            <span className="text-[11px] font-medium leading-tight text-forest-800/80 sm:text-xs">
+            <span className="text-[11px] font-medium leading-tight text-ink/70 sm:text-xs">
               {journey.name}
             </span>
           </Link>

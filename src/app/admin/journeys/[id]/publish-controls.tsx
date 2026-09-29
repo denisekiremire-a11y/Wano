@@ -23,7 +23,7 @@ export function PublishControls({ journeyId, status }: { journeyId: string; stat
               else router.refresh();
             })
           }
-          className="rounded-full bg-forest-800 px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
+          className="rounded-full bg-ink px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-ink/85 disabled:opacity-60"
         >
           {pending ? "Publishing…" : "Publish"}
         </button>
@@ -37,7 +37,7 @@ export function PublishControls({ journeyId, status }: { journeyId: string; stat
               router.refresh();
             })
           }
-          className="rounded-full border border-forest-900/15 px-4 py-2 text-xs font-semibold text-forest-800 disabled:opacity-60"
+          className="rounded-full border border-ink/20 px-4 py-2 text-xs font-semibold text-ink transition-colors hover:bg-ink/5 disabled:opacity-60"
         >
           {pending ? "Unlisting…" : "Unlist"}
         </button>

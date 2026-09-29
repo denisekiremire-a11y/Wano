@@ -1,8 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CalendarIcon } from "@/components/icons";
 import { ListingItemCard } from "@/components/listing-item-card";
-import { ListingTypeIcon } from "@/components/listing-type-icon";
 import { EventTicketForm } from "@/components/booking/event-ticket-form";
 import { PostComposer } from "@/components/post-composer";
 import {
@@ -13,6 +11,7 @@ import {
   getMyEventBooking,
 } from "@/lib/data/events";
 import { getEventItems, getListingItemImageIds } from "@/lib/data/listing-items";
+import { withRlsContext } from "@/lib/db-context";
 import { getClaimableRewardsForTarget, getMyClaimedRewardsForTarget } from "@/lib/data/rewards";
 import { getMediaPostsFor } from "@/lib/data/social";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
@@ -82,8 +81,12 @@ export default async function EventDetailPage({
 
       const [followed, claimable, myClaimed, xpBookings, existingBooking] = await Promise.all([
         getFollowedEventBookers(event.id, travellerProfile.id),
-        getClaimableRewardsForTarget("event", event.id),
-        getMyClaimedRewardsForTarget(travellerProfile.id, "event", event.id),
+        withRlsContext({ userId: session.userId, role: "traveller", travellerProfileId: travellerProfile.id }, (tx) =>
+          getClaimableRewardsForTarget("event", event.id, tx),
+        ),
+        withRlsContext({ userId: session.userId, role: "traveller", travellerProfileId: travellerProfile.id }, (tx) =>
+          getMyClaimedRewardsForTarget(travellerProfile.id, "event", event.id, tx),
+        ),
         isMatchDay ? getMyXpBookingsForMatch(travellerProfile.id, event.id) : Promise.resolve([]),
         isMatchDay ? Promise.resolve(null) : getMyEventBooking(event.id, travellerProfile.id),
       ]);
@@ -127,44 +130,43 @@ export default async function EventDetailPage({
   const goingCount = bookingCounts.get(event.id) ?? 0;
 
   return (
-    <main>
-      <section className="relative overflow-hidden bg-gradient-to-br from-nile-900 via-forest-800 to-marigold-600 py-16 text-white">
+    <main className="font-editorial-body bg-paper">
+      <section className="relative overflow-hidden bg-ink py-16 text-white">
         <div className="relative mx-auto max-w-3xl px-4 md:px-6">
-          <Link href="/events" className="text-sm text-white/80 hover:underline">
+          <Link href="/events" className="eyebrow text-white/70 hover:text-white">
             ← All events
           </Link>
-          <span className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-medium capitalize">
-            <CalendarIcon className="h-3.5 w-3.5" />
-            {event.category}
-          </span>
-          <h1 className="mt-3 font-display text-3xl font-semibold md:text-5xl">{event.title}</h1>
-          <p className="mt-2 text-white/90">{formatEventWhen(new Date(event.startAt), event.endAt ? new Date(event.endAt) : null)}</p>
-          <p className="text-white/80">{event.location}</p>
+          <p className="eyebrow mt-4 text-ember">{event.category}</p>
+          <h1 className="font-serif-editorial mt-3 text-4xl md:text-6xl">{event.title}</h1>
+          <p className="mt-3 text-lg text-white/85">
+            {formatEventWhen(new Date(event.startAt), event.endAt ? new Date(event.endAt) : null)}
+          </p>
+          <p className="text-white/70">{event.location}</p>
         </div>
       </section>
 
-      <section className="mx-auto max-w-3xl px-4 py-10 md:px-6">
+      <section className="mx-auto max-w-3xl px-4 py-12 md:px-6">
         {isReviewMode && reviewDraft && reviewTotals ? (
           <div className="max-w-md">
-            <Link href={`/events/${event.id}`} className="text-sm text-forest-800/60 hover:underline">
+            <Link href={`/events/${event.id}`} className="eyebrow text-ink/40 hover:text-ink">
               ← Edit booking
             </Link>
-            <h2 className="mt-3 font-display text-xl font-semibold text-forest-900">Your booking</h2>
-            <div className="mt-3 space-y-2 rounded-2xl border border-forest-900/10 bg-white p-4 text-sm">
-              <p className="font-display text-lg font-semibold text-forest-900">{event.title}</p>
-              <p className="text-forest-800/80">{formatEventWhen(new Date(event.startAt), event.endAt ? new Date(event.endAt) : null)}</p>
+            <h2 className="font-serif-editorial mt-3 text-2xl text-ink">Your booking</h2>
+            <div className="mt-4 space-y-2 border-t border-ink/10 pt-4 text-sm">
+              <p className="font-serif-editorial text-xl text-ink">{event.title}</p>
+              <p className="text-ink/60">{formatEventWhen(new Date(event.startAt), event.endAt ? new Date(event.endAt) : null)}</p>
               {reviewDraft.partySize != null && (
-                <p className="text-forest-800/80">
+                <p className="text-ink/60">
                   {reviewDraft.partySize} {reviewDraft.partySize === 1 ? "guest" : "guests"}
                   {reviewDraft.childrenCount ? ` + ${reviewDraft.childrenCount} children` : ""}
                 </p>
               )}
-              {reviewDraft.notes && <p className="text-forest-800/60">“{reviewDraft.notes}”</p>}
+              {reviewDraft.notes && <p className="text-ink/50">“{reviewDraft.notes}”</p>}
 
               {reviewTotals.lineItems.length > 0 && (
-                <div className="border-t border-forest-900/10 pt-2">
+                <div className="border-t border-ink/10 pt-2">
                   {reviewTotals.lineItems.map((li, i) => (
-                    <p key={i} className="mt-1 flex justify-between text-forest-800/80">
+                    <p key={i} className="font-mono-data mt-1 flex justify-between text-ink/60">
                       <span>
                         {li.quantity} × {li.item?.name ?? "Ticket"}
                       </span>
@@ -175,18 +177,18 @@ export default async function EventDetailPage({
               )}
 
               {reviewTotals.subtotalMinor > 0 && (
-                <div className="space-y-1 border-t border-forest-900/10 pt-2">
-                  <p className="flex justify-between text-forest-800/80">
+                <div className="font-mono-data space-y-1 border-t border-ink/10 pt-2">
+                  <p className="flex justify-between text-ink/60">
                     <span>Subtotal</span>
                     <span>{formatMinor(reviewTotals.subtotalMinor)}</span>
                   </p>
                   {reviewTotals.discountMinor > 0 && reviewAppliedReward && (
-                    <p className="flex justify-between text-nile-700">
+                    <p className="flex justify-between text-ember">
                       <span>{reviewAppliedReward.reward.title}</span>
                       <span>-{formatMinor(reviewTotals.discountMinor)}</span>
                     </p>
                   )}
-                  <p className="flex justify-between text-base font-semibold text-forest-900">
+                  <p className="flex justify-between text-base font-semibold text-ink">
                     <span>Total</span>
                     <span>{formatMinor(reviewTotals.totalMinor)}</span>
                   </p>
@@ -212,7 +214,7 @@ export default async function EventDetailPage({
               )}
               <button
                 type="submit"
-                className="w-full rounded-full bg-forest-800 px-5 py-3 text-sm font-semibold text-white transition hover:bg-forest-700"
+                className="w-full rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-ink/85"
               >
                 Book →
               </button>
@@ -220,23 +222,23 @@ export default async function EventDetailPage({
           </div>
         ) : (
           <>
-            <p className="max-w-2xl text-forest-800/80">{event.description}</p>
-            {organizer && <p className="mt-2 text-sm text-forest-800/60">Hosted by {organizer.businessName}</p>}
-            {!isMatchDay && <p className="mt-2 font-medium text-nile-700">{event.priceHint ?? "Free to attend"}</p>}
+            <p className="max-w-2xl text-ink/60">{event.description}</p>
+            {organizer && <p className="mt-2 text-sm text-ink/50">Hosted by {organizer.businessName}</p>}
+            {!isMatchDay && <p className="font-mono-data mt-2 font-medium text-ember">{event.priceHint ?? "Free to attend"}</p>}
             {isOrganizer && (
               <Link
                 href={`/vendor/dashboard/events/${event.id}/items`}
-                className="mt-2 inline-block text-sm font-medium text-nile-700 hover:underline"
+                className="mt-2 inline-block text-sm font-medium text-ember hover:underline"
               >
                 Manage tickets →
               </Link>
             )}
 
             {!isMatchDay && ticketItems.length > 0 && (
-              <div className="mt-6">
-                <h2 className="font-display text-lg font-semibold text-forest-900">Tickets</h2>
+              <div className="mt-8">
+                <h2 className="font-serif-editorial text-2xl text-ink">Tickets</h2>
                 {selectedTicket ? (
-                  <div className="mt-3 overflow-hidden rounded-2xl border border-forest-900/10 bg-white">
+                  <div className="mt-4 overflow-hidden border border-ink/10">
                     {(ticketImageIds.get(selectedTicket.id) ?? []).length > 0 ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -245,22 +247,20 @@ export default async function EventDetailPage({
                         className="h-48 w-full object-cover"
                       />
                     ) : (
-                      <div className="flex h-32 items-center justify-center bg-gradient-to-br from-nile-900 via-marigold-600 to-marigold-300">
-                        <ListingTypeIcon type="event" className="h-8 w-8 text-white/70" />
-                      </div>
+                      <div className="eyebrow flex h-32 items-center justify-center bg-ink/5 text-ink/30">Ticket</div>
                     )}
                     <div className="p-4">
-                      <p className="font-display text-lg font-semibold text-forest-900">{selectedTicket.name}</p>
+                      <p className="font-serif-editorial text-xl text-ink">{selectedTicket.name}</p>
                       {selectedTicket.description && (
-                        <p className="mt-1 text-sm text-forest-800/70">{selectedTicket.description}</p>
+                        <p className="mt-1 text-sm text-ink/60">{selectedTicket.description}</p>
                       )}
                       {selectedTicket.priceMinor != null && (
-                        <p className="mt-2 text-lg font-semibold text-ember">
+                        <p className="font-mono-data mt-2 text-lg font-semibold text-ember">
                           {formatMinor(selectedTicket.priceMinor)}
                           {selectedTicket.priceUnit ?? ""}
                         </p>
                       )}
-                      <Link href={`/events/${event.id}`} className="mt-3 inline-block text-sm text-forest-800/60 hover:underline">
+                      <Link href={`/events/${event.id}`} className="mt-3 inline-block text-sm text-ink/50 hover:underline">
                         ← Back to tickets
                       </Link>
                     </div>
@@ -293,13 +293,13 @@ export default async function EventDetailPage({
                     paymentFailed={xpPaymentFailed}
                   />
                 ) : (
-                  <div className="rounded-2xl border border-forest-900/10 bg-white p-5">
-                    <p className="text-sm text-forest-800/70">
+                  <div className="border border-ink/10 bg-white p-5">
+                    <p className="font-mono-data text-sm text-ink/60">
                       {seatsRemaining} seat{seatsRemaining === 1 ? "" : "s"} left · {event.priceHint}
                     </p>
                     <Link
                       href={`/login?next=/events/${event.id}`}
-                      className="mt-3 inline-flex rounded-full bg-forest-800 px-4 py-2 text-sm font-semibold text-white"
+                      className="mt-3 inline-flex rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white"
                     >
                       Log in to book
                     </Link>
@@ -310,11 +310,11 @@ export default async function EventDetailPage({
               <div className="mt-6">
                 {session?.role === "traveller" ? (
                   myEventBooking ? (
-                    <div className="rounded-2xl border border-forest-900/10 bg-white p-4">
-                      <p className="text-sm font-medium text-forest-900">
+                    <div className="border border-ink/10 bg-white p-4">
+                      <p className="text-sm font-medium text-ink">
                         You&apos;re booked — ref {myEventBooking.bookingRef}
                       </p>
-                      <Link href={`/bookings/${myEventBooking.bookingRef}`} className="mt-1 inline-block text-sm text-nile-700 hover:underline">
+                      <Link href={`/bookings/${myEventBooking.bookingRef}`} className="mt-1 inline-block text-sm text-ember hover:underline">
                         View your booking →
                       </Link>
                     </div>
@@ -331,7 +331,7 @@ export default async function EventDetailPage({
                 ) : (
                   <Link
                     href={`/login?next=/events/${event.id}`}
-                    className="inline-flex rounded-full bg-forest-800 px-5 py-2.5 text-sm font-semibold text-white"
+                    className="inline-flex rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white"
                   >
                     Log in to book
                   </Link>
@@ -339,32 +339,31 @@ export default async function EventDetailPage({
               </div>
             )}
 
-            <div className="mt-8 rounded-2xl border border-forest-900/10 bg-white p-5">
-              <h2 className="font-display text-lg font-semibold text-forest-900">Who&apos;s going?</h2>
-              <p className="mt-1 text-sm text-forest-800/60">
-                {goingCount} {goingCount === 1 ? "person" : "people"} going
+            <div className="mt-10 border-t border-ink/10 pt-6">
+              <h2 className="font-serif-editorial text-2xl text-ink">Who&apos;s going?</h2>
+              <p className="mt-2 flex items-center gap-2 text-ink/50">
+                <span className="live-dot text-ember" />
+                <span className="font-mono-data text-[11px] uppercase tracking-[0.15em]">
+                  {goingCount} {goingCount === 1 ? "person" : "people"} going
+                </span>
               </p>
               {followedGoing.length > 0 && (
-                <p className="mt-2 text-sm font-medium text-forest-800">
+                <p className="mt-2 text-sm font-medium text-ink">
                   {followedGoing.length} people you follow are going
                 </p>
               )}
               {bookers.length > 0 && (
-                <ul className="mt-3 flex flex-wrap gap-2">
-                  {bookers.slice(0, 20).map((a, i) => (
-                    <li key={i} className="rounded-full bg-forest-50 px-3 py-1 text-xs font-medium text-forest-800">
-                      {a.displayName}
-                    </li>
-                  ))}
-                </ul>
+                <p className="mt-3 text-sm text-ink/50">
+                  {bookers.slice(0, 20).map((a) => a.displayName).join(" · ")}
+                </p>
               )}
             </div>
 
             <TargetRewardsSection claimable={claimableRewards} claimed={myClaimedRewards} />
 
-            <section className="mt-8">
-              <h2 className="font-display text-lg font-semibold text-forest-900">What people are saying</h2>
-              <p className="mt-1 text-sm text-forest-800/60">Posts and moments shared by attendees.</p>
+            <section className="mt-10 border-t border-ink/10 pt-6">
+              <h2 className="font-serif-editorial text-2xl text-ink">What people are saying</h2>
+              <p className="mt-1 text-sm text-ink/50">Posts and moments shared by attendees.</p>
               {session?.role === "traveller" && (
                 <div className="mt-3">
                   <PostComposer
@@ -375,19 +374,19 @@ export default async function EventDetailPage({
               )}
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {media.length === 0 ? (
-                  <p className="col-span-full rounded-xl border border-forest-900/10 bg-white p-6 text-center text-sm text-forest-800/60">
+                  <p className="col-span-full border border-ink/10 bg-white p-6 text-center text-sm text-ink/50">
                     No media yet.
                   </p>
                 ) : (
                   media.map(({ post, authorName, authorUsername }) => (
-                    <div key={post.id} className="overflow-hidden rounded-xl border border-forest-900/10 bg-white">
+                    <div key={post.id} className="overflow-hidden border border-ink/10 bg-white">
                       {post.imageUrl && (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={post.imageUrl} alt="" className="h-40 w-full object-cover" />
                       )}
                       <div className="p-3">
-                        <p className="text-sm text-forest-800/90">{post.content}</p>
-                        <p className="mt-1 text-xs text-forest-800/50">
+                        <p className="text-sm text-ink/80">{post.content}</p>
+                        <p className="mt-1 text-xs text-ink/40">
                           {authorName}
                           {authorUsername ? ` · @${authorUsername}` : ""}
                         </p>

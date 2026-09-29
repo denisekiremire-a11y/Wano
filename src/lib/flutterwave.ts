@@ -50,6 +50,7 @@ export async function createFlutterwavePayment({
   customerName,
   customerPhone,
   title,
+  customizationTitle = "Wano XP",
   redirectUrl,
 }: {
   txRef: string;
@@ -58,6 +59,7 @@ export async function createFlutterwavePayment({
   customerName: string;
   customerPhone?: string;
   title: string;
+  customizationTitle?: string;
   redirectUrl: string;
 }): Promise<string> {
   const body = await flutterwaveFetch("/payments", {
@@ -74,7 +76,7 @@ export async function createFlutterwavePayment({
         phonenumber: customerPhone,
       },
       customizations: {
-        title: "Wano XP",
+        title: customizationTitle,
         description: title,
       },
     }),

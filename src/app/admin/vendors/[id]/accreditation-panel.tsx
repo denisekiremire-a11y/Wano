@@ -3,6 +3,12 @@
 import { useState, useTransition } from "react";
 import { setAccreditationStatusAction } from "@/lib/actions/admin-actions";
 
+const statusTextStyles: Record<string, string> = {
+  trusted: "text-ink",
+  pending: "text-ember",
+  rejected: "text-red-600",
+};
+
 export function AccreditationPanel({
   vendorProfileId,
   status,
@@ -21,22 +27,24 @@ export function AccreditationPanel({
   };
 
   return (
-    <div className="space-y-3 rounded-2xl border border-forest-900/10 bg-white p-5">
-      <h2 className="font-display text-lg font-semibold text-forest-900">Accreditation decision</h2>
-      <p className="text-sm text-forest-800/60">Current status: <span className="font-medium">{status}</span></p>
+    <div className="space-y-3 border border-ink/10 bg-white p-5">
+      <h2 className="font-serif-editorial text-lg text-ink">Accreditation decision</h2>
+      <p className="text-sm text-ink/60">
+        Current status: <span className={`eyebrow ${statusTextStyles[status]}`}>{status}</span>
+      </p>
       <textarea
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
         placeholder="Optional note for the record (e.g. why rejected, what's outstanding)"
         rows={2}
-        className="w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+        className="w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
       />
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
           disabled={pending || status === "trusted"}
           onClick={() => decide("trusted")}
-          className="rounded-full bg-forest-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink/85 disabled:opacity-50"
         >
           Approve as Wano Verified
         </button>
@@ -52,7 +60,7 @@ export function AccreditationPanel({
           type="button"
           disabled={pending || status === "pending"}
           onClick={() => decide("pending")}
-          className="rounded-full border border-forest-900/20 px-4 py-2 text-sm font-semibold text-forest-800 disabled:opacity-50"
+          className="rounded-full border border-ink/20 px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-ink/5 disabled:opacity-50"
         >
           Move back to pending
         </button>

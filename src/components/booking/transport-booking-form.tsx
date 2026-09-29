@@ -12,6 +12,7 @@ export function TransportBookingForm({
   listingType,
   preselectedItemId,
   myClaimedRewards,
+  slotPicker,
 }: BookingFormProps) {
   return (
     <BookingFormShell listingId={listingId} journeyId={journeyId} submitLabel={bookingActionLabel.transport}>
@@ -31,14 +32,16 @@ export function TransportBookingForm({
           <TextInput id="dropoffLocation" name="dropoffLocation" placeholder="Kampala hotel" required />
         </Field>
       </div>
-      <div className="flex gap-2">
-        <Field label="Date" htmlFor="visitDate">
-          <TextInput id="visitDate" type="date" name="visitDate" required />
-        </Field>
-        <Field label="Pickup time" htmlFor="visitTime">
-          <TextInput id="visitTime" type="time" name="visitTime" required />
-        </Field>
-      </div>
+      {slotPicker ?? (
+        <div className="flex gap-2">
+          <Field label="Date" htmlFor="visitDate">
+            <TextInput id="visitDate" type="date" name="visitDate" required />
+          </Field>
+          <Field label="Pickup time" htmlFor="visitTime">
+            <TextInput id="visitTime" type="time" name="visitTime" required />
+          </Field>
+        </div>
+      )}
       <div className="flex gap-2">
         <Field label="Passengers" htmlFor="partySize" className="w-24">
           <TextInput id="partySize" type="number" name="partySize" min={1} defaultValue={1} required />

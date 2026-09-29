@@ -16,11 +16,11 @@ export function AdminClubForm({
   const [state, formAction, pending] = useActionState(createClubAction, initialState);
 
   return (
-    <form action={formAction} className="space-y-4 rounded-2xl border border-forest-900/10 bg-white p-5">
-      <h2 className="font-display text-lg font-semibold text-forest-900">Create a club</h2>
+    <form action={formAction} className="space-y-4 border border-ink/10 bg-white p-5">
+      <h2 className="font-serif-editorial text-lg text-ink">Create a club</h2>
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label htmlFor="name" className="text-sm font-medium text-forest-900">
+          <label htmlFor="name" className="text-sm font-medium text-ink">
             Club name
           </label>
           <input
@@ -28,18 +28,18 @@ export function AdminClubForm({
             name="name"
             required
             maxLength={100}
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
         <div>
-          <label htmlFor="interestId" className="text-sm font-medium text-forest-900">
+          <label htmlFor="interestId" className="text-sm font-medium text-ink">
             Category
           </label>
           <select
             id="interestId"
             name="interestId"
             required
-            className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+            className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           >
             <option value="">Select a category…</option>
             {interests.map((interest) => (
@@ -51,13 +51,13 @@ export function AdminClubForm({
         </div>
       </div>
       <div>
-        <label htmlFor="vendorProfileId" className="text-sm font-medium text-forest-900">
+        <label htmlFor="vendorProfileId" className="text-sm font-medium text-ink">
           Run by (optional)
         </label>
         <select
           id="vendorProfileId"
           name="vendorProfileId"
-          className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
         >
           <option value="">No partner — general community club</option>
           {vendors.map((vendor) => (
@@ -68,7 +68,7 @@ export function AdminClubForm({
         </select>
       </div>
       <div>
-        <label htmlFor="description" className="text-sm font-medium text-forest-900">
+        <label htmlFor="description" className="text-sm font-medium text-ink">
           Description
         </label>
         <textarea
@@ -77,14 +77,14 @@ export function AdminClubForm({
           required
           rows={3}
           maxLength={600}
-          className="mt-1 w-full rounded-lg border border-forest-900/15 px-3 py-2 text-sm outline-none focus:border-forest-600"
+          className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
         />
       </div>
       {state.error && <p className="text-xs text-red-700">{state.error}</p>}
       <button
         type="submit"
         disabled={pending}
-        className="rounded-full bg-forest-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-forest-700 disabled:opacity-60"
+        className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ink/85 disabled:opacity-60"
       >
         {pending ? "Creating…" : "Create club (add host & meetup next)"}
       </button>

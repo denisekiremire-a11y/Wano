@@ -22,6 +22,7 @@ import { getFixtures } from "@/lib/data/fixtures";
 import { getOpenReportsCount } from "@/lib/data/moderation";
 import { getPendingSubmissionsCount } from "@/lib/data/submissions";
 import { getVendorPendingBookingsCount, getVendorProfileByUserId } from "@/lib/data/vendor";
+import { withRlsContext } from "@/lib/db-context";
 import { AFCON_CLUB_ENABLED } from "@/lib/feature-flags";
 import { getSession } from "@/lib/session";
 import "./globals.css";
@@ -102,7 +103,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     const [pendingVendors, openReports, pendingSubmissions] = await Promise.all([
       getPendingAccreditationCount(),
       getOpenReportsCount(),
-      getPendingSubmissionsCount(),
+      withRlsContext({ userId: session.userId, role: "admin" }, (tx) => getPendingSubmissionsCount(tx)),
     ]);
     if (pendingVendors > 0) navBadges["/admin/vendors"] = pendingVendors;
     if (openReports > 0) navBadges["/admin/moderation"] = openReports;

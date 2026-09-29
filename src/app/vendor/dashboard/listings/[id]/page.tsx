@@ -7,6 +7,7 @@ import { getVendorOwnListingFull, getVendorProfileByUserId } from "@/lib/data/ve
 import { listingItemSectionLabel } from "@/lib/listing-type";
 import { getSession } from "@/lib/session";
 import { VendorPhotoManager } from "@/components/vendor-photo-manager";
+import { BookingModeToggle } from "../booking-mode-toggle";
 import { VendorListingForm } from "../vendor-listing-form";
 
 export default async function EditVendorListingPage({ params }: PageProps<"/vendor/dashboard/listings/[id]">) {
@@ -28,29 +29,42 @@ export default async function EditVendorListingPage({ params }: PageProps<"/vend
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-semibold text-forest-900">{listing.title}</h1>
-        <p className="mt-1 text-sm text-forest-800/60">
+        <p className="eyebrow text-ember">Vendor dashboard</p>
+        <h1 className="font-serif-editorial mt-2 text-2xl text-ink">{listing.title}</h1>
+        <p className="mt-1 text-sm text-ink/60">
           Changes here go to the Wano team for review — the listing keeps showing what&apos;s currently approved
           until then.
         </p>
       </div>
 
       {pendingSubmission && (
-        <div className="rounded-xl border border-marigold-300 bg-marigold-50 p-4 text-sm text-marigold-900">
-          You have an edit waiting on review, submitted{" "}
-          {new Date(pendingSubmission.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}.
-          Submitting again below replaces that draft.
+        <div className="border-l-2 border-ember pl-4">
+          <p className="eyebrow text-ember">Pending review</p>
+          <p className="mt-1 text-sm text-ink/60">
+            You have an edit waiting on review, submitted{" "}
+            {new Date(pendingSubmission.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}.
+            Submitting again below replaces that draft.
+          </p>
         </div>
       )}
 
       <VendorPhotoManager listingId={listing.id} existingImages={existingImages} />
 
-      <Link
-        href={`/vendor/dashboard/listings/${listing.id}/items`}
-        className="inline-flex items-center rounded-full border border-forest-900/15 bg-white px-4 py-2 text-sm font-medium text-forest-900 hover:border-forest-900/30"
-      >
-        Manage {listingItemSectionLabel[listing.type]} →
-      </Link>
+      <div className="flex flex-wrap items-center gap-3">
+        <Link
+          href={`/vendor/dashboard/listings/${listing.id}/items`}
+          className="inline-flex items-center rounded-full border border-ink/20 px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-ink/5"
+        >
+          Manage {listingItemSectionLabel[listing.type]} →
+        </Link>
+        <Link
+          href={`/vendor/dashboard/listings/${listing.id}/slots`}
+          className="inline-flex items-center rounded-full border border-ink/20 px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-ink/5"
+        >
+          Manage availability →
+        </Link>
+        <BookingModeToggle listingId={listing.id} bookingMode={listing.bookingMode} />
+      </div>
 
       <VendorListingForm
         journeys={journeys.map((j) => ({ id: j.id, name: j.name }))}

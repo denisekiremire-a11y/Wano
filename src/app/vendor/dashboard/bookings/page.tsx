@@ -54,22 +54,22 @@ export default async function VendorBookingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-semibold text-forest-900">Booking requests</h1>
-        <p className="mt-1 text-sm text-forest-800/60">
+        <h1 className="font-serif-editorial text-2xl text-ink">Booking requests</h1>
+        <p className="mt-1 text-sm text-ink/60">
           Confirm a request once you&apos;ve checked availability — that&apos;s when the traveller&apos;s Passport
           stamp and your referral commission lock in. Decline if you can&apos;t fulfil it.
         </p>
       </div>
 
       {bookingRows.length === 0 ? (
-        <p className="rounded-2xl border border-forest-900/10 bg-white p-6 text-center text-sm text-forest-800/60">
+        <p className="border border-ink/10 bg-white p-6 text-center text-sm text-ink/60">
           No booking requests yet.
         </p>
       ) : (
         <>
           {pending.length > 0 && (
             <section className="space-y-3">
-              <h2 className="font-display text-lg font-semibold text-forest-900">
+              <h2 className="font-serif-editorial text-lg text-ink">
                 Awaiting your response
               </h2>
               {pending.map((row) => (
@@ -96,7 +96,7 @@ export default async function VendorBookingsPage() {
 
           {others.length > 0 && (
             <section className="space-y-3">
-              <h2 className="font-display text-lg font-semibold text-forest-900">History</h2>
+              <h2 className="font-serif-editorial text-lg text-ink">History</h2>
               {others.map((row) => (
                 <BookingRow
                   key={row.id}

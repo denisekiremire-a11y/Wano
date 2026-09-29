@@ -13,7 +13,7 @@ export function SiteHeader({
   session: SessionPayload | null;
   navBadges?: Record<string, number>;
 }) {
-  const items = navItemsFor(session?.role ?? "guest");
+  const items = navItemsFor(session?.role ?? "guest", session?.adminLevel);
 
   return (
     <header className="font-editorial-body sticky top-9 z-40 border-b border-line bg-paper/90 backdrop-blur">

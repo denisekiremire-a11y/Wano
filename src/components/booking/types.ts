@@ -18,4 +18,9 @@ export type BookingFormProps = {
   birthdayPerks: { title: string }[];
   hasBirthdaySet: boolean;
   allowsPreorder?: boolean;
+  // Set only for an instant-mode listing with upcoming slots — replaces
+  // this form's own visitDate/visitTime fields when present (see
+  // SlotPicker). null/undefined means "request mode or no slots yet",
+  // every type form falls back to its normal free-text date/time inputs.
+  slotPicker?: React.ReactNode;
 };

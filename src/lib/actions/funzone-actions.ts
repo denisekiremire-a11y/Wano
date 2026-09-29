@@ -4,8 +4,10 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { funzoneClaims, rewards } from "@/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requireAdminLevel } from "@/lib/auth";
+import { logAdminAction } from "@/lib/admin-action-log";
 import { generateShortCode } from "@/lib/codes";
+import { withRlsContext } from "@/lib/db-context";
 import { mintUserReward } from "@/lib/actions/reward-actions";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
@@ -32,23 +34,33 @@ export async function issueFunzoneClaimAction(
   phone: string,
   rewardId: string,
 ): Promise<{ error: string } | { claimUrl: string; claimCode: string }> {
-  const session = await requireRole("admin");
+  const session = await requireAdminLevel("super");
 
   if (!phone.trim()) return { error: "Enter the winner's phone number." };
 
-  const [reward] = await db
-    .select()
-    .from(rewards)
-    .where(and(eq(rewards.id, rewardId), eq(rewards.source, "funzone"), eq(rewards.active, true)))
-    .limit(1);
+  const reward = await withRlsContext({ userId: session.userId, role: "admin" }, (tx) =>
+    tx
+      .select()
+      .from(rewards)
+      .where(and(eq(rewards.id, rewardId), eq(rewards.source, "funzone"), eq(rewards.active, true)))
+      .limit(1)
+      .then((rows) => rows[0]),
+  );
   if (!reward) return { error: "Pick a prize from the Fun Zone pool." };
 
   const claimCode = await uniqueClaimCode();
-  await db.insert(funzoneClaims).values({
-    phone: phone.trim(),
-    rewardId: reward.id,
-    claimCode,
-    issuedByUserId: session.userId,
+  const [claim] = await db
+    .insert(funzoneClaims)
+    .values({
+      phone: phone.trim(),
+      rewardId: reward.id,
+      claimCode,
+      issuedByUserId: session.userId,
+    })
+    .returning();
+  await logAdminAction(session.userId, "funzone.claim_issued", `Issued a Fun Zone claim link for "${reward.title}"`, {
+    type: "funzone_claim",
+    id: claim.id,
   });
 
   revalidatePath("/admin/funzone");
@@ -56,13 +68,19 @@ export async function issueFunzoneClaimAction(
   return { claimUrl: `${APP_URL}/claim/${claimCode}`, claimCode };
 }
 
+/** Read under an admin-equivalent context, not a real session — this page
+ * is reachable by an unauthenticated visitor holding a claim link (the
+ * unguessable code itself, sent only to the winner, is what gates access
+ * here, not a role), before they've signed up or logged in at all. */
 export async function getFunzoneClaimByCode(code: string) {
-  const [row] = await db
-    .select({ claim: funzoneClaims, reward: rewards })
-    .from(funzoneClaims)
-    .innerJoin(rewards, eq(funzoneClaims.rewardId, rewards.id))
-    .where(eq(funzoneClaims.claimCode, code))
-    .limit(1);
+  const [row] = await withRlsContext({ role: "admin" }, (tx) =>
+    tx
+      .select({ claim: funzoneClaims, reward: rewards })
+      .from(funzoneClaims)
+      .innerJoin(rewards, eq(funzoneClaims.rewardId, rewards.id))
+      .where(eq(funzoneClaims.claimCode, code))
+      .limit(1),
+  );
   return row ?? null;
 }
 

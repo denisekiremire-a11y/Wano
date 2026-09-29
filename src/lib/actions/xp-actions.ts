@@ -6,7 +6,9 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
 import { events, rewards, travellerProfiles, users, xpBookings, xpDraws } from "@/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requireAdminLevel, requireRole } from "@/lib/auth";
+import { logAdminAction } from "@/lib/admin-action-log";
+import { withRlsContext } from "@/lib/db-context";
 import {
   createFlutterwavePayment,
   isFlutterwaveConfigured,
@@ -239,7 +241,7 @@ const matchSchema = z.object({
  * general createEventAction) so a match always gets an endAt — reward
  * vouchers tied to a match expire at that endAt, not a generic default. */
 export async function createMatchAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireRole("admin");
+  const session = await requireAdminLevel("super");
 
   const parsed = matchSchema.safeParse({
     title: formData.get("title"),
@@ -257,15 +259,22 @@ export async function createMatchAction(_prev: ActionState, formData: FormData):
   }
   const endAt = new Date(startAt.getTime() + parsed.data.durationHours * 60 * 60 * 1000);
 
-  await db.insert(events).values({
-    title: parsed.data.title,
-    description: parsed.data.description,
-    category: MATCH_DAY_CATEGORY,
-    startAt,
-    endAt,
-    location: parsed.data.location,
-    venueId: parsed.data.venueId || null,
-    priceHint: `UGX ${WANO_XP_PRICE_PER_SEAT_UGX.toLocaleString()}/seat`,
+  const [match] = await db
+    .insert(events)
+    .values({
+      title: parsed.data.title,
+      description: parsed.data.description,
+      category: MATCH_DAY_CATEGORY,
+      startAt,
+      endAt,
+      location: parsed.data.location,
+      venueId: parsed.data.venueId || null,
+      priceHint: `UGX ${WANO_XP_PRICE_PER_SEAT_UGX.toLocaleString()}/seat`,
+    })
+    .returning();
+  await logAdminAction(session.userId, "xp.match_created", `Created match "${parsed.data.title}"`, {
+    type: "event",
+    id: match.id,
   });
 
   revalidatePath("/admin/match-day");
@@ -284,7 +293,7 @@ export async function runXpDrawAction(
   matchId: string,
   prizeRewardId: string,
 ): Promise<ActionState & { winnerName?: string }> {
-  await requireRole("admin");
+  const session = await requireAdminLevel("super");
 
   const [existingDraw] = await db.select().from(xpDraws).where(eq(xpDraws.matchId, matchId)).limit(1);
   if (existingDraw?.drawnAt) return { error: "This match has already been drawn." };
@@ -298,11 +307,14 @@ export async function runXpDrawAction(
   const winner = confirmed[Math.floor(Math.random() * confirmed.length)];
   const winnerProfile = await getTravellerProfileById(winner.travellerId);
 
-  const [reward] = await db
-    .select()
-    .from(rewards)
-    .where(and(eq(rewards.id, prizeRewardId), eq(rewards.source, "xp_draw"), eq(rewards.active, true)))
-    .limit(1);
+  const reward = await withRlsContext({ role: "admin" }, (tx) =>
+    tx
+      .select()
+      .from(rewards)
+      .where(and(eq(rewards.id, prizeRewardId), eq(rewards.source, "xp_draw"), eq(rewards.active, true)))
+      .limit(1)
+      .then((rows) => rows[0]),
+  );
   if (!reward) return { error: "Pick a prize from the XP draw pool." };
 
   await mintUserReward(winner.travellerId, prizeRewardId);
@@ -320,6 +332,11 @@ export async function runXpDrawAction(
       winnerTravellerId: winner.travellerId,
     });
   }
+
+  await logAdminAction(session.userId, "xp.draw_run", `Ran the XP draw — winner: ${winnerProfile?.displayName ?? "unknown"}`, {
+    type: "event",
+    id: matchId,
+  });
 
   revalidateXpPaths(matchId);
 

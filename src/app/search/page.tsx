@@ -29,141 +29,152 @@ export default async function SearchPage({
     listingResults.length + eventResults.length + journeyResults.length + journalResults.length + peopleResults.length;
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-10 md:px-6">
-      <p className="text-xs font-medium uppercase tracking-wide text-nile-700">Search</p>
-      <h1 className="mt-2 font-display text-2xl font-semibold text-forest-900 md:text-3xl">
-        {query ? `Results for "${query}"` : "Search Wano"}
-      </h1>
+    <main className="font-editorial-body bg-paper">
+      <div className="mx-auto max-w-4xl px-4 py-12 md:px-6">
+        <p className="eyebrow text-ember">Search</p>
+        <h1 className="font-serif-editorial mt-2 text-4xl text-ink md:text-5xl">
+          {query ? `Results for "${query}"` : "Search Wano"}
+        </h1>
 
-      {query.length > 0 && query.length < 2 && (
-        <p className="mt-4 text-sm text-forest-800/60">Type at least 2 characters to search.</p>
-      )}
+        {query.length >= 2 && (
+          <p className="mt-4 flex items-center gap-2 text-ink/40">
+            <span className="live-dot text-ember" />
+            <span className="font-mono-data text-[11px] uppercase tracking-[0.2em]">
+              {totalResults} {totalResults === 1 ? "result" : "results"} found
+            </span>
+          </p>
+        )}
 
-      {query.length >= 2 && totalResults === 0 && (
-        <p className="mt-6 rounded-xl border border-forest-900/10 bg-white p-6 text-center text-sm text-forest-800/60">
-          Nothing matched &quot;{query}&quot;.
-        </p>
-      )}
+        {query.length > 0 && query.length < 2 && (
+          <p className="mt-4 text-sm text-ink/50">Type at least 2 characters to search.</p>
+        )}
 
-      {peopleResults.length > 0 && (
-        <section className="mt-8">
-          <h2 className="font-display text-lg font-semibold text-forest-900">People</h2>
-          <div className="mt-3 space-y-2">
-            {peopleResults.map(({ traveller, user }) => (
-              <Link
-                key={traveller.id}
-                href={user.username ? `/profile/${user.username}` : "#"}
-                className="flex items-center gap-3 rounded-xl border border-forest-900/10 bg-white p-3 transition hover:bg-forest-50/50"
-              >
-                {user.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={user.avatarUrl} alt="" className="h-12 w-12 flex-none rounded-full object-cover" />
-                ) : (
-                  <span className="flex h-12 w-12 flex-none items-center justify-center rounded-full bg-forest-100 text-sm font-semibold text-forest-700">
-                    {traveller.displayName.charAt(0).toUpperCase()}
-                  </span>
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-forest-900">{traveller.displayName}</p>
-                  <p className="truncate text-xs text-forest-800/50">@{user.username}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+        {query.length >= 2 && totalResults === 0 && (
+          <p className="mt-6 border border-ink/10 bg-white p-6 text-center text-sm text-ink/50">
+            Nothing matched &quot;{query}&quot;.
+          </p>
+        )}
 
-      {listingResults.length > 0 && (
-        <section className="mt-8">
-          <h2 className="font-display text-lg font-semibold text-forest-900">Places</h2>
-          <div className="mt-3 space-y-2">
-            {listingResults.map(({ listing, vendor }) => {
-              const coverImageId = imagesByListing.get(listing.id)?.[0];
-              return (
+        {peopleResults.length > 0 && (
+          <section className="mt-10 border-t border-ink/10 pt-6">
+            <h2 className="font-serif-editorial text-2xl text-ink">People</h2>
+            <div className="mt-3 border-t border-ink/10">
+              {peopleResults.map(({ traveller, user }) => (
                 <Link
-                  key={listing.id}
-                  href={`/explore/${listing.id}`}
-                  className="flex items-center gap-3 rounded-xl border border-forest-900/10 bg-white p-3 transition hover:bg-forest-50/50"
+                  key={traveller.id}
+                  href={user.username ? `/profile/${user.username}` : "#"}
+                  className="flex items-center gap-3 border-b border-ink/10 py-3 transition-colors hover:text-ember"
                 >
-                  {coverImageId ? (
+                  {user.avatarUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={`/api/listing-images/${coverImageId}`}
-                      alt=""
-                      className="h-12 w-12 flex-none rounded-lg object-cover"
-                    />
+                    <img src={user.avatarUrl} alt="" className="h-12 w-12 flex-none rounded-full object-cover" />
                   ) : (
-                    <div className="h-12 w-12 flex-none rounded-lg bg-forest-100" />
+                    <span className="flex h-12 w-12 flex-none items-center justify-center rounded-full bg-ink/5 text-sm font-semibold text-ink/60">
+                      {traveller.displayName.charAt(0).toUpperCase()}
+                    </span>
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-forest-900">{listing.title}</p>
-                    {vendor.location && (
-                      <p className="truncate text-xs text-forest-800/50">{vendor.location}</p>
-                    )}
+                    <p className="truncate font-medium text-ink">{traveller.displayName}</p>
+                    <p className="truncate text-xs text-ink/50">@{user.username}</p>
                   </div>
-                  <p className="flex-none text-xs font-medium text-nile-700">{formatListingPrice(listing)}</p>
                 </Link>
-              );
-            })}
-          </div>
-        </section>
-      )}
+              ))}
+            </div>
+          </section>
+        )}
 
-      {eventResults.length > 0 && (
-        <section className="mt-8">
-          <h2 className="font-display text-lg font-semibold text-forest-900">Events</h2>
-          <div className="mt-3 space-y-2">
-            {eventResults.map(({ event }) => (
-              <Link
-                key={event.id}
-                href={`/events/${event.id}`}
-                className="block rounded-xl border border-forest-900/10 bg-white p-3 transition hover:bg-forest-50/50"
-              >
-                <p className="font-medium text-forest-900">{event.title}</p>
-                <p className="text-xs text-forest-800/50">
-                  {event.location} · {new Date(event.startAt).toLocaleDateString()}
-                </p>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+        {listingResults.length > 0 && (
+          <section className="mt-10 border-t border-ink/10 pt-6">
+            <h2 className="font-serif-editorial text-2xl text-ink">Places</h2>
+            <div className="mt-3 border-t border-ink/10">
+              {listingResults.map(({ listing, vendor }) => {
+                const coverImageId = imagesByListing.get(listing.id)?.[0];
+                return (
+                  <Link
+                    key={listing.id}
+                    href={`/explore/${listing.id}`}
+                    className="flex items-center gap-3 border-b border-ink/10 py-3 transition-colors hover:text-ember"
+                  >
+                    {coverImageId ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={`/api/listing-images/${coverImageId}`}
+                        alt=""
+                        className="h-12 w-12 flex-none border border-ink/10 object-cover"
+                      />
+                    ) : (
+                      <div className="h-12 w-12 flex-none border border-ink/10 bg-ink/5" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium text-ink">{listing.title}</p>
+                      {vendor.location && (
+                        <p className="truncate text-xs text-ink/50">{vendor.location}</p>
+                      )}
+                    </div>
+                    <p className="font-mono-data flex-none text-xs font-medium text-ember">{formatListingPrice(listing)}</p>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
-      {journeyResults.length > 0 && (
-        <section className="mt-8">
-          <h2 className="font-display text-lg font-semibold text-forest-900">Journeys</h2>
-          <div className="mt-3 space-y-2">
-            {journeyResults.map((journey) => (
-              <Link
-                key={journey.id}
-                href={`/journeys/${journey.slug}`}
-                className="block rounded-xl border border-forest-900/10 bg-white p-3 transition hover:bg-forest-50/50"
-              >
-                <p className="font-medium text-forest-900">{journey.name}</p>
-                <p className="text-xs text-forest-800/50">{journey.tagline}</p>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+        {eventResults.length > 0 && (
+          <section className="mt-10 border-t border-ink/10 pt-6">
+            <h2 className="font-serif-editorial text-2xl text-ink">Events</h2>
+            <div className="mt-3 border-t border-ink/10">
+              {eventResults.map(({ event }) => (
+                <Link
+                  key={event.id}
+                  href={`/events/${event.id}`}
+                  className="block border-b border-ink/10 py-3 transition-colors hover:text-ember"
+                >
+                  <p className="font-medium text-ink">{event.title}</p>
+                  <p className="text-xs text-ink/50">
+                    {event.location} · {new Date(event.startAt).toLocaleDateString()}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
-      {journalResults.length > 0 && (
-        <section className="mt-8">
-          <h2 className="font-display text-lg font-semibold text-forest-900">Journal</h2>
-          <div className="mt-3 space-y-2">
-            {journalResults.map(({ post }) => (
-              <Link
-                key={post.id}
-                href={`/journal/${post.slug}`}
-                className="block rounded-xl border border-forest-900/10 bg-white p-3 transition hover:bg-forest-50/50"
-              >
-                <p className="font-medium text-forest-900">{post.title}</p>
-                <p className="truncate text-xs text-forest-800/50">{post.excerpt}</p>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+        {journeyResults.length > 0 && (
+          <section className="mt-10 border-t border-ink/10 pt-6">
+            <h2 className="font-serif-editorial text-2xl text-ink">Journeys</h2>
+            <div className="mt-3 border-t border-ink/10">
+              {journeyResults.map((journey) => (
+                <Link
+                  key={journey.id}
+                  href={`/journeys/${journey.slug}`}
+                  className="block border-b border-ink/10 py-3 transition-colors hover:text-ember"
+                >
+                  <p className="font-medium text-ink">{journey.name}</p>
+                  <p className="text-xs text-ink/50">{journey.tagline}</p>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {journalResults.length > 0 && (
+          <section className="mt-10 border-t border-ink/10 pt-6">
+            <h2 className="font-serif-editorial text-2xl text-ink">Journal</h2>
+            <div className="mt-3 border-t border-ink/10">
+              {journalResults.map(({ post }) => (
+                <Link
+                  key={post.id}
+                  href={`/journal/${post.slug}`}
+                  className="block border-b border-ink/10 py-3 transition-colors hover:text-ember"
+                >
+                  <p className="font-medium text-ink">{post.title}</p>
+                  <p className="truncate text-xs text-ink/50">{post.excerpt}</p>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
     </main>
   );
 }

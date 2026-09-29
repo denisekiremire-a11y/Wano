@@ -29,7 +29,7 @@ export function WithdrawSubmissionButton({
       type="button"
       disabled={pending}
       onClick={handleWithdraw}
-      className="text-xs font-medium text-marigold-900/70 underline hover:text-marigold-900 disabled:opacity-50"
+      className="text-xs font-medium text-red-700/70 underline hover:text-red-700 disabled:opacity-50"
     >
       Withdraw
     </button>

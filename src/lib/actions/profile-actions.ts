@@ -3,9 +3,9 @@
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { db } from "@/db";
 import { travellerProfiles } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
+import { withRlsContext } from "@/lib/db-context";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 import type { ActionState } from "@/lib/validation";
 
@@ -24,10 +24,12 @@ export async function updateBirthdayAction(
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
   if (!travellerProfile) return { error: "Profile not found." };
 
-  await db
-    .update(travellerProfiles)
-    .set({ dateOfBirth: parsed.data.dateOfBirth })
-    .where(eq(travellerProfiles.id, travellerProfile.id));
+  await withRlsContext({ userId: session.userId, role: "traveller", travellerProfileId: travellerProfile.id }, async (tx) => {
+    await tx
+      .update(travellerProfiles)
+      .set({ dateOfBirth: parsed.data.dateOfBirth })
+      .where(eq(travellerProfiles.id, travellerProfile.id));
+  });
 
   revalidatePath("/passport");
   return {};
@@ -38,10 +40,12 @@ export async function setFeedActivityVisibilityAction(showActivityInFeed: boolea
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
   if (!travellerProfile) return;
 
-  await db
-    .update(travellerProfiles)
-    .set({ showActivityInFeed })
-    .where(eq(travellerProfiles.id, travellerProfile.id));
+  await withRlsContext({ userId: session.userId, role: "traveller", travellerProfileId: travellerProfile.id }, async (tx) => {
+    await tx
+      .update(travellerProfiles)
+      .set({ showActivityInFeed })
+      .where(eq(travellerProfiles.id, travellerProfile.id));
+  });
 
   revalidatePath("/social");
   revalidatePath("/passport");

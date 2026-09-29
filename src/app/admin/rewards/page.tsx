@@ -1,12 +1,15 @@
 import { getAllEventsForAdmin, getAllListingsForAdmin } from "@/lib/data/admin";
 import { getAllRewardsForAdmin } from "@/lib/data/rewards";
+import { requireAdminPage } from "@/lib/auth";
+import { withRlsContext } from "@/lib/db-context";
 import { RewardForm } from "./reward-form";
 import { RewardRow } from "./reward-row";
 import { SeedRewardsButton } from "./seed-rewards-button";
 
 export default async function AdminRewardsPage() {
+  const session = await requireAdminPage("/admin/rewards");
   const [rewardsList, listingOptions, eventOptions] = await Promise.all([
-    getAllRewardsForAdmin(),
+    withRlsContext({ userId: session.userId, role: "admin" }, (tx) => getAllRewardsForAdmin(tx)),
     getAllListingsForAdmin(),
     getAllEventsForAdmin(),
   ]);
@@ -14,8 +17,8 @@ export default async function AdminRewardsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-semibold text-forest-900">Rewards</h1>
-        <p className="mt-1 text-sm text-forest-800/60">
+        <h1 className="font-serif-editorial text-2xl text-ink">Rewards</h1>
+        <p className="mt-1 text-sm text-ink/60">
           Discount vouchers attached to a specific place or event, redeemed in person via QR at
           the venue. Fun Zone, XP draw, and referral vouchers are minted automatically by those
           flows — this catalog is for campaign and manual rewards travellers can claim directly.
@@ -34,9 +37,9 @@ export default async function AdminRewardsPage() {
       />
 
       <section className="space-y-3">
-        <h2 className="font-display text-lg font-semibold text-forest-900">Catalog</h2>
+        <h2 className="font-serif-editorial text-lg text-ink">Catalog</h2>
         {rewardsList.length === 0 ? (
-          <p className="text-sm text-forest-800/60">No rewards yet — add one above.</p>
+          <p className="text-sm text-ink/60">No rewards yet — add one above.</p>
         ) : (
           rewardsList.map((reward) => (
             <RewardRow
