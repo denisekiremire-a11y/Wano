@@ -11,6 +11,13 @@ export function isFlutterwaveConfigured() {
   return Boolean(process.env.FLUTTERWAVE_SECRET_KEY);
 }
 
+/** Names of the Flutterwave env vars that aren't set. Paid seats need both:
+ * the secret key to take payment, the webhook hash so /api/webhooks/flutterwave
+ * can confirm bookings when the traveller never returns from checkout. */
+export function missingFlutterwaveEnv(): string[] {
+  return ["FLUTTERWAVE_SECRET_KEY", "FLUTTERWAVE_WEBHOOK_SECRET_HASH"].filter((name) => !process.env[name]);
+}
+
 function getSecretKey() {
   const key = process.env.FLUTTERWAVE_SECRET_KEY;
   if (!key) throw new Error("FLUTTERWAVE_SECRET_KEY is not set.");

@@ -6,7 +6,10 @@ import { getLiteMode, setLiteMode } from "@/lib/lite-mode";
 export function LiteModeToggle() {
   const [enabled, setEnabled] = useState(false);
 
+  // localStorage is only readable after hydration, so the stored value is
+  // synced in once on mount rather than used as the initial state.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setEnabled(getLiteMode());
   }, []);
 

@@ -1,19 +1,19 @@
-import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
-      // The real "server-only" package throws unconditionally outside
-      // Next's build (which aliases it away via webpack) — see
-      // create-compiler-aliases.js. Stub it for the test runner instead.
-      "server-only": path.resolve(__dirname, "./test/stubs/server-only.ts"),
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+      // Next.js swaps this for an empty module at build time; tests run
+      // outside Next, so point it at a stub instead.
+      "server-only": fileURLToPath(new URL("./src/test/server-only-stub.ts", import.meta.url)),
     },
   },
   test: {
+    include: ["tests/**/*.test.ts"],
     environment: "node",
-    setupFiles: ["./test/setup.ts"],
+    setupFiles: ["./src/test/setup.ts"],
     testTimeout: 20000,
   },
 });

@@ -17,7 +17,7 @@ import {
   vendorProfiles,
 } from "../src/db/schema";
 
-// Same reasoning as test/rls-round-a.test.ts: a second, genuinely
+// Same reasoning as tests/rls-round-a.test.ts: a second, genuinely
 // restricted (non-superuser, non-owner) connection is the only way to
 // prove these policies hold on their own, independent of the app's own
 // (superuser, locally) db client. Round B covers the tables whose

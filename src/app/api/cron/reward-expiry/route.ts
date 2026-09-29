@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { rejectUnauthorizedCron } from "@/lib/cron-auth";
 import { and, eq, lt } from "drizzle-orm";
 import { userRewards } from "@/db/schema";
 import { withRlsContext } from "@/lib/db-context";
@@ -12,13 +13,8 @@ import { withRlsContext } from "@/lib/db-context";
 // Wired to Vercel Cron via vercel.json, same auth pattern as
 // /api/cron/feed.
 export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (secret) {
-    const auth = request.headers.get("authorization");
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-  }
+  const rejected = rejectUnauthorizedCron(request);
+  if (rejected) return rejected;
 
   const result = await withRlsContext({ role: "admin" }, (tx) =>
     tx

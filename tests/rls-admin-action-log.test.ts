@@ -4,8 +4,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "../src/db";
 import { adminActionLog, users } from "../src/db/schema";
 
-// Stage 1.3 (admin action log): same reasoning as test/rls-round-a.test.ts
-// and test/rls-round-b.test.ts — a second, genuinely restricted (non-
+// Stage 1.3 (admin action log): same reasoning as tests/rls-round-a.test.ts
+// and tests/rls-round-b.test.ts — a second, genuinely restricted (non-
 // superuser, non-bypassrls) connection is the only real proof that
 // admin_action_log's "admin-only, full stop" policy holds, independent of
 // the app's own (superuser, locally) db client.

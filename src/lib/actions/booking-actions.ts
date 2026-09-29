@@ -24,7 +24,7 @@ import {
   parseEventBookingDraft,
 } from "@/lib/booking-shared";
 import { withRlsContext } from "@/lib/db-context";
-import { createFlutterwavePayment, isFlutterwaveConfigured } from "@/lib/flutterwave";
+import { createFlutterwavePayment, isFlutterwaveConfigured, missingFlutterwaveEnv } from "@/lib/flutterwave";
 import type { ListingType } from "@/lib/listing-type";
 import { cancelBooking, confirmHeldBookingWithoutPayment, releaseHeldBooking, reserveSlotHold } from "@/lib/slot-booking";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
@@ -145,6 +145,12 @@ export async function bookListingFormAction(formData: FormData) {
 
   if (listing.bookingMode === "instant") {
     if (!draft.slotId) throw new Error("Pick a time slot before continuing.");
+
+    const missingPaymentEnv = missingFlutterwaveEnv();
+    if (subtotalMinor > 0 && missingPaymentEnv.length > 0 && process.env.NODE_ENV !== "development") {
+      console.error(`Refusing paid instant booking for listing ${listing.id} — missing ${missingPaymentEnv.join(", ")}.`);
+      throw new Error("Paid bookings aren't available right now — please try again later.");
+    }
 
     const result = await reserveSlotHold({
       travellerId: travellerProfile.id,
