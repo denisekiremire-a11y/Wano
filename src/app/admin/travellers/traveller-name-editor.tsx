@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { updateTravellerNameAction } from "@/lib/actions/admin-actions";
 
@@ -23,7 +24,9 @@ export function TravellerNameEditor({
   if (!editing) {
     return (
       <div className="flex items-center gap-2">
-        <p className="font-medium text-ink">{name}</p>
+        <Link href={`/admin/travellers/${travellerId}`} className="font-medium text-ink hover:underline">
+          {name}
+        </Link>
         {canEdit && (
           <button
             type="button"

@@ -25,6 +25,7 @@ import { getVendorPendingBookingsCount, getVendorProfileByUserId } from "@/lib/d
 import { withRlsContext } from "@/lib/db-context";
 import { AFCON_CLUB_ENABLED } from "@/lib/feature-flags";
 import { getSession } from "@/lib/session";
+import { getLiveAdminLevel } from "@/lib/data/admin";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -86,7 +87,17 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const [session, fixtures] = await Promise.all([getSession(), getFixtures()]);
+  const [rawSession, fixtures] = await Promise.all([getSession(), getFixtures()]);
+  // The session cookie's adminLevel is a login-time snapshot (see
+  // session.ts) — nothing invalidates it if the level changes later, so
+  // the nav can silently hide sections (or show ones no longer allowed)
+  // until the admin happens to log in again. Nav display is cosmetic, not
+  // the enforcement boundary (requireAdminLevel always re-reads the DB),
+  // so it's cheap to just always use the live value here instead.
+  const session =
+    rawSession?.role === "admin"
+      ? { ...rawSession, adminLevel: await getLiveAdminLevel(rawSession.userId) }
+      : rawSession;
   // Never ships to regular users regardless of environment — only visible
   // locally (next dev) or to an admin, so it can be demoed on the deployed
   // site itself without ever reaching a real visitor. See SeasonDemoSwitch.
