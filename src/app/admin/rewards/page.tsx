@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { getAllEventsForAdmin, getAllListingsForAdmin, getAllPromoCodes } from "@/lib/data/admin";
 import { getAllRewardsForAdmin } from "@/lib/data/rewards";
 import { getJourneys } from "@/lib/data/journeys";
 import { requireAdminPage } from "@/lib/auth";
 import { withRlsContext } from "@/lib/db-context";
+import type { RewardDiscountType } from "@/lib/reward-format";
 import { PromoForm } from "../promotions/promo-form";
 import { PromoRow } from "../promotions/promo-row";
 import { RewardForm } from "./reward-form";
@@ -27,6 +29,20 @@ export default async function AdminRewardsPage() {
           Everything a traveller can claim or redeem across the platform — QR reward vouchers and
           Wano Deals — in one place.
         </p>
+        <div className="mt-3 flex flex-wrap gap-4 text-sm font-medium text-ember">
+          <Link href="/admin/rewards/vouchers" className="hover:underline">
+            Voucher search →
+          </Link>
+          <Link href="/admin/rewards/points" className="hover:underline">
+            Points &amp; tiers →
+          </Link>
+          <Link href="/admin/rewards/budget" className="hover:underline">
+            Budget dashboard →
+          </Link>
+          <Link href="/admin/rewards/settlement" className="hover:underline">
+            Weekly settlement →
+          </Link>
+        </div>
       </div>
 
       <section className="space-y-4">
@@ -61,12 +77,14 @@ export default async function AdminRewardsPage() {
                 rewardId={reward.id}
                 title={reward.title}
                 description={reward.description}
-                discountType={reward.discountType}
+                discountType={reward.discountType as RewardDiscountType}
                 discountValue={reward.discountValue}
+                minBillMinor={reward.minBillMinor}
                 source={reward.source}
                 pointsCost={reward.pointsCost}
+                wanoSharePct={reward.wanoSharePct}
                 targetLabel={reward.target?.title ?? "Unknown target"}
-                active={reward.active}
+                status={reward.status}
               />
             ))
           )}

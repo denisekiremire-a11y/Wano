@@ -33,7 +33,11 @@ export function RewardSelect({
 }: {
   myClaimedRewards: {
     userReward: { id: string; expiresAt: Date };
-    reward: { title: string; discountType: "percent" | "fixed" | "freebie"; discountValue: string | null };
+    reward: {
+      title: string;
+      discountType: "percent" | "fixed" | "freebie" | "spend_perk" | "points";
+      discountValue: string | null;
+    };
   }[];
 }) {
   if (myClaimedRewards.length === 0) return null;

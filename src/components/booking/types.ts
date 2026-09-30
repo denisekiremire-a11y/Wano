@@ -3,7 +3,11 @@ import type { ListingType } from "@/lib/listing-type";
 
 export type ClaimedRewardRow = {
   userReward: { id: string; expiresAt: Date };
-  reward: { title: string; discountType: "percent" | "fixed" | "freebie"; discountValue: string | null };
+  reward: {
+    title: string;
+    discountType: "percent" | "fixed" | "freebie" | "spend_perk" | "points";
+    discountValue: string | null;
+  };
 };
 
 export type BookingFormProps = {

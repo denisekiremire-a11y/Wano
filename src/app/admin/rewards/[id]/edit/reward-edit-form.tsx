@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { createRewardAction } from "@/lib/actions/reward-actions";
+import { updateRewardAction } from "@/lib/actions/reward-actions";
 import type { ActionState } from "@/lib/validation";
 
 const initialState: ActionState = {};
@@ -10,27 +10,52 @@ type ListingOption = { id: string; title: string; businessName: string };
 type EventOption = { id: string; title: string };
 type DiscountType = "percent" | "fixed" | "freebie" | "spend_perk" | "points";
 
-export function RewardForm({
+function toDatetimeLocal(value: Date | null) {
+  if (!value) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}T${pad(value.getHours())}:${pad(value.getMinutes())}`;
+}
+
+export function RewardEditForm({
+  reward,
   listingOptions,
   eventOptions,
 }: {
+  reward: {
+    id: string;
+    title: string;
+    description: string | null;
+    targetType: "listing" | "event";
+    targetId: string;
+    discountType: DiscountType;
+    discountValue: string | null;
+    minBillMinor: number | null;
+    source: "manual" | "funzone" | "xp_draw" | "points_shop" | "referral" | "campaign";
+    pointsCost: number | null;
+    fundedBy: string | null;
+    wanoSharePct: number | null;
+    totalCap: number | null;
+    perUserCap: number;
+    startsAt: Date | null;
+    endsAt: Date | null;
+    defaultValidityDays: number;
+  };
   listingOptions: ListingOption[];
   eventOptions: EventOption[];
 }) {
-  const [state, formAction, pending] = useActionState(createRewardAction, initialState);
-  const [discountType, setDiscountType] = useState<DiscountType>("percent");
-  const [source, setSource] = useState<"manual" | "funzone" | "xp_draw" | "points_shop">("manual");
+  const [state, formAction, pending] = useActionState(updateRewardAction, initialState);
+  const [discountType, setDiscountType] = useState<DiscountType>(reward.discountType);
 
   return (
     <form action={formAction} className="space-y-4 border border-ink/10 bg-white p-5">
-      <h2 className="font-serif-editorial text-lg text-ink">Add a reward</h2>
+      <input type="hidden" name="rewardId" value={reward.id} />
 
       <div>
         <label className="text-sm font-medium text-ink">Title</label>
         <input
           name="title"
           required
-          placeholder="27% off your stay"
+          defaultValue={reward.title}
           className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
         />
       </div>
@@ -40,6 +65,7 @@ export function RewardForm({
         <textarea
           name="description"
           rows={2}
+          defaultValue={reward.description ?? ""}
           className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
         />
       </div>
@@ -49,12 +75,9 @@ export function RewardForm({
         <select
           name="target"
           required
-          defaultValue=""
+          defaultValue={`${reward.targetType}:${reward.targetId}`}
           className="mt-1 w-full rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm outline-none focus:border-ember"
         >
-          <option value="" disabled>
-            Choose a place or event
-          </option>
           <optgroup label="Places">
             {listingOptions.map((l) => (
               <option key={l.id} value={`listing:${l.id}`}>
@@ -72,22 +95,12 @@ export function RewardForm({
         </select>
       </div>
 
-      <div>
-        <label className="text-sm font-medium text-ink">Source</label>
-        <select
-          name="source"
-          value={source}
-          onChange={(e) => setSource(e.target.value as typeof source)}
-          className="mt-1 w-full rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm outline-none focus:border-ember"
-        >
-          <option value="manual">Campaign — travellers claim it on the place/event page</option>
-          <option value="funzone">Fun Zone — staff issue it to a game winner</option>
-          <option value="xp_draw">XP draw — awarded to a match-day draw winner</option>
-          <option value="points_shop">Points shop — travellers spend points to redeem</option>
-        </select>
-      </div>
+      {/* source isn't editable — it decides which flow issues this reward
+          (self-claim, Fun Zone, XP draw, points shop) and changing it after
+          the fact would strand whatever mints against the old one. */}
+      <input type="hidden" name="source" value={reward.source} />
 
-      {source === "points_shop" && (
+      {reward.source === "points_shop" && (
         <div>
           <label className="text-sm font-medium text-ink">Cost in points</label>
           <input
@@ -95,12 +108,9 @@ export function RewardForm({
             type="number"
             min={1}
             required
-            placeholder="1500"
+            defaultValue={reward.pointsCost ?? undefined}
             className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
-          <p className="mt-1 text-xs text-ink/50">
-            Travellers can redeem this again and again, any time their points balance covers the cost.
-          </p>
         </div>
       )}
 
@@ -134,7 +144,7 @@ export function RewardForm({
               type="number"
               min={1}
               required
-              placeholder={discountType === "fixed" ? "50000" : discountType === "points" ? "150" : "27"}
+              defaultValue={reward.discountValue ?? undefined}
               className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
             />
           </div>
@@ -149,10 +159,9 @@ export function RewardForm({
             type="number"
             min={0}
             required
-            placeholder="50000"
+            defaultValue={reward.minBillMinor ?? undefined}
             className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
-          <p className="mt-1 text-xs text-ink/50">The perk only unlocks once the bill hits this amount.</p>
         </div>
       )}
 
@@ -163,18 +172,15 @@ export function RewardForm({
             name="defaultValidityDays"
             type="number"
             min={1}
-            defaultValue={30}
+            defaultValue={reward.defaultValidityDays}
             className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
-          <p className="mt-1 text-xs text-ink/50">
-            Ignored for event-targeted rewards — those expire when the event ends.
-          </p>
         </div>
         <div>
           <label className="text-sm font-medium text-ink">Funded by (optional)</label>
           <select
             name="fundedBy"
-            defaultValue=""
+            defaultValue={reward.fundedBy ?? ""}
             className="mt-1 w-full rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm outline-none focus:border-ember"
           >
             <option value="">Undecided</option>
@@ -193,10 +199,9 @@ export function RewardForm({
             type="number"
             min={0}
             max={100}
-            placeholder="50"
+            defaultValue={reward.wanoSharePct ?? undefined}
             className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
-          <p className="mt-1 text-xs text-ink/50">Leave blank if Wano doesn&apos;t co-fund this discount.</p>
         </div>
         <div>
           <label className="text-sm font-medium text-ink">Total cap (optional)</label>
@@ -204,6 +209,7 @@ export function RewardForm({
             name="totalCap"
             type="number"
             min={1}
+            defaultValue={reward.totalCap ?? undefined}
             placeholder="Unlimited"
             className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
@@ -214,7 +220,7 @@ export function RewardForm({
             name="perUserCap"
             type="number"
             min={1}
-            defaultValue={1}
+            defaultValue={reward.perUserCap}
             className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
@@ -226,6 +232,7 @@ export function RewardForm({
           <input
             name="startsAt"
             type="datetime-local"
+            defaultValue={toDatetimeLocal(reward.startsAt)}
             className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
@@ -234,6 +241,7 @@ export function RewardForm({
           <input
             name="endsAt"
             type="datetime-local"
+            defaultValue={toDatetimeLocal(reward.endsAt)}
             className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
@@ -246,7 +254,7 @@ export function RewardForm({
         disabled={pending}
         className="rounded-full bg-ink px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-ink/85 disabled:opacity-60"
       >
-        {pending ? "Adding…" : "Add reward"}
+        {pending ? "Saving…" : "Save changes"}
       </button>
     </form>
   );

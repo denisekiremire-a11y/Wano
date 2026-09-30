@@ -44,7 +44,11 @@ export function BookingRow({
   visitTime?: string | null;
   partySize?: number | null;
   notes?: string | null;
-  appliedReward?: { title: string; discountType: "percent" | "fixed" | "freebie"; discountValue: string | null } | null;
+  appliedReward?: {
+    title: string;
+    discountType: "percent" | "fixed" | "freebie" | "spend_perk" | "points";
+    discountValue: string | null;
+  } | null;
   birthdayInfo?: { perkTitle: string; eligible: boolean; reason: string } | null;
 }) {
   const [pending, startTransition] = useTransition();

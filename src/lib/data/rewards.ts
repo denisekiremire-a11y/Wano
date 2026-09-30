@@ -1,13 +1,16 @@
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
+  adminActionLog,
   events,
   listings,
   pointRedemptions,
   reviews,
   rewards,
   travellerInterests,
+  travellerProfiles,
   userRewards,
+  users,
   vendorProfiles,
 } from "@/db/schema";
 import type { DbOrTx } from "@/lib/db-context";
@@ -223,6 +226,13 @@ export async function getPointsShopCatalog(client: DbOrTx = db) {
   }));
 }
 
+export async function getRewardForAdmin(rewardId: string, client: DbOrTx = db) {
+  const [reward] = await client.select().from(rewards).where(eq(rewards.id, rewardId)).limit(1);
+  if (!reward) return null;
+  const targetMap = await resolveTargets([reward]);
+  return { ...reward, target: targetMap.get(targetKey(reward.targetType, reward.targetId)) ?? null };
+}
+
 export async function getAllRewardsForAdmin(client: DbOrTx = db) {
   const catalog = await client.select().from(rewards).orderBy(desc(rewards.createdAt));
   const targetMap = await resolveTargets(catalog);
@@ -268,6 +278,66 @@ export async function getVendorActiveCampaigns(vendorProfileId: string, client: 
 
   const all = await client.select().from(rewards).where(eq(rewards.active, true));
   return all.filter((r) => targets.some((t) => t.targetType === r.targetType && t.targetId === r.targetId));
+}
+
+// Admin voucher search — by code, traveller (name/email), venue, and/or
+// status. venueId filters after the fact since a voucher's venue is only
+// resolvable via its polymorphic target (see getOwningVendorProfileId),
+// not a direct column — fine at this scale (an admin tool, not a
+// traveller-facing search).
+export async function searchVouchersForAdmin(filters: {
+  code?: string;
+  travellerQuery?: string;
+  vendorProfileId?: string;
+  status?: (typeof userRewards.status.enumValues)[number];
+}) {
+  const conditions = [];
+  if (filters.code?.trim()) conditions.push(ilike(userRewards.redemptionCode, `%${filters.code.trim()}%`));
+  if (filters.status) conditions.push(eq(userRewards.status, filters.status));
+
+  const rows = await db
+    .select({ userReward: userRewards, reward: rewards, traveller: travellerProfiles, user: users })
+    .from(userRewards)
+    .innerJoin(rewards, eq(userRewards.rewardId, rewards.id))
+    .innerJoin(travellerProfiles, eq(userRewards.travellerId, travellerProfiles.id))
+    .innerJoin(users, eq(travellerProfiles.userId, users.id))
+    .where(conditions.length ? and(...conditions) : undefined)
+    .orderBy(desc(userRewards.claimedAt))
+    .limit(200);
+
+  const q = filters.travellerQuery?.trim().toLowerCase();
+  const textFiltered = q
+    ? rows.filter((r) => r.user.name.toLowerCase().includes(q) || r.user.email.toLowerCase().includes(q))
+    : rows;
+
+  if (!filters.vendorProfileId) {
+    return textFiltered.map((r) => ({ ...r, vendorProfileId: null as string | null }));
+  }
+  const withVendor = await Promise.all(
+    textFiltered.map(async (r) => ({
+      ...r,
+      vendorProfileId: await getOwningVendorProfileId(r.userReward.targetType, r.userReward.targetId),
+    })),
+  );
+  return withVendor.filter((r) => r.vendorProfileId === filters.vendorProfileId);
+}
+
+export async function getVoucherDetailForAdmin(userRewardId: string) {
+  const row = await getUserRewardById(userRewardId);
+  if (!row) return null;
+  const traveller = await db
+    .select({ traveller: travellerProfiles, user: users })
+    .from(travellerProfiles)
+    .innerJoin(users, eq(travellerProfiles.userId, users.id))
+    .where(eq(travellerProfiles.id, row.userReward.travellerId))
+    .limit(1)
+    .then((rows) => rows[0] ?? null);
+  const actionLog = await db
+    .select()
+    .from(adminActionLog)
+    .where(and(eq(adminActionLog.targetType, "user_reward"), eq(adminActionLog.targetId, userRewardId)))
+    .orderBy(desc(adminActionLog.createdAt));
+  return { ...row, traveller, actionLog };
 }
 
 export async function getVendorProfileForListing(listingId: string) {
