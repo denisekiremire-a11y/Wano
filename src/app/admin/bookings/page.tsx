@@ -1,22 +1,35 @@
 import { checkBirthdayEligibility, getBirthdayPerksForListings } from "@/lib/data/birthday";
 import { getAllBookings, getVendorsWithRecentCancellations } from "@/lib/data/admin";
 import { requireAdminPage } from "@/lib/auth";
+import { listingTypeLabels, type ListingType } from "@/lib/listing-type";
 import { BookingRow } from "./booking-row";
 
 const statusOptions = ["held", "pending", "confirmed", "completed", "cancelled", "expired"] as const;
+const categoryOptions = Object.keys(listingTypeLabels) as ListingType[];
 
 export default async function AdminBookingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string }>;
+  searchParams: Promise<{ status?: string; category?: string; q?: string }>;
 }) {
   await requireAdminPage("/admin/bookings");
-  const { status, q } = await searchParams;
+  const { status, category, q } = await searchParams;
   const [allBookings, vendorsWithCancellations] = await Promise.all([
     getAllBookings(),
     getVendorsWithRecentCancellations(),
   ]);
   const perksByListing = await getBirthdayPerksForListings(allBookings.map((r) => r.listing.id));
+
+  function hrefFor(overrides: { status?: string; category?: string }) {
+    const params = new URLSearchParams();
+    const nextStatus = "status" in overrides ? overrides.status : status;
+    const nextCategory = "category" in overrides ? overrides.category : category;
+    if (nextStatus) params.set("status", nextStatus);
+    if (nextCategory) params.set("category", nextCategory);
+    if (q) params.set("q", q);
+    const qs = params.toString();
+    return qs ? `/admin/bookings?${qs}` : "/admin/bookings";
+  }
 
   function birthdayInfoFor(row: (typeof allBookings)[number]) {
     const perks = perksByListing.get(row.listing.id) ?? [];
@@ -40,9 +53,14 @@ export default async function AdminBookingsPage({
     expired: allBookings.filter((b) => b.booking.status === "expired").length,
   };
 
+  const categoryCounts = Object.fromEntries(
+    categoryOptions.map((c) => [c, allBookings.filter((b) => b.listing.type === c).length]),
+  ) as Record<ListingType, number>;
+
   const query = (q ?? "").toLowerCase().trim();
   const filtered = allBookings.filter((row) => {
     if (status && row.booking.status !== status) return false;
+    if (category && row.listing.type !== category) return false;
     if (!query) return true;
     return (
       row.travellerUser.name.toLowerCase().includes(query) ||
@@ -77,23 +95,49 @@ export default async function AdminBookingsPage({
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-px overflow-hidden border border-ink/10 bg-ink/10 sm:grid-cols-6">
-        {statusOptions.map((s) => (
-          <a
-            key={s}
-            href={`/admin/bookings?status=${s}`}
-            className={`border-b-2 bg-white p-4 transition-colors ${
-              status === s ? "border-ember" : "border-transparent hover:bg-ink/5"
-            }`}
-          >
-            <p className={`eyebrow ${status === s ? "text-ink" : "text-ink/40"}`}>{s}</p>
-            <p className="font-mono-data mt-1 text-2xl text-ink">{counts[s]}</p>
-          </a>
-        ))}
+      <div>
+        <p className="eyebrow mb-2 text-ink/40">Status</p>
+        <div className="grid grid-cols-3 gap-px overflow-hidden border border-ink/10 bg-ink/10 sm:grid-cols-6">
+          {statusOptions.map((s) => (
+            <a
+              key={s}
+              href={hrefFor({ status: status === s ? undefined : s })}
+              className={`border-b-2 bg-white p-4 transition-colors ${
+                status === s ? "border-ember" : "border-transparent hover:bg-ink/5"
+              }`}
+            >
+              <p className={`eyebrow ${status === s ? "text-ink" : "text-ink/40"}`}>{s}</p>
+              <p className="font-mono-data mt-1 text-2xl text-ink">{counts[s]}</p>
+            </a>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <p className="eyebrow mb-2 text-ink/40">Category</p>
+        <div className="flex flex-wrap gap-2">
+          {categoryOptions
+            .filter((c) => categoryCounts[c] > 0)
+            .map((c) => (
+              <a
+                key={c}
+                href={hrefFor({ category: category === c ? undefined : c })}
+                className={`border px-3 py-1.5 text-sm transition-colors ${
+                  category === c
+                    ? "border-ink bg-ink text-white"
+                    : "border-ink/15 text-ink/70 hover:border-ink/40"
+                }`}
+              >
+                {listingTypeLabels[c]}{" "}
+                <span className="font-mono-data text-xs opacity-70">{categoryCounts[c]}</span>
+              </a>
+            ))}
+        </div>
       </div>
 
       <form className="flex flex-wrap gap-2">
         {status && <input type="hidden" name="status" value={status} />}
+        {category && <input type="hidden" name="category" value={category} />}
         <input
           type="text"
           name="q"
@@ -107,7 +151,7 @@ export default async function AdminBookingsPage({
         >
           Search
         </button>
-        {(status || q) && (
+        {(status || category || q) && (
           <a
             href="/admin/bookings"
             className="rounded-full border border-ink/15 px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-ink/5"
@@ -131,6 +175,7 @@ export default async function AdminBookingsPage({
               travellerName={row.travellerUser.name}
               travellerEmail={row.travellerUser.email}
               listingTitle={row.listing.title}
+              category={listingTypeLabels[row.listing.type]}
               businessName={row.vendor.businessName}
               journeyName={row.journey?.name ?? null}
               status={row.booking.status}
