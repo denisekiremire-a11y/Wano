@@ -69,6 +69,39 @@ const ADMIN_NAV_ITEMS: (NavItem & { minLevelKey: keyof typeof ADMIN_MIN_LEVEL })
   { href: "/admin/action-log", label: "Action log", icon: "file", minLevelKey: "/admin/action-log" },
 ];
 
+// Admin's flat list (16 sections) doesn't fit a desktop header — grouped
+// into 5 categories plus a standalone Overview link, each a dropdown that
+// leads to its members. The mobile bottom nav keeps the flat list (see
+// mobileNavItemsFor / bottom-nav.tsx) since a horizontally-scrollable
+// strip already works fine there and doesn't need this collapsing.
+const ADMIN_GROUPS: { label: string; hrefs: string[] }[] = [
+  { label: "Partners", hrefs: ["/admin/vendors", "/admin/submissions"] },
+  { label: "Bookings", hrefs: ["/admin/bookings", "/admin/slots", "/admin/match-day"] },
+  {
+    label: "Community",
+    hrefs: ["/admin/travellers", "/admin/clubs", "/admin/moderation", "/admin/influencers"],
+  },
+  { label: "Marketing", hrefs: ["/admin/rewards", "/admin/funzone", "/admin/journal"] },
+  { label: "System", hrefs: ["/admin/analytics", "/admin/accounts", "/admin/action-log"] },
+];
+
+export type AdminNavGroup = { label: string; items: NavItem[] };
+
+export function adminNavGroupsFor(
+  adminLevel?: AdminLevel | null,
+): { overview: NavItem | null; groups: AdminNavGroup[] } {
+  const visible = ADMIN_NAV_ITEMS.filter(({ minLevelKey }) => levelMeets(adminLevel, ADMIN_MIN_LEVEL[minLevelKey])).map(
+    ({ href, label, icon, matchPrefixes }) => ({ href, label, icon, matchPrefixes }),
+  );
+  const byHref = new Map(visible.map((item) => [item.href, item]));
+  const overview = byHref.get("/admin") ?? null;
+  const groups = ADMIN_GROUPS.map(({ label, hrefs }) => ({
+    label,
+    items: hrefs.map((href) => byHref.get(href)).filter((item): item is NonNullable<typeof item> => Boolean(item)),
+  })).filter((group) => group.items.length > 0);
+  return { overview, groups };
+}
+
 export function navItemsFor(role: SessionPayload["role"] | "guest", adminLevel?: AdminLevel | null): NavItem[] {
   if (role === "traveller" || role === "guest") {
     return PRIMARY_NAV_ITEMS;
