@@ -34,6 +34,10 @@ export const ADMIN_MIN_LEVEL = {
 
   "/admin/promotions": "super",
   "/admin/rewards": "super",
+  "/admin/rewards/vouchers": "super",
+  "/admin/rewards/points": "super",
+  "/admin/rewards/budget": "super",
+  "/admin/rewards/settlement": "super",
   "/admin/funzone": "super",
   "/admin/match-day": "super",
   "/admin/journal": "super",

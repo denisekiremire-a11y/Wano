@@ -9,6 +9,7 @@ import {
   interests,
   journeys,
   listings,
+  pointsLedger,
   promoCodes,
   referralCredits,
   rewards,
@@ -251,6 +252,19 @@ export async function awardReferralCreditOnFirstBooking(travellerId: string) {
     .update(referralCredits)
     .set({ status: "awarded", awardedAt: new Date() })
     .where(eq(referralCredits.id, pendingCredit.id));
+
+  // Rewards points (a separate ledger-backed balance from the live-computed
+  // Passport points above) — this is the one and only place a referral
+  // earns Rewards points, at award time, not signup time.
+  await withRlsContext({ role: "admin" }, (tx) =>
+    tx.insert(pointsLedger).values({
+      travellerId: pendingCredit.referrerId,
+      delta: pendingCredit.points,
+      reason: "Referral bonus",
+      sourceType: "referral_credit",
+      sourceId: pendingCredit.id,
+    }),
+  );
 }
 
 export async function getSavedListingsForTraveller(travellerId: string) {

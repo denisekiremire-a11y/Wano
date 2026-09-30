@@ -54,7 +54,14 @@ export default async function EditVendorRewardPage({ params }: PageProps<"/vendo
           title: reward.title,
           description: reward.description ?? "",
           listingId: reward.targetType === "listing" ? reward.targetId : "",
-          discountType: reward.discountType,
+          // Vendor submissions only ever set percent/fixed/freebie — spend_perk
+          // and points are admin-only additions (see reward-form.tsx in
+          // /admin/rewards); fall back to "percent" in the rare case an admin
+          // changed a vendor-owned reward to one of those from the catalog.
+          discountType:
+            reward.discountType === "spend_perk" || reward.discountType === "points"
+              ? "percent"
+              : reward.discountType,
           discountValue: reward.discountValue ?? "",
           defaultValidityDays: reward.defaultValidityDays,
         }}

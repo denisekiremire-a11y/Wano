@@ -246,10 +246,15 @@ export function decodeBookingDraft(sp: Record<string, string | undefined>): Book
 
 function discountMinorFor(
   subtotalMinor: number,
-  discountType: "percent" | "fixed" | "freebie",
+  discountType: "percent" | "fixed" | "freebie" | "spend_perk" | "points",
   discountValue: string | null,
 ) {
-  if (discountType === "freebie") return 0;
+  // spend_perk and points aren't a discount off the booking subtotal at
+  // all — spend_perk only resolves once a real bill is entered at
+  // redemption (see computeRedemptionAmounts in reward-actions.ts), and
+  // points grants points instead of money. Neither has anything to show
+  // pre-emptively at booking time.
+  if (discountType === "freebie" || discountType === "spend_perk" || discountType === "points") return 0;
   const value = discountValue ? Number.parseFloat(discountValue) : 0;
   if (discountType === "percent") return Math.round((subtotalMinor * value) / 100);
   return Math.round(value);
@@ -259,7 +264,10 @@ export function computeBookingTotals(
   draft: Pick<BookingDraft, "items">,
   listingItems: ListingItem[],
   fallbackPriceMinor: number | null,
-  reward?: { discountType: "percent" | "fixed" | "freebie"; discountValue: string | null } | null,
+  reward?: {
+    discountType: "percent" | "fixed" | "freebie" | "spend_perk" | "points";
+    discountValue: string | null;
+  } | null,
 ) {
   let subtotalMinor = 0;
   let hasPricedSelection = false;

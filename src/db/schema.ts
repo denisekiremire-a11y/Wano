@@ -767,7 +767,19 @@ export const stamps = pgTable(
 // listings and events without two near-identical tables (and without the
 // "rewards only join against listings" bug this replaces).
 export const rewardTargetTypeEnum = pgEnum("reward_target_type", ["listing", "event"]);
-export const rewardDiscountTypeEnum = pgEnum("reward_discount_type", ["percent", "fixed", "freebie"]);
+// spend_perk and points were added by manual_rewards_v2.sql, after the
+// original percent/fixed/freebie set. spend_perk = unlocked once the bill
+// hits rewards.minBillMinor, discountValue is the percent off applied to
+// that bill (restaurants/bars/eateries use this exclusively — no points at
+// launch). points = redeeming the voucher grants points instead of a
+// monetary discount; discountValue is the point amount granted.
+export const rewardDiscountTypeEnum = pgEnum("reward_discount_type", [
+  "percent",
+  "fixed",
+  "freebie",
+  "spend_perk",
+  "points",
+]);
 export const rewardSourceEnum = pgEnum("reward_source", [
   "funzone",
   "xp_draw",
@@ -776,6 +788,13 @@ export const rewardSourceEnum = pgEnum("reward_source", [
   "manual",
   "points_shop",
 ]);
+// draft = not yet visible/claimable. active = live. paused = temporarily
+// off (manual, or automatic — see the monthly Wano-funded budget cap in
+// src/lib/data/budget.ts). expired = past endsAt, or manually retired.
+// `active` (below) is kept in sync with this going forward (status="active"
+// <=> active=true) since funzone-actions.ts/xp-actions.ts still read the
+// boolean directly — added alongside rather than replacing it.
+export const rewardStatusEnum = pgEnum("reward_status", ["draft", "active", "paused", "expired"]);
 
 export const rewards = pgTable("rewards", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -784,7 +803,8 @@ export const rewards = pgTable("rewards", {
   targetType: rewardTargetTypeEnum("target_type").notNull(),
   targetId: uuid("target_id").notNull(),
   discountType: rewardDiscountTypeEnum("discount_type").notNull(),
-  // 27 for 27%, an amount in UGX for "fixed", null for "freebie".
+  // 27 for 27%, an amount in UGX for "fixed", a point amount for "points",
+  // the percent off the bill for "spend_perk", null for "freebie".
   discountValue: numeric("discount_value", { precision: 10, scale: 2 }),
   source: rewardSourceEnum("source").notNull().default("manual"),
   // wano | venue | split — an unresolved commercial decision. Left
@@ -797,6 +817,26 @@ export const rewards = pgTable("rewards", {
   // traveller spends to redeem this reward (see redeemPointsRewardAction
   // in reward-actions.ts and the point_redemptions ledger table below).
   pointsCost: integer("points_cost"),
+  // Only meaningful for discountType="spend_perk" — the minimum bill
+  // (integer UGX, no subdivision) that unlocks the perk.
+  minBillMinor: integer("min_bill_minor"),
+  // 0-100, nullable. The launch default is a 50/50 split, but this is
+  // stored per reward (not a global constant) so the split can change
+  // later without touching past vouchers. Null = not a discount Wano
+  // co-funds (e.g. a "points" reward, or a venue-only deal) — never
+  // counted against the monthly Wano-funded budget.
+  wanoSharePct: integer("wano_share_pct"),
+  // Null = unlimited. Enforced at mint time only (see mintUserReward) —
+  // once a voucher exists, redeeming it never fails because a cap filled
+  // up after the fact.
+  totalCap: integer("total_cap"),
+  perUserCap: integer("per_user_cap").notNull().default(1),
+  // Null startsAt = claimable/redeemable immediately. Null endsAt = no
+  // fixed end (event-targeted rewards still expire individual vouchers at
+  // the event's end via resolveExpiryFor, independent of this).
+  startsAt: timestamp("starts_at", { withTimezone: true }),
+  endsAt: timestamp("ends_at", { withTimezone: true }),
+  status: rewardStatusEnum("status").notNull().default("active"),
 });
 
 export const userRewardStatusEnum = pgEnum("user_reward_status", [
@@ -831,11 +871,51 @@ export const userRewards = pgTable(
     redeemedByVendorProfileId: uuid("redeemed_by_vendor_profile_id").references(
       () => vendorProfiles.id,
     ),
+    // Set at redemption time — only meaningful when the reward's
+    // discountType is "spend_perk" or "percent" (percent needs a bill to
+    // compute an actual amount; "fixed"/"freebie" don't need one).
+    billAmountMinor: integer("bill_amount_minor"),
+    // The actual amount discounted, computed and stored at redemption time
+    // (see markRewardRedeemedAction) — this, not rewards.discountValue, is
+    // what the budget dashboard and weekly settlement report sum. Null
+    // until redeemed, and for "points"-type vouchers (no monetary discount).
+    discountAmountMinor: integer("discount_amount_minor"),
+    // Required whenever an admin voids a voucher (status="void") — null
+    // for every other status.
+    voidReason: text("void_reason"),
+    voidedByUserId: uuid("voided_by_user_id").references(() => users.id),
   },
   (table) => [
     index("user_rewards_traveller_status_idx").on(table.travellerId, table.status),
     index("user_rewards_target_idx").on(table.targetType, table.targetId, table.travellerId),
   ],
+);
+
+// Append-only points ledger (Rewards points — see the block comment above
+// `rewards` for why this is deliberately a *second*, separate points
+// concept from the live-computed Passport points in getRewardsSummary).
+// Balance = SUM(delta) for a traveller; a correction is a new reversing
+// row, never an edit or delete of a past one. sourceType/sourceId are the
+// same polymorphic-reference pattern as adminActionLog's targetType/
+// targetId — "referral_credit" | "reward_redemption" | "manual_adjustment".
+// createdByUserId is null for a system-issued entry (referral award,
+// points-type redemption) and set to the acting admin for a manual
+// adjustment.
+export const pointsLedger = pgTable(
+  "points_ledger",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    travellerId: uuid("traveller_id")
+      .notNull()
+      .references(() => travellerProfiles.id, { onDelete: "cascade" }),
+    delta: integer("delta").notNull(),
+    reason: text("reason").notNull(),
+    sourceType: text("source_type").notNull(),
+    sourceId: uuid("source_id"),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("points_ledger_traveller_created_idx").on(table.travellerId, table.createdAt)],
 );
 
 // The points-shop spend-side ledger — one row per redemption, so a
