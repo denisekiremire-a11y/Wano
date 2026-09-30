@@ -23,6 +23,7 @@ export function BookingRow({
   travellerName,
   travellerEmail,
   listingTitle,
+  category,
   businessName,
   journeyName,
   status,
@@ -42,6 +43,7 @@ export function BookingRow({
   travellerName: string;
   travellerEmail: string;
   listingTitle: string;
+  category: string;
   businessName: string;
   journeyName: string | null;
   status: Status;
@@ -67,7 +69,9 @@ export function BookingRow({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-medium text-ink">{listingTitle}</p>
-          <p className="text-sm text-ink/70">{businessName}</p>
+          <p className="text-sm text-ink/70">
+            {businessName} <span className="text-ink/40">· {category}</span>
+          </p>
           <p className="font-mono-data text-xs text-ink/50">
             {journeyName ?? "General booking"} · ref {bookingRef} ·{" "}
             {new Date(createdAt).toLocaleDateString()}
