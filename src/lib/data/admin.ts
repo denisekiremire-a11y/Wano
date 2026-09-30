@@ -32,6 +32,14 @@ import {
   vendorDocumentListColumns,
 } from "./vendor";
 
+/** Fresh-from-the-database admin level for one user — used where a
+ * cached/session-cookie copy (see session.ts) isn't trustworthy enough,
+ * e.g. driving what the nav shows right after a level change. */
+export async function getLiveAdminLevel(userId: string) {
+  const [row] = await db.select({ adminLevel: users.adminLevel }).from(users).where(eq(users.id, userId)).limit(1);
+  return row?.adminLevel ?? null;
+}
+
 export type DashboardMetrics = {
   commissionAllTime: number;
   commissionLast7: number;
@@ -267,6 +275,16 @@ export async function getAllBookings() {
       .leftJoin(rewards, eq(userRewards.rewardId, rewards.id))
       .orderBy(desc(bookings.createdAt)),
   );
+}
+
+export async function getTravellerWithUserById(travellerId: string) {
+  const [row] = await db
+    .select({ traveller: travellerProfiles, user: users })
+    .from(travellerProfiles)
+    .innerJoin(users, eq(travellerProfiles.userId, users.id))
+    .where(eq(travellerProfiles.id, travellerId))
+    .limit(1);
+  return row ?? null;
 }
 
 export async function getAllTravellersWithProgress() {
