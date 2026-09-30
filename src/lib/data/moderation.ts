@@ -25,16 +25,6 @@ export async function getOpenReports() {
     .orderBy(desc(reports.createdAt));
 }
 
-export async function getPendingReviewPosts() {
-  return db
-    .select({ post: posts, author: travellerProfiles, authorUser: users })
-    .from(posts)
-    .innerJoin(travellerProfiles, eq(travellerProfiles.id, posts.travellerId))
-    .innerJoin(users, eq(users.id, travellerProfiles.userId))
-    .where(eq(posts.status, "pending_review"))
-    .orderBy(desc(posts.createdAt));
-}
-
 export async function getModerationLog(limit = 50) {
   return db
     .select({ action: moderationActions, performedBy: users })

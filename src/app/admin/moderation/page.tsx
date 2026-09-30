@@ -2,21 +2,15 @@ import {
   getCommentForModeration,
   getModerationLog,
   getOpenReports,
-  getPendingReviewPosts,
   getPostForModeration,
   getUserForModeration,
 } from "@/lib/data/moderation";
 import { requireAdminPage } from "@/lib/auth";
 import { ModerationQueueRow } from "./moderation-queue-row";
-import { PendingPostRow } from "./pending-post-row";
 
 export default async function AdminModerationPage() {
   await requireAdminPage("/admin/moderation");
-  const [reportRows, pendingPosts, log] = await Promise.all([
-    getOpenReports(),
-    getPendingReviewPosts(),
-    getModerationLog(30),
-  ]);
+  const [reportRows, log] = await Promise.all([getOpenReports(), getModerationLog(30)]);
 
   const reportsWithContext = await Promise.all(
     reportRows.map(async ({ report, reporter }) => {
@@ -41,28 +35,8 @@ export default async function AdminModerationPage() {
     <div className="space-y-8">
       <div>
         <h1 className="font-serif-editorial text-2xl text-ink md:text-3xl">Moderation</h1>
-        <p className="mt-1 text-sm text-ink/60">Reports and new-account posts waiting for review.</p>
+        <p className="mt-1 text-sm text-ink/60">Reports waiting for review.</p>
       </div>
-
-      <section className="space-y-3">
-        <h2 className="font-serif-editorial text-lg text-ink">
-          New-account posts <span className="font-mono-data text-ink/40">({pendingPosts.length})</span>
-        </h2>
-        {pendingPosts.length === 0 ? (
-          <p className="text-sm text-ink/50">Nothing pending.</p>
-        ) : (
-          pendingPosts.map(({ post, author, authorUser }) => (
-            <PendingPostRow
-              key={post.id}
-              postId={post.id}
-              authorName={author.displayName}
-              authorUsername={authorUser.username}
-              content={post.content}
-              createdAt={post.createdAt}
-            />
-          ))
-        )}
-      </section>
 
       <section className="space-y-3">
         <h2 className="font-serif-editorial text-lg text-ink">

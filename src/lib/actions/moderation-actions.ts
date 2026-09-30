@@ -7,7 +7,6 @@ import { blocks, moderationActions, posts, reports } from "@/db/schema";
 import { requireAdminLevel, requireRole } from "@/lib/auth";
 import { logAdminAction } from "@/lib/admin-action-log";
 import { withRlsContext } from "@/lib/db-context";
-import { generateUserPostItem } from "@/lib/feed-generators";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { countInLastHour, RATE_LIMITS } from "@/lib/rate-limit";
 
@@ -163,42 +162,6 @@ export async function resolveReportAction(
     action === "suspend" ? "Suspended a user's account over a report" : `Resolved a report: ${action}`,
     { type: report.targetType, id: report.targetId },
   );
-
-  revalidatePath("/admin/moderation");
-  revalidatePath("/social");
-}
-
-/** Approve or remove a post sitting in pending_review (new-account
- * auto-flag) — separate from report resolution since it has no report row. */
-export async function reviewPendingPostAction(postId: string, decision: "approve" | "remove") {
-  const session = await requireAdminLevel("support");
-  const [post] = await db.select().from(posts).where(eq(posts.id, postId)).limit(1);
-  if (!post) throw new Error("Post not found.");
-
-  await withRlsContext({ userId: session.userId, role: "admin" }, async (tx) => {
-    await tx
-      .update(posts)
-      .set({ status: decision === "approve" ? "visible" : "removed" })
-      .where(eq(posts.id, postId));
-  });
-
-  if (decision === "approve" && post.travellerId) {
-    const { travellerProfiles } = await import("@/db/schema");
-    const [traveller] = await db.select().from(travellerProfiles).where(eq(travellerProfiles.id, post.travellerId)).limit(1);
-    if (traveller) await generateUserPostItem(post.id, traveller.id, traveller.displayName);
-  }
-
-  await db.insert(moderationActions).values({
-    targetType: "post",
-    targetId: postId,
-    action: decision === "approve" ? "dismiss" : "remove",
-    reason: "New-account first post review",
-    performedByUserId: session.userId,
-  });
-  await logAdminAction(session.userId, "moderation.pending_post_reviewed", `${decision === "approve" ? "Approved" : "Removed"} a new-account pending post`, {
-    type: "post",
-    id: postId,
-  });
 
   revalidatePath("/admin/moderation");
   revalidatePath("/social");
