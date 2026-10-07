@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -6,6 +7,8 @@ import { AfconPromoCard } from "@/components/afcon/afcon-promo-card";
 import { CornerMarks } from "@/components/corner-marks";
 import { JourneyArt } from "@/components/journey-art";
 import { PartnerCard } from "@/components/partner-card";
+import { db } from "@/db";
+import { users } from "@/db/schema";
 import { getBirthdayPerksForListings } from "@/lib/data/birthday";
 import { AFCON_CLUB_ENABLED } from "@/lib/feature-flags";
 import { getEventsForToday } from "@/lib/data/events";
@@ -20,6 +23,21 @@ const CATEGORIES = [
   { href: "/events", label: "Events & Nightlife" },
   { href: "/explore", label: "Explore Uganda" },
   { href: "/social", label: "Meet & Connect" },
+];
+
+const REWARD_STEPS = [
+  {
+    title: "Join free",
+    body: "Create your account and get your personal Wano QR code.",
+  },
+  {
+    title: "Book & explore",
+    body: "Earn points when you book hotels, tours, spas, transport and events. Unlock member perks at Wano-verified places.",
+  },
+  {
+    title: "Scan & save",
+    body: "Show your QR code at the venue. Staff scan it and your reward is applied on the spot.",
+  },
 ];
 
 const PERSONAS = [
@@ -116,6 +134,21 @@ export default async function LandingPage() {
   const session = await getSession();
   if (session?.role === "vendor") redirect("/vendor/dashboard");
   if (session?.role === "admin") redirect("/admin");
+
+  // Only ever a traveller session past the redirects above — resolved
+  // here (rather than carried in the session cookie) so the Rewards
+  // section's "share your referral link" CTA always lands on the
+  // traveller's current username, not a stale one. Falls back to
+  // Passport (which also carries the share-referral block) if they
+  // somehow have no username yet.
+  const travellerUsername = session
+    ? await db
+        .select({ username: users.username })
+        .from(users)
+        .where(eq(users.id, session.userId))
+        .limit(1)
+        .then((rows) => rows[0]?.username ?? null)
+    : null;
 
   const [journeyList, featured, todayEvents] = await Promise.all([
     getJourneys(),
@@ -374,26 +407,74 @@ export default async function LandingPage() {
           </div>
         )}
 
-        <Link
-          href="/signup"
-          className="group/row mt-4 flex items-center justify-between gap-4 border-t border-ink/10 py-6"
-        >
-          <div>
-            <p className="font-serif-editorial text-xl italic text-ink sm:text-2xl">Sign up to see member deals</p>
-            <p className="mt-1 text-sm text-ink/55">Deals unlock once you create a free account.</p>
+      </section>
+
+      {/* Wano Rewards — a deliberate navy "membership card" break from the
+          paper/ink palette used everywhere else on this page: it's the
+          one section selling the loyalty program, not a place or journey,
+          so it gets its own distinct treatment (navy #1B3A5C + the
+          existing gold design token) while reusing the same heading font
+          and 01/02/03 numeral convention as "Start here" above. */}
+      <section className="bg-[#1B3A5C] px-4 py-16 md:px-6">
+        <div className="mx-auto max-w-6xl">
+          <p className="eyebrow text-gold">Wano Rewards</p>
+          <h2 className="font-serif-editorial mt-3 max-w-2xl text-3xl text-white md:text-4xl">
+            Every outing pays you back.
+          </h2>
+          <p className="mt-3 max-w-xl text-base text-white/70">
+            Book, explore and bring your friends — and earn rewards at the places you already love across
+            Uganda.
+          </p>
+
+          <div className="mt-10 grid gap-4 sm:grid-cols-3">
+            {REWARD_STEPS.map((step, i) => (
+              <div key={step.title} className="border border-white/15 p-6">
+                <span className="font-serif-editorial text-3xl text-gold">0{i + 1}</span>
+                <h3 className="font-serif-editorial mt-3 text-xl text-white">{step.title}</h3>
+                <p className="mt-2 text-sm text-white/65">{step.body}</p>
+              </div>
+            ))}
           </div>
-          <span className="hidden shrink-0 items-center gap-2.5 text-sm font-semibold text-ember sm:flex">
-            Create account
-            <span
-              aria-hidden
-              className="inline-block transition-transform duration-300 ease-out group-hover/row:translate-x-1.5"
+
+          <div className="mt-6 border border-gold/30 bg-white/5 px-6 py-5">
+            <p className="text-sm text-white/85 sm:text-base">
+              <span className="font-semibold text-gold">Bring a friend, earn 150 points.</span> Share your
+              link or code from your profile — when they join, the points are yours.
+            </p>
+          </div>
+
+          <p className="mt-5 text-sm text-white/60">
+            Collect points and level up. Reach <span className="font-semibold text-gold">Insider</span> at
+            1,000 points and <span className="font-semibold text-gold">Legend</span> at 5,000 points earned
+            within 12 months.
+          </p>
+
+          <div className="mt-8 flex flex-wrap items-center gap-4">
+            {session ? (
+              <Link
+                href={travellerUsername ? `/profile/${travellerUsername}` : "/passport"}
+                className="rounded-full bg-gold px-6 py-3 text-sm font-semibold text-[#1B3A5C] transition hover:brightness-95"
+              >
+                Share your referral link
+              </Link>
+            ) : (
+              <Link
+                href="/signup"
+                className="rounded-full bg-gold px-6 py-3 text-sm font-semibold text-[#1B3A5C] transition hover:brightness-95"
+              >
+                Join Wano — it&apos;s free
+              </Link>
+            )}
+            <Link
+              href="/passport"
+              className="rounded-full border border-white/30 px-6 py-3 text-sm font-semibold text-white transition hover:border-white/60"
             >
-              <svg width="18" height="9" viewBox="0 0 18 9" fill="none">
-                <path d="M0 4.5H17M17 4.5L12.5 0.5M17 4.5L12.5 8.5" stroke="currentColor" strokeWidth="1.3" />
-              </svg>
-            </span>
-          </span>
-        </Link>
+              See your Passport
+            </Link>
+          </div>
+
+          <p className="mt-5 text-xs text-white/40">Vouchers are single use. Perks vary by venue.</p>
+        </div>
       </section>
 
       {/* Trending places — same 60/40 asymmetric composition as Journeys
