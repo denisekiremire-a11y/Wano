@@ -30,7 +30,7 @@ export function RewardEditForm({
     discountType: DiscountType;
     discountValue: string | null;
     minBillMinor: number | null;
-    source: "manual" | "funzone" | "xp_draw" | "points_shop" | "referral" | "campaign";
+    source: "manual" | "funzone" | "xp_draw" | "points_shop" | "referral" | "campaign" | "collab";
     pointsCost: number | null;
     fundedBy: string | null;
     wanoSharePct: number | null;

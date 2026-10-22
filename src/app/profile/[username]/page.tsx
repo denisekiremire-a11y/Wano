@@ -7,6 +7,8 @@ import { ReportBlockMenu } from "@/components/report-block-menu";
 import { PostCard } from "@/components/post-card";
 import { getSession } from "@/lib/session";
 import { getPassportProgress, getTravellerInterests, getTravellerProfileByUserId } from "@/lib/data/traveller";
+import { getTierStatus } from "@/lib/data/rewards";
+import { TierBadge } from "@/components/tier-badge";
 import {
   getCommentsForPost,
   getEngagementCounts,
@@ -31,12 +33,13 @@ export default async function PublicProfilePage({
   if (!row) notFound();
   const { traveller, user } = row;
 
-  const [session, { progress }, followCounts, postRows, interestRows] = await Promise.all([
+  const [session, { progress }, followCounts, postRows, interestRows, tierStatus] = await Promise.all([
     getSession(),
     getPassportProgress(traveller.id),
     getFollowCounts(traveller.id),
     getPostsByTraveller(traveller.id),
     getTravellerInterests(traveller.id),
+    getTierStatus(traveller.id),
   ]);
 
   let viewerFollows = false;
@@ -134,7 +137,16 @@ export default async function PublicProfilePage({
       </div>
 
       <section className="mt-10 border-t border-ink/10 pt-6">
-        <h2 className="font-serif-editorial text-2xl text-ink">Wano Passport</h2>
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="font-serif-editorial text-2xl text-ink">Wano Passport</h2>
+          <TierBadge
+            tier={tierStatus.tier}
+            nextTier={tierStatus.nextTier}
+            progressToNextTier={tierStatus.progressToNextTier}
+            remainingToNextTier={tierStatus.remainingToNextTier}
+            compact
+          />
+        </div>
         <div className="mt-4">
           <PassportGrid progress={progress} />
         </div>

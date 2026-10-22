@@ -1,12 +1,18 @@
-import { and, asc, desc, eq, ilike, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, inArray, isNotNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   adminActionLog,
+  bookings,
+  challengeCompletions,
   events,
   listings,
   pointRedemptions,
+  referralCredits,
   reviews,
   rewards,
+  stamps,
+  trailCompletions,
+  trails,
   travellerInterests,
   travellerProfiles,
   userRewards,
@@ -14,6 +20,8 @@ import {
   vendorProfiles,
 } from "@/db/schema";
 import type { DbOrTx } from "@/lib/db-context";
+import { getPointsEarnedLast12Months, tierForPoints, twelveMonthsAgo, type Tier } from "@/lib/data/points";
+import { BOOKING_COMPLETION_XP, TIER_THRESHOLDS } from "@/lib/rewards-config";
 import { getChallengesWithStatus, getPassportProgress, getReferralStats } from "./traveller";
 import { resolvePostContexts } from "./post-context";
 
@@ -29,7 +37,16 @@ const POINTS = {
 } as const;
 
 export async function getRewardsSummary(travellerId: string, persona: string | null, city: string | null) {
-  const [{ stampCount }, challenges, myReviews, referralStats, interestRows, [{ spent }]] = await Promise.all([
+  const [
+    { stampCount },
+    challenges,
+    myReviews,
+    referralStats,
+    interestRows,
+    [{ spent }],
+    completedBookings,
+    trailXpRows,
+  ] = await Promise.all([
     getPassportProgress(travellerId),
     getChallengesWithStatus(travellerId),
     db.select({ id: reviews.id }).from(reviews).where(eq(reviews.travellerId, travellerId)),
@@ -39,10 +56,20 @@ export async function getRewardsSummary(travellerId: string, persona: string | n
       .select({ spent: sql<number>`coalesce(sum(${pointRedemptions.pointsCost}), 0)::int` })
       .from(pointRedemptions)
       .where(eq(pointRedemptions.travellerId, travellerId)),
+    db
+      .select({ id: bookings.id })
+      .from(bookings)
+      .where(and(eq(bookings.travellerId, travellerId), eq(bookings.status, "completed"))),
+    db
+      .select({ bonusXp: trails.bonusXp })
+      .from(trailCompletions)
+      .innerJoin(trails, eq(trailCompletions.trailId, trails.id))
+      .where(eq(trailCompletions.travellerId, travellerId)),
   ]);
 
   const completedChallenges = challenges.filter((c) => c.completion?.status === "verified").length;
   const profileComplete = Boolean(persona && city && interestRows.length > 0);
+  const trailsXp = trailXpRows.reduce((sum, r) => sum + r.bonusXp, 0);
 
   const breakdown = [
     { label: "Passport stamps", count: stampCount, points: stampCount * POINTS.perStamp },
@@ -57,8 +84,19 @@ export async function getRewardsSummary(travellerId: string, persona: string | n
       points: referralStats.awardedPoints,
     },
     { label: "Profile complete", count: profileComplete ? 1 : 0, points: profileComplete ? POINTS.profileComplete : 0 },
+    {
+      label: "Bookings completed",
+      count: completedBookings.length,
+      points: completedBookings.length * BOOKING_COMPLETION_XP,
+    },
+    { label: "Trails completed", count: trailXpRows.length, points: trailsXp },
   ];
 
+  // "totalPoints"/"availablePoints" are this function's existing field
+  // names — they're Passport XP, shown under that label in the UI (see
+  // the two-ledger split in the Wano additions plan). Spendable, UGX-valued
+  // points live in pointsLedger (src/lib/data/points.ts) and are entirely
+  // separate — never summed with this total.
   const totalPoints = breakdown.reduce((sum, b) => sum + b.points, 0);
 
   return {
@@ -67,6 +105,103 @@ export async function getRewardsSummary(travellerId: string, persona: string | n
     breakdown,
     referralCode: referralStats.referralCode,
     pendingReferrals: referralStats.pendingCount,
+  };
+}
+
+function bookingCompletionDateFilter(since: Date) {
+  // Mirrors the booking-completion cron's own due-date logic: a listing
+  // booking's date proxy is coalesce(endDate, visitDate); an event
+  // booking's is the event's own startAt.
+  return sql`(
+    (${bookings.listingId} is not null and coalesce(${bookings.endDate}, ${bookings.visitDate}) >= ${since.toISOString().slice(0, 10)})
+    or (${bookings.eventId} is not null and exists (
+      select 1 from events e where e.id = ${bookings.eventId} and e.start_at >= ${since}
+    ))
+  )`;
+}
+
+// XP earned in the trailing 12 months — the window getTierStatus uses for
+// tiering (see judgment call 4 in the Wano additions plan). The one-off
+// "profile complete" bonus has no event date, so it's excluded here
+// (counted only in getRewardsSummary's lifetime total).
+export async function getXpEarnedLast12Months(travellerId: string): Promise<number> {
+  const since = twelveMonthsAgo();
+
+  const [stampRows, completionRows, reviewRows, referralRows, completedBookingRows, trailRows] = await Promise.all([
+    db
+      .select({ id: stamps.id })
+      .from(stamps)
+      .where(and(eq(stamps.travellerId, travellerId), gte(stamps.earnedAt, since))),
+    db
+      .select({ id: challengeCompletions.id })
+      .from(challengeCompletions)
+      .where(
+        and(
+          eq(challengeCompletions.travellerId, travellerId),
+          eq(challengeCompletions.status, "verified"),
+          isNotNull(challengeCompletions.completedAt),
+          gte(challengeCompletions.completedAt, since),
+        ),
+      ),
+    db
+      .select({ id: reviews.id })
+      .from(reviews)
+      .where(and(eq(reviews.travellerId, travellerId), gte(reviews.createdAt, since))),
+    db
+      .select({ points: referralCredits.points })
+      .from(referralCredits)
+      .where(
+        and(
+          eq(referralCredits.referrerId, travellerId),
+          eq(referralCredits.status, "awarded"),
+          isNotNull(referralCredits.awardedAt),
+          gte(referralCredits.awardedAt, since),
+        ),
+      ),
+    db
+      .select({ id: bookings.id })
+      .from(bookings)
+      .where(
+        and(eq(bookings.travellerId, travellerId), eq(bookings.status, "completed"), bookingCompletionDateFilter(since)),
+      ),
+    db
+      .select({ bonusXp: trails.bonusXp })
+      .from(trailCompletions)
+      .innerJoin(trails, eq(trailCompletions.trailId, trails.id))
+      .where(and(eq(trailCompletions.travellerId, travellerId), gte(trailCompletions.completedAt, since))),
+  ]);
+
+  return (
+    stampRows.length * POINTS.perStamp +
+    completionRows.length * POINTS.perChallenge +
+    reviewRows.length * POINTS.perReview +
+    referralRows.reduce((sum, r) => sum + r.points, 0) +
+    completedBookingRows.length * BOOKING_COMPLETION_XP +
+    trailRows.reduce((sum, r) => sum + r.bonusXp, 0)
+  );
+}
+
+export async function getTierStatus(travellerId: string) {
+  const [xp, points] = await Promise.all([
+    getXpEarnedLast12Months(travellerId),
+    getPointsEarnedLast12Months(travellerId),
+  ]);
+  const earnedLast12Months = xp + points;
+  const tier: Tier = tierForPoints(earnedLast12Months);
+
+  const nextTier: Exclude<Tier, "explorer"> | null =
+    tier === "explorer" ? "insider" : tier === "insider" ? "legend" : null;
+  const nextThreshold = nextTier ? TIER_THRESHOLDS[nextTier] : null;
+
+  return {
+    tier,
+    earnedLast12Months,
+    xpEarnedLast12Months: xp,
+    pointsEarnedLast12Months: points,
+    nextTier,
+    nextThreshold,
+    progressToNextTier: nextThreshold ? Math.min(1, earnedLast12Months / nextThreshold) : 1,
+    remainingToNextTier: nextThreshold ? Math.max(0, nextThreshold - earnedLast12Months) : 0,
   };
 }
 

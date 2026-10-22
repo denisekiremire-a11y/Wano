@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTravellerWithUserById } from "@/lib/data/admin";
 import { getPointsSummary, searchTravellersForPoints, TIER_THRESHOLDS } from "@/lib/data/points";
+import { getTierStatus } from "@/lib/data/rewards";
+import { TierBadge } from "@/components/tier-badge";
 import { requireAdminPage } from "@/lib/auth";
 import { AdjustmentForm } from "./adjustment-form";
 
@@ -13,10 +15,11 @@ export default async function AdminPointsPage({
   await requireAdminPage("/admin/rewards/points");
   const params = await searchParams;
 
-  const [results, summary, selected] = await Promise.all([
+  const [results, summary, selected, tierStatus] = await Promise.all([
     params.q?.trim() ? searchTravellersForPoints(params.q) : Promise.resolve([]),
     params.traveller ? getPointsSummary(params.traveller) : Promise.resolve(null),
     params.traveller ? getTravellerWithUserById(params.traveller) : Promise.resolve(null),
+    params.traveller ? getTierStatus(params.traveller) : Promise.resolve(null),
   ]);
   if (params.traveller && !selected) notFound();
 
@@ -67,7 +70,7 @@ export default async function AdminPointsPage({
         </div>
       )}
 
-      {selected && summary && (
+      {selected && summary && tierStatus && (
         <div className="space-y-4">
           <div className="flex items-center justify-between border border-ink/10 bg-white p-4">
             <div>
@@ -79,18 +82,27 @@ export default async function AdminPointsPage({
             </Link>
           </div>
 
-          <div className="grid grid-cols-3 gap-px overflow-hidden border border-ink/10 bg-ink/10">
+          <div className="grid grid-cols-2 gap-px overflow-hidden border border-ink/10 bg-ink/10 sm:grid-cols-4">
             <div className="bg-white p-4">
-              <p className="eyebrow text-ink/40">Balance</p>
+              <p className="eyebrow text-ink/40">Points balance</p>
               <p className="font-mono-data mt-1 text-2xl text-ink">{summary.balance.toLocaleString()}</p>
             </div>
             <div className="bg-white p-4">
-              <p className="eyebrow text-ink/40">Earned (12mo)</p>
+              <p className="eyebrow text-ink/40">Points (12mo)</p>
               <p className="font-mono-data mt-1 text-2xl text-ink">{summary.earnedLast12Months.toLocaleString()}</p>
             </div>
             <div className="bg-white p-4">
-              <p className="eyebrow text-ink/40">Tier</p>
-              <p className="font-mono-data mt-1 text-2xl capitalize text-ink">{summary.tier ?? "—"}</p>
+              <p className="eyebrow text-ink/40">XP (12mo)</p>
+              <p className="font-mono-data mt-1 text-2xl text-ink">{tierStatus.xpEarnedLast12Months.toLocaleString()}</p>
+            </div>
+            <div className="flex items-center bg-white p-4">
+              <TierBadge
+                tier={tierStatus.tier}
+                nextTier={tierStatus.nextTier}
+                progressToNextTier={tierStatus.progressToNextTier}
+                remainingToNextTier={tierStatus.remainingToNextTier}
+                compact
+              />
             </div>
           </div>
 

@@ -19,7 +19,9 @@ import { claimDealFormAction } from "@/lib/actions/deal-actions";
 import { getAllActiveDeals, getClaimedDealIds } from "@/lib/data/deals";
 import { getReviewableBookings } from "@/lib/data/reviews";
 import { withRlsContext } from "@/lib/db-context";
-import { getMyWallet, getPointsShopCatalog, getRewardsSummary } from "@/lib/data/rewards";
+import { getMyWallet, getPointsShopCatalog, getRewardsSummary, getTierStatus } from "@/lib/data/rewards";
+import { getPointsSummary, POINT_VALUE_MINOR } from "@/lib/data/points";
+import { TierBadge } from "@/components/tier-badge";
 import { ShareReferralBlock } from "@/components/share-referral-block";
 import { VoucherCard } from "@/components/voucher-card";
 import { formatRewardDiscount } from "@/lib/reward-format";
@@ -83,6 +85,8 @@ export default async function PassportPage({
     bookingRows,
     reviewableRows,
     rewardsSummary,
+    tierStatus,
+    pointsSummary,
     deals,
     claimedIds,
     postRows,
@@ -95,6 +99,8 @@ export default async function PassportPage({
     getTravellerBookings(travellerProfile.id),
     getReviewableBookings(travellerProfile.id),
     getRewardsSummary(travellerProfile.id, travellerProfile.persona, travellerProfile.city),
+    getTierStatus(travellerProfile.id),
+    getPointsSummary(travellerProfile.id),
     getAllActiveDeals(),
     getClaimedDealIds(travellerProfile.id),
     getPostsByTraveller(travellerProfile.id),
@@ -176,9 +182,21 @@ export default async function PassportPage({
             </p>
           </div>
         </div>
-        <div className="flex-none border border-ink/10 bg-white px-4 py-2 text-right">
-          <p className="font-mono-data text-lg font-semibold text-ember">{rewardsSummary.totalPoints}</p>
-          <p className="eyebrow text-ink/40">points</p>
+        <div className="flex flex-none items-center gap-3">
+          <TierBadge
+            tier={tierStatus.tier}
+            nextTier={tierStatus.nextTier}
+            progressToNextTier={tierStatus.progressToNextTier}
+            remainingToNextTier={tierStatus.remainingToNextTier}
+          />
+          <div className="border border-ink/10 bg-white px-4 py-2 text-right">
+            <p className="font-mono-data text-lg font-semibold text-ember">{rewardsSummary.totalPoints}</p>
+            <p className="eyebrow text-ink/40">XP</p>
+          </div>
+          <div className="border border-ink/10 bg-white px-4 py-2 text-right">
+            <p className="font-mono-data text-lg font-semibold text-ink">{pointsSummary.balance}</p>
+            <p className="eyebrow text-ink/40">points</p>
+          </div>
         </div>
       </div>
 
@@ -216,6 +234,8 @@ export default async function PassportPage({
         {activeTab === "rewards" && (
           <RewardsTab
             summary={rewardsSummary}
+            tierStatus={tierStatus}
+            pointsSummary={pointsSummary}
             wallet={wallet}
             deals={deals}
             claimedIds={claimedIds}
@@ -455,12 +475,16 @@ function BookingGroup({
 
 function RewardsTab({
   summary,
+  tierStatus,
+  pointsSummary,
   wallet,
   deals,
   claimedIds,
   pointsShopCatalog,
 }: {
   summary: Awaited<ReturnType<typeof getRewardsSummary>>;
+  tierStatus: Awaited<ReturnType<typeof getTierStatus>>;
+  pointsSummary: Awaited<ReturnType<typeof getPointsSummary>>;
   wallet: Awaited<ReturnType<typeof getMyWallet>>;
   deals: Awaited<ReturnType<typeof getAllActiveDeals>>;
   claimedIds: Awaited<ReturnType<typeof getClaimedDealIds>>;
@@ -485,21 +509,39 @@ function RewardsTab({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="font-serif-editorial text-2xl text-ink">Rewards</h2>
-        <p className="mt-1 text-sm text-ink/60">
-          Earned from booking, reviewing, and referring friends to Wano — spend them on the rewards below.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="font-serif-editorial text-2xl text-ink">Rewards</h2>
+          <p className="mt-1 text-sm text-ink/60">
+            Earned from booking, reviewing, and referring friends to Wano — spend XP on the perks below.
+          </p>
+        </div>
+        <TierBadge
+          tier={tierStatus.tier}
+          nextTier={tierStatus.nextTier}
+          progressToNextTier={tierStatus.progressToNextTier}
+          remainingToNextTier={tierStatus.remainingToNextTier}
+        />
       </div>
 
-      <div className="border border-ink/10 bg-ink p-6 text-white">
-        <p className="eyebrow text-white/60">Points to spend</p>
-        <p className="font-mono-data mt-1 text-4xl font-semibold">{summary.availablePoints.toLocaleString()} pts</p>
-        <p className="mt-1.5 text-xs text-white/60">{summary.totalPoints.toLocaleString()} pts earned lifetime</p>
+      <div className="grid gap-px overflow-hidden border border-ink/10 bg-ink/10 sm:grid-cols-2">
+        <div className="bg-ink p-6 text-white">
+          <p className="eyebrow text-white/60">XP to spend</p>
+          <p className="font-mono-data mt-1 text-4xl font-semibold">{summary.availablePoints.toLocaleString()} XP</p>
+          <p className="mt-1.5 text-xs text-white/60">{summary.totalPoints.toLocaleString()} XP earned lifetime</p>
+        </div>
+        <div className="bg-white p-6">
+          <p className="eyebrow text-ink/40">Rewards points</p>
+          <p className="font-mono-data mt-1 text-4xl font-semibold text-ink">{pointsSummary.balance.toLocaleString()}</p>
+          <p className="mt-1.5 text-xs text-ink/60">
+            ≈ UGX {(pointsSummary.balance * POINT_VALUE_MINOR).toLocaleString()} — spendable value, from
+            referrals and welcome bonuses. Spending them on a booking is coming soon.
+          </p>
+        </div>
       </div>
 
       <section>
-        <h3 className="font-serif-editorial text-lg text-ink">Redeem your points</h3>
+        <h3 className="font-serif-editorial text-lg text-ink">Redeem your XP</h3>
         {pointsShopCatalog.length === 0 ? (
           <p className="mt-3 text-sm text-ink/60">No rewards to redeem yet — check back soon.</p>
         ) : (
@@ -528,7 +570,7 @@ function RewardsTab({
                       />
                     ) : (
                       <span className="font-mono-data flex-none text-xs text-ink/40">
-                        Need {((reward.pointsCost ?? 0) - summary.availablePoints).toLocaleString()} more pts
+                        Need {((reward.pointsCost ?? 0) - summary.availablePoints).toLocaleString()} more XP
                       </span>
                     )}
                   </div>
@@ -538,7 +580,7 @@ function RewardsTab({
                         <div className="h-full bg-ember" style={{ width: `${percent}%` }} />
                       </div>
                       <p className="font-mono-data mt-1 text-[11px] text-ink/50">
-                        {summary.availablePoints.toLocaleString()} / {(reward.pointsCost ?? 0).toLocaleString()} pts
+                        {summary.availablePoints.toLocaleString()} / {(reward.pointsCost ?? 0).toLocaleString()} XP
                       </p>
                     </div>
                   )}
