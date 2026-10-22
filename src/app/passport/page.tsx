@@ -14,7 +14,9 @@ import { PastVouchersSection } from "@/components/past-vouchers-section";
 import { RedeemPointsRewardButton } from "@/components/redeem-points-reward-button";
 import { ResendVerificationButton } from "@/components/resend-verification-button";
 import { ReviewForm } from "@/components/review-form";
+import { TrailStamps } from "@/components/trail-stamps";
 import { VisitorQrCard } from "@/components/visitor-qr-card";
+import { getTrailProgressForTraveller } from "@/lib/data/trails";
 import { PASSPORT_TABS, type PassportTabKey } from "@/lib/passport-tabs";
 import { getSession, type SessionPayload } from "@/lib/session";
 import { claimDealFormAction } from "@/lib/actions/deal-actions";
@@ -89,6 +91,7 @@ export default async function PassportPage({
     rewardsSummary,
     tierStatus,
     pointsSummary,
+    trailProgress,
     deals,
     claimedIds,
     postRows,
@@ -103,6 +106,7 @@ export default async function PassportPage({
     getRewardsSummary(travellerProfile.id, travellerProfile.persona, travellerProfile.city),
     getTierStatus(travellerProfile.id),
     getPointsSummary(travellerProfile.id),
+    getTrailProgressForTraveller(travellerProfile.id),
     getAllActiveDeals(),
     getClaimedDealIds(travellerProfile.id),
     getPostsByTraveller(travellerProfile.id),
@@ -217,6 +221,7 @@ export default async function PassportPage({
             stampCount={stampCount}
             totalJourneys={totalJourneys}
             grandPrizeQualified={grandPrizeQualified}
+            trailProgress={trailProgress}
           />
         )}
         {activeTab === "saved" && (
@@ -280,11 +285,13 @@ function StampsTab({
   stampCount,
   totalJourneys,
   grandPrizeQualified,
+  trailProgress,
 }: {
   progress: Awaited<ReturnType<typeof getPassportProgress>>["progress"];
   stampCount: number;
   totalJourneys: number;
   grandPrizeQualified: boolean;
+  trailProgress: Awaited<ReturnType<typeof getTrailProgressForTraveller>>;
 }) {
   return (
     <div className="space-y-6">
@@ -306,6 +313,7 @@ function StampsTab({
         <p className="font-mono-data mt-2 text-sm text-ink/60">
           {stampCount} / {totalJourneys} stamps
         </p>
+        <TrailStamps rows={trailProgress} />
       </section>
       <section
         className={`flex items-start gap-4 border p-5 ${

@@ -19,6 +19,7 @@ import {
   posts,
   restaurantDetails,
   rewards,
+  trails,
   travellerProfiles,
   users,
   vendorProfiles,
@@ -1423,4 +1424,22 @@ export async function backfillEditorialJourneysJ1() {
   }
 
   return { journeysUpdated, stopsCreated, journeysPublished, missingListings };
+}
+
+/** Idempotent select-by-slug, insert-if-missing — same pattern as
+ * seedDemoRewards. Seeds the one launch trail the Wano additions plan
+ * names, with no listings attached; an admin fills those in from
+ * /admin/trails afterward. */
+export async function seedWano40DiscoveriesTrail() {
+  const slug = "wano-40-discoveries";
+  const [existing] = await db.select({ id: trails.id }).from(trails).where(eq(trails.slug, slug)).limit(1);
+  if (existing) return ["Wano 40 Discoveries trail already exists."];
+
+  await db.insert(trails).values({
+    slug,
+    name: "Wano 40 Discoveries",
+    description: "Visit 40 of Wano's partners across Uganda to complete this trail.",
+    bonusXp: 500,
+  });
+  return ["Created the Wano 40 Discoveries trail — no listings attached yet."];
 }

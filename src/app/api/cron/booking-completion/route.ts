@@ -4,6 +4,7 @@ import { and, eq, inArray, isNotNull, lt, sql } from "drizzle-orm";
 import { bookings, events } from "@/db/schema";
 import { notifyTravellerToReview } from "@/lib/booking-notifications";
 import { withRlsContext } from "@/lib/db-context";
+import { checkAndAwardTrailCompletions } from "@/lib/data/trails";
 
 // Flips "confirmed" bookings whose date has passed to "completed" — the
 // only other place status reaches "completed" today is a manual admin
@@ -24,7 +25,7 @@ export async function GET(request: Request) {
     // date if set, otherwise the single visit date. Reviewable, so each one
     // also gets a review-prompt email.
     const dueListingBookings = await tx
-      .select({ id: bookings.id })
+      .select({ id: bookings.id, travellerId: bookings.travellerId, listingId: bookings.listingId })
       .from(bookings)
       .where(
         and(
@@ -58,8 +59,9 @@ export async function GET(request: Request) {
     return { dueListingBookings, dueEventBookings };
   });
 
-  for (const { id } of dueListingBookings) {
+  for (const { id, travellerId, listingId } of dueListingBookings) {
     await notifyTravellerToReview(id);
+    if (listingId) await checkAndAwardTrailCompletions(travellerId, listingId);
   }
 
   return NextResponse.json({

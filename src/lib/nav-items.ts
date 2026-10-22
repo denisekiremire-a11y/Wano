@@ -58,6 +58,7 @@ const ADMIN_NAV_ITEMS: (NavItem & { minLevelKey: keyof typeof ADMIN_MIN_LEVEL })
     minLevelKey: "/admin/rewards",
     matchPrefixes: ["/admin/promotions"],
   },
+  { href: "/admin/trails", label: "Trails", icon: "map", minLevelKey: "/admin/trails" },
   { href: "/admin/funzone", label: "Fun Zone", icon: "megaphone", minLevelKey: "/admin/funzone" },
   { href: "/admin/match-day", label: "Match Day", icon: "calendar", minLevelKey: "/admin/match-day" },
   { href: "/admin/clubs", label: "Clubs", icon: "chat", minLevelKey: "/admin/clubs" },
