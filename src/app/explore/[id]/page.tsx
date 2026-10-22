@@ -37,8 +37,8 @@ import {
 } from "@/lib/data/social";
 import { PostCard } from "@/components/post-card";
 import {
+  getMyBookingsForListing,
   getSavedListingsForTraveller,
-  getTravellerBookings,
   getTravellerProfileByUserId,
 } from "@/lib/data/traveller";
 import { listingItemSectionLabel, listingTypeGradient, listingTypeLabels, type ListingType } from "@/lib/listing-type";
@@ -95,15 +95,15 @@ export default async function ListingDetailPage({
   let hasBirthdaySet = false;
   let travellerDisplayName = "";
   let viewerTravellerId: string | null = null;
-  let myBookings: Awaited<ReturnType<typeof getTravellerBookings>> = [];
+  let myBookings: Awaited<ReturnType<typeof getMyBookingsForListing>> = [];
   let claimableRewards: Awaited<ReturnType<typeof getClaimableRewardsForTarget>> = [];
   let myClaimedRewards: Awaited<ReturnType<typeof getMyClaimedRewardsForTarget>> = [];
   if (session?.role === "traveller") {
     const travellerProfile = await getTravellerProfileByUserId(session.userId);
     if (travellerProfile) {
-      const [savedRows, allBookings, claimable, myClaimed] = await Promise.all([
+      const [savedRows, myListingBookings, claimable, myClaimed] = await Promise.all([
         getSavedListingsForTraveller(travellerProfile.id),
-        getTravellerBookings(travellerProfile.id),
+        getMyBookingsForListing(travellerProfile.id, listing.id),
         withRlsContext({ userId: session.userId, role: "traveller", travellerProfileId: travellerProfile.id }, (tx) =>
           getClaimableRewardsForTarget("listing", listing.id, tx),
         ),
@@ -115,7 +115,7 @@ export default async function ListingDetailPage({
       hasBirthdaySet = travellerProfile.dateOfBirth != null;
       travellerDisplayName = travellerProfile.displayName;
       viewerTravellerId = travellerProfile.id;
-      myBookings = allBookings.filter((b) => b.listing?.id === listing.id);
+      myBookings = myListingBookings;
       claimableRewards = claimable;
       myClaimedRewards = myClaimed;
     }
@@ -485,30 +485,38 @@ export default async function ListingDetailPage({
               )}
             </div>
 
-            {myBookings.length > 0 && (
+            {(myBookings.length > 0 ||
+              claimableRewards.length > 0 ||
+              myClaimedRewards.length > 0 ||
+              offer ||
+              promo) && (
               <section className="mt-10 border-t border-ink/10 pt-6">
-                <h2 className="font-serif-editorial text-2xl text-ink">Your bookings here</h2>
-                <div className="mt-3 border-t border-ink/10">
-                  {[...myUpcoming, ...myPast].map(({ booking }) => (
-                    <Link
-                      key={booking.id}
-                      href={`/bookings/${booking.bookingRef}`}
-                      className="flex items-center justify-between border-b border-ink/10 py-3 transition-colors hover:text-ember"
-                    >
-                      <p className="font-mono-data text-sm text-ink/70">ref {booking.bookingRef}</p>
-                      <span className="eyebrow capitalize text-ink/40">{booking.status}</span>
-                    </Link>
-                  ))}
-                </div>
+                <h2 className="font-serif-editorial text-2xl text-ink">Your bookings and rewards</h2>
+
+                {myBookings.length > 0 && (
+                  <div className="mt-3 border-t border-ink/10">
+                    {[...myUpcoming, ...myPast].map(({ booking }) => (
+                      <Link
+                        key={booking.id}
+                        href={`/bookings/${booking.bookingRef}`}
+                        className="flex items-center justify-between border-b border-ink/10 py-3 transition-colors hover:text-ember"
+                      >
+                        <p className="font-mono-data text-sm text-ink/70">ref {booking.bookingRef}</p>
+                        <span className="eyebrow capitalize text-ink/40">{booking.status}</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+
+                <TargetRewardsSection
+                  claimable={claimableRewards}
+                  claimed={myClaimedRewards}
+                  offer={offer}
+                  promo={promo}
+                  showHeading={false}
+                />
               </section>
             )}
-
-            <TargetRewardsSection
-              claimable={claimableRewards}
-              claimed={myClaimedRewards}
-              offer={offer}
-              promo={promo}
-            />
 
             <section className="mt-10 border-t border-ink/10 pt-6">
               <h2 className="font-serif-editorial text-2xl text-ink">About {vendor.businessName}</h2>
