@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { db } from "../src/db";
 import {
   bookings,
+  events,
   listings,
   pointsLedger,
   referralCredits,
@@ -25,10 +26,11 @@ vi.mock("@/lib/notify", () => ({ notifyUser: vi.fn(), notifyAdmin: vi.fn() }));
 vi.mock("@/lib/email", () => ({ sendEmail: vi.fn() }));
 
 import { tierForPoints } from "@/lib/data/points";
+import { getXpEarnedLast12Months } from "@/lib/data/rewards";
 import { awardReferralCreditOnFirstBooking } from "@/lib/data/traveller";
 import { checkAndAwardTrailCompletions } from "@/lib/data/trails";
 import { issueCollabRewardsForBooking } from "@/lib/actions/reward-actions";
-import { WELCOME_POINTS } from "@/lib/rewards-config";
+import { WELCOME_POINTS, BOOKING_COMPLETION_XP } from "@/lib/rewards-config";
 
 function suffix() {
   return Math.random().toString(36).slice(2, 10);
@@ -56,6 +58,7 @@ describe("Wano additions — real-DB integration", () => {
   let vendorId: string;
   let listingAId: string;
   let listingBId: string;
+  let eventId: string;
 
   let referrerUserId: string;
   let referrerId: string;
@@ -83,6 +86,18 @@ describe("Wano additions — real-DB integration", () => {
       .values({ vendorProfileId: vendorId, title: "Listing B", description: "desc" })
       .returning();
     listingBId = listingB.id;
+    const [event] = await db
+      .insert(events)
+      .values({
+        title: "Test Event",
+        description: "desc",
+        category: "music",
+        startAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+        location: "Kampala",
+        organizerVendorProfileId: vendorId,
+      })
+      .returning();
+    eventId = event.id;
 
     const [referrerUser] = await db
       .insert(users)
@@ -118,6 +133,7 @@ describe("Wano additions — real-DB integration", () => {
     await db.delete(pointsLedger).where(eq(pointsLedger.travellerId, refereeId));
     await db.delete(referralCredits).where(eq(referralCredits.refereeId, refereeId));
     await db.delete(bookings).where(eq(bookings.travellerId, refereeId));
+    await db.delete(bookings).where(eq(bookings.travellerId, referrerId));
     await db.delete(trailCompletions).where(eq(trailCompletions.travellerId, refereeId));
     await db.delete(userRewards).where(eq(userRewards.travellerId, refereeId));
     await db.delete(rewards).where(eq(rewards.collabTriggerVendorProfileId, vendorId));
@@ -126,6 +142,7 @@ describe("Wano additions — real-DB integration", () => {
     await db.delete(trails).where(eq(trails.slug, `wano-add-test-${vendorId}`));
     await db.delete(listings).where(eq(listings.id, listingAId));
     await db.delete(listings).where(eq(listings.id, listingBId));
+    await db.delete(events).where(eq(events.id, eventId));
     await db.delete(vendorProfiles).where(eq(vendorProfiles.id, vendorId));
     await db.delete(travellerProfiles).where(eq(travellerProfiles.id, referrerId));
     await db.delete(travellerProfiles).where(eq(travellerProfiles.id, refereeId));
@@ -163,6 +180,32 @@ describe("Wano additions — real-DB integration", () => {
         .where(and(eq(pointsLedger.travellerId, refereeId), eq(pointsLedger.sourceType, "welcome_bonus")));
       expect(welcomeRows).toHaveLength(1);
       expect(welcomeRows[0].delta).toBe(WELCOME_POINTS);
+    });
+  });
+
+  describe("getXpEarnedLast12Months", () => {
+    it("counts completed listing and event bookings without erroring", async () => {
+      // Regression test: the event-booking branch originally interpolated a
+      // raw JS Date into the sql`` template, which postgres.js rejects
+      // ("must be of type string... Received an instance of Date") — this
+      // only ever surfaced at runtime (Passport crashed), never in a type
+      // check, since drizzle's sql`` accepts any value at compile time.
+      await db.insert(bookings).values({
+        travellerId: referrerId,
+        listingId: listingAId,
+        status: "completed",
+        bookingRef: bookingRef(),
+      });
+      await db.insert(bookings).values({
+        travellerId: referrerId,
+        eventId,
+        status: "completed",
+        bookingRef: bookingRef(),
+      });
+
+      const xp = await getXpEarnedLast12Months(referrerId);
+
+      expect(xp).toBeGreaterThanOrEqual(2 * BOOKING_COMPLETION_XP);
     });
   });
 

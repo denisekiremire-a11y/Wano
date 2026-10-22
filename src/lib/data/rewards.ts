@@ -115,7 +115,7 @@ function bookingCompletionDateFilter(since: Date) {
   return sql`(
     (${bookings.listingId} is not null and coalesce(${bookings.endDate}, ${bookings.visitDate}) >= ${since.toISOString().slice(0, 10)})
     or (${bookings.eventId} is not null and exists (
-      select 1 from events e where e.id = ${bookings.eventId} and e.start_at >= ${since}
+      select 1 from events e where e.id = ${bookings.eventId} and e.start_at >= ${since.toISOString()}
     ))
   )`;
 }
