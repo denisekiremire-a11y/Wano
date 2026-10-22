@@ -82,6 +82,26 @@ export async function setAccreditationStatusAction(
   revalidatePath("/journeys");
 }
 
+/** Admin-only "Best Price on Wano" toggle — never vendor-settable. Shows
+ * a badge on this vendor's listings and nudges them ahead in
+ * searchListings/getTrendingListings' ordering. */
+export async function setBestPriceOnWanoAction(vendorProfileId: string, value: boolean) {
+  const session = await requireAdminLevel(ADMIN_MIN_LEVEL["/admin/vendors"]);
+
+  await db.update(vendorProfiles).set({ bestPriceOnWano: value }).where(eq(vendorProfiles.id, vendorProfileId));
+  await logAdminAction(
+    session.userId,
+    "vendor.best_price_set",
+    `Set Best Price on Wano to ${value ? "on" : "off"}`,
+    { type: "vendor_profile", id: vendorProfileId },
+  );
+
+  revalidatePath("/admin/vendors");
+  revalidatePath(`/admin/vendors/${vendorProfileId}`);
+  revalidatePath("/explore");
+  revalidatePath("/discover");
+}
+
 export async function reviewVendorDocumentAction(
   documentId: string,
   status: "approved" | "rejected",

@@ -6,6 +6,7 @@ import { PostComposer } from "@/components/post-composer";
 import { RatingBadge } from "@/components/rating-badge";
 import { SaveButton } from "@/components/save-button";
 import { VerifiedBadge } from "@/components/verified-badge";
+import { BestPriceBadge } from "@/components/best-price-badge";
 import { GettingThere, type TransportOption } from "@/components/afcon/getting-there";
 import { getBirthdayPerksForListing } from "@/lib/data/birthday";
 import { CANCELLATION_CUTOFF_HOURS, REQUEST_EXPIRY_HOURS } from "@/lib/booking-config";
@@ -209,6 +210,7 @@ export default async function ListingDetailPage({
               {vendor.businessName} · {vendor.location}
             </p>
             <VerifiedBadge status={vendor.accreditationStatus} className="bg-white/15 text-white" />
+            <BestPriceBadge show={vendor.bestPriceOnWano} className="bg-white/15 text-white" />
           </div>
           {rating.count > 0 && (
             <div className="mt-2">
@@ -365,6 +367,17 @@ export default async function ListingDetailPage({
               {session?.role === "traveller" && <SaveButton listingId={listing.id} initialSaved={saved} />}
             </div>
             <p className="font-mono-data mt-2 font-medium text-ember">{formatListingPrice(listing)}</p>
+
+            {listing.wanoOnlyExtras && listing.wanoOnlyExtras.length > 0 && (
+              <div className="mt-3 border border-ember/30 bg-ember/5 p-3">
+                <p className="eyebrow text-ember">Wano-only extras</p>
+                <ul className="mt-1.5 space-y-0.5 text-sm text-ink/70">
+                  {listing.wanoOnlyExtras.map((extra, i) => (
+                    <li key={i}>{extra}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {imageIds.length > 0 && (
               <div className="mt-4 min-w-0">

@@ -191,6 +191,17 @@ export default async function BookingConfirmationPage({
             )}
           </div>
 
+          {listing?.wanoOnlyExtras && listing.wanoOnlyExtras.length > 0 && (
+            <div className="mt-3 border-t border-ink/10 pt-3 text-sm">
+              <p className="eyebrow text-ember">Wano-only extras</p>
+              <ul className="mt-1 space-y-0.5 text-ink/70">
+                {listing.wanoOnlyExtras.map((extra, i) => (
+                  <li key={i}>{extra}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {lineItems.length > 0 && (
             <div className="font-mono-data mt-3 space-y-1 border-t border-ink/10 pt-3 text-sm">
               {lineItems.map((li) => (

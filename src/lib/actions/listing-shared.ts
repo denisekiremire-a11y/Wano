@@ -56,6 +56,9 @@ export const listingContentSchema = z.object({
   facebookUrl: z.string().url().max(300).optional().or(z.literal("")),
   tiktokUrl: z.string().url().max(300).optional().or(z.literal("")),
   websiteUrl: z.string().url().max(300).optional().or(z.literal("")),
+  // One perk per line, free text (late checkout, airport pickup) — split
+  // into listings.wanoOnlyExtras in applyListingContent below.
+  wanoOnlyExtras: z.string().max(2000).optional().or(z.literal("")),
 });
 
 export type ListingContent = z.infer<typeof listingContentSchema>;
@@ -90,7 +93,16 @@ export function parseListingContentFromFormData(formData: FormData) {
     facebookUrl: formData.get("facebookUrl") ?? "",
     tiktokUrl: formData.get("tiktokUrl") ?? "",
     websiteUrl: formData.get("websiteUrl") ?? "",
+    wanoOnlyExtras: formData.get("wanoOnlyExtras") ?? "",
   });
+}
+
+function parseWanoOnlyExtras(raw: string): string[] | null {
+  const lines = raw
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+  return lines.length > 0 ? lines : null;
 }
 
 /** Creates or updates a listing (plus its journey tags, offer, and
@@ -120,6 +132,7 @@ export async function applyListingContent(
     externalBookingUrl: d.externalBookingUrl || null,
     latitude: d.latitude === "" || d.latitude === undefined ? null : String(d.latitude),
     longitude: d.longitude === "" || d.longitude === undefined ? null : String(d.longitude),
+    wanoOnlyExtras: parseWanoOnlyExtras(d.wanoOnlyExtras || ""),
   };
 
   let id = listingId;
