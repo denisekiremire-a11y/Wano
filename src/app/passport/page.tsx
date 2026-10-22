@@ -12,6 +12,7 @@ import { PassportGrid } from "@/components/passport-grid";
 import { PassportTabs } from "@/components/passport-tabs";
 import { PastVouchersSection } from "@/components/past-vouchers-section";
 import { RedeemPointsRewardButton } from "@/components/redeem-points-reward-button";
+import { ResendVerificationButton } from "@/components/resend-verification-button";
 import { ReviewForm } from "@/components/review-form";
 import { PASSPORT_TABS, type PassportTabKey } from "@/lib/passport-tabs";
 import { getSession, type SessionPayload } from "@/lib/session";
@@ -265,6 +266,7 @@ export default async function PassportPage({
             dateOfBirth={travellerProfile.dateOfBirth}
             showActivityInFeed={travellerProfile.showActivityInFeed}
             blockedList={blockedList}
+            emailVerified={Boolean(user?.emailVerifiedAt)}
           />
         )}
       </div>
@@ -667,10 +669,12 @@ function AccountTab({
   dateOfBirth,
   showActivityInFeed,
   blockedList,
+  emailVerified,
 }: {
   dateOfBirth: string | null;
   showActivityInFeed: boolean;
   blockedList: Awaited<ReturnType<typeof getMyBlockedList>>;
+  emailVerified: boolean;
 }) {
   return (
     <div className="space-y-6">
@@ -678,6 +682,17 @@ function AccountTab({
         <h2 className="font-serif-editorial text-2xl text-ink">Account</h2>
         <p className="mt-1 text-sm text-ink/60">Your profile, preferences, and security.</p>
       </div>
+
+      {!emailVerified && (
+        <section className="space-y-2 border border-ember/30 bg-ember/5 p-5">
+          <h3 className="font-serif-editorial text-lg text-ink">Verify your email</h3>
+          <p className="text-sm text-ink/60">
+            You can browse Wano, but you&apos;ll need to verify your email before sending a booking
+            request or earning referral rewards.
+          </p>
+          <ResendVerificationButton />
+        </section>
+      )}
 
       <section className="space-y-4 border border-ink/10 bg-white p-5">
         <h3 className="font-serif-editorial text-lg text-ink">Profile</h3>
