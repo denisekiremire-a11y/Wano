@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getAllEventsForAdmin, getAllListingsForAdmin, getAllPromoCodes } from "@/lib/data/admin";
+import { getAllEventsForAdmin, getAllListingsForAdmin, getAllPromoCodes, getAllVendorProfilesForAdmin } from "@/lib/data/admin";
 import { getAllRewardsForAdmin } from "@/lib/data/rewards";
 import { getJourneys } from "@/lib/data/journeys";
 import { requireAdminPage } from "@/lib/auth";
@@ -13,12 +13,13 @@ import { SeedRewardsButton } from "./seed-rewards-button";
 
 export default async function AdminRewardsPage() {
   const session = await requireAdminPage("/admin/rewards");
-  const [rewardsList, listingOptions, eventOptions, promos, journeys] = await Promise.all([
+  const [rewardsList, listingOptions, eventOptions, promos, journeys, vendorOptions] = await Promise.all([
     withRlsContext({ userId: session.userId, role: "admin" }, (tx) => getAllRewardsForAdmin(tx)),
     getAllListingsForAdmin(),
     getAllEventsForAdmin(),
     getAllPromoCodes(),
     getJourneys(),
+    getAllVendorProfilesForAdmin(),
   ]);
 
   return (
@@ -64,6 +65,7 @@ export default async function AdminRewardsPage() {
             businessName: l.vendor.businessName,
           }))}
           eventOptions={eventOptions.map((e) => ({ id: e.id, title: e.title }))}
+          vendorOptions={vendorOptions}
         />
 
         <div className="space-y-3">

@@ -129,6 +129,36 @@ export async function mintUserReward(travellerId: string, rewardId: string) {
   return created;
 }
 
+/** Wano Collabs issuance — called from the booking-completion cron, same
+ * spot as the trail-completion check, right after a booking flips to
+ * completed. Finds every active "collab" reward this vendor triggers and
+ * mints one for the traveller via the unchanged mintUserReward (its
+ * existing cap/status/window checks already stop issuance once a cap
+ * fills — "That reward has run out" and similar are expected, not real
+ * failures, so each one is caught and skipped rather than surfaced). */
+export async function issueCollabRewardsForBooking(travellerId: string, vendorProfileId: string) {
+  const candidates = await db
+    .select()
+    .from(rewards)
+    .where(
+      and(
+        eq(rewards.source, "collab"),
+        eq(rewards.active, true),
+        eq(rewards.status, "active"),
+        eq(rewards.collabTriggerVendorProfileId, vendorProfileId),
+      ),
+    );
+
+  for (const reward of candidates) {
+    try {
+      await mintUserReward(travellerId, reward.id);
+    } catch {
+      // Expected for a filled cap or a reward that fell out of its window
+      // between the select above and the mint — nothing to surface here.
+    }
+  }
+}
+
 /** Spends points on a points-shop reward the traveller picked. Points
  * are never a stored balance (see getRewardsSummary) — "available"
  * is totalPoints (live) minus every past pointRedemptions row (also
@@ -556,8 +586,9 @@ const rewardSchema = z.object({
   discountType: z.enum(["percent", "fixed", "freebie", "spend_perk", "points"]),
   discountValue: z.string().optional().or(z.literal("")),
   minBillMinor: z.coerce.number().int().min(0).optional(),
-  source: z.enum(["manual", "funzone", "xp_draw", "points_shop"]),
+  source: z.enum(["manual", "funzone", "xp_draw", "points_shop", "collab"]),
   pointsCost: z.coerce.number().int().optional(),
+  collabTriggerVendorProfileId: z.string().optional().or(z.literal("")),
   fundedBy: z.string().optional().or(z.literal("")),
   wanoSharePct: z.coerce.number().int().min(0).max(100).optional(),
   totalCap: z.coerce.number().int().min(1).optional(),
@@ -577,6 +608,7 @@ function rewardFieldsFromFormData(formData: FormData) {
     minBillMinor: formData.get("minBillMinor") || undefined,
     source: formData.get("source") || "manual",
     pointsCost: formData.get("pointsCost") || undefined,
+    collabTriggerVendorProfileId: formData.get("collabTriggerVendorProfileId") ?? "",
     fundedBy: formData.get("fundedBy") ?? "",
     wanoSharePct: formData.get("wanoSharePct") || undefined,
     totalCap: formData.get("totalCap") || undefined,
@@ -594,6 +626,9 @@ function validateRewardFields(data: z.infer<typeof rewardSchema>): string | null
   }
   if (data.source === "points_shop" && (!data.pointsCost || data.pointsCost < 1)) {
     return "Enter how many points this reward costs to redeem.";
+  }
+  if (data.source === "collab" && !data.collabTriggerVendorProfileId) {
+    return "Pick the vendor whose completed booking triggers this collab.";
   }
   return null;
 }
@@ -628,6 +663,7 @@ export async function createRewardAction(_prev: ActionState, formData: FormData)
         minBillMinor: parsed.data.discountType === "spend_perk" ? parsed.data.minBillMinor : null,
         source: parsed.data.source,
         pointsCost: parsed.data.source === "points_shop" ? parsed.data.pointsCost : null,
+        collabTriggerVendorProfileId: parsed.data.source === "collab" ? parsed.data.collabTriggerVendorProfileId || null : null,
         fundedBy: parsed.data.fundedBy || null,
         wanoSharePct: parsed.data.wanoSharePct ?? null,
         totalCap: parsed.data.totalCap ?? null,
@@ -681,6 +717,7 @@ export async function updateRewardAction(_prev: ActionState, formData: FormData)
         discountValue: parsed.data.discountType === "freebie" ? null : parsed.data.discountValue || null,
         minBillMinor: parsed.data.discountType === "spend_perk" ? parsed.data.minBillMinor : null,
         pointsCost: parsed.data.source === "points_shop" ? parsed.data.pointsCost : null,
+        collabTriggerVendorProfileId: parsed.data.source === "collab" ? parsed.data.collabTriggerVendorProfileId || null : null,
         fundedBy: parsed.data.fundedBy || null,
         wanoSharePct: parsed.data.wanoSharePct ?? null,
         totalCap: parsed.data.totalCap ?? null,

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getAllEventsForAdmin, getAllListingsForAdmin } from "@/lib/data/admin";
+import { getAllEventsForAdmin, getAllListingsForAdmin, getAllVendorProfilesForAdmin } from "@/lib/data/admin";
 import { getRewardForAdmin } from "@/lib/data/rewards";
 import { requireAdminPage } from "@/lib/auth";
 import { RewardEditForm } from "./reward-edit-form";
@@ -9,10 +9,11 @@ export default async function AdminRewardEditPage({ params }: { params: Promise<
   await requireAdminPage("/admin/rewards");
   const { id } = await params;
 
-  const [reward, listingOptions, eventOptions] = await Promise.all([
+  const [reward, listingOptions, eventOptions, vendorOptions] = await Promise.all([
     getRewardForAdmin(id),
     getAllListingsForAdmin(),
     getAllEventsForAdmin(),
+    getAllVendorProfilesForAdmin(),
   ]);
   if (!reward) notFound();
 
@@ -34,6 +35,7 @@ export default async function AdminRewardEditPage({ params }: { params: Promise<
           businessName: l.vendor.businessName,
         }))}
         eventOptions={eventOptions.map((e) => ({ id: e.id, title: e.title }))}
+        vendorOptions={vendorOptions}
       />
     </div>
   );
