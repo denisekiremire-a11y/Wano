@@ -89,6 +89,7 @@ export default async function EditVendorListingPage({ params }: PageProps<"/vend
           discountText: offer?.discountText ?? "",
           freebieText: offer?.freebieText ?? "",
           journeyIds: journeyTags.map((j) => j.id),
+          wanoOnlyExtras: listing.wanoOnlyExtras,
           hotel,
           restaurant,
           experience,

@@ -8,6 +8,7 @@ const initialState: ActionState = {};
 
 type ListingOption = { id: string; title: string; businessName: string };
 type EventOption = { id: string; title: string };
+type VendorOption = { id: string; businessName: string };
 type DiscountType = "percent" | "fixed" | "freebie" | "spend_perk" | "points";
 
 function toDatetimeLocal(value: Date | null) {
@@ -20,6 +21,7 @@ export function RewardEditForm({
   reward,
   listingOptions,
   eventOptions,
+  vendorOptions,
 }: {
   reward: {
     id: string;
@@ -30,8 +32,9 @@ export function RewardEditForm({
     discountType: DiscountType;
     discountValue: string | null;
     minBillMinor: number | null;
-    source: "manual" | "funzone" | "xp_draw" | "points_shop" | "referral" | "campaign";
+    source: "manual" | "funzone" | "xp_draw" | "points_shop" | "referral" | "campaign" | "collab";
     pointsCost: number | null;
+    collabTriggerVendorProfileId: string | null;
     fundedBy: string | null;
     wanoSharePct: number | null;
     totalCap: number | null;
@@ -42,6 +45,7 @@ export function RewardEditForm({
   };
   listingOptions: ListingOption[];
   eventOptions: EventOption[];
+  vendorOptions: VendorOption[];
 }) {
   const [state, formAction, pending] = useActionState(updateRewardAction, initialState);
   const [discountType, setDiscountType] = useState<DiscountType>(reward.discountType);
@@ -99,6 +103,27 @@ export function RewardEditForm({
           (self-claim, Fun Zone, XP draw, points shop) and changing it after
           the fact would strand whatever mints against the old one. */}
       <input type="hidden" name="source" value={reward.source} />
+
+      {reward.source === "collab" && (
+        <div>
+          <label className="text-sm font-medium text-ink">Triggered by visiting</label>
+          <select
+            name="collabTriggerVendorProfileId"
+            required
+            defaultValue={reward.collabTriggerVendorProfileId ?? ""}
+            className="mt-1 w-full rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm outline-none focus:border-ember"
+          >
+            <option value="" disabled>
+              Choose the trigger vendor
+            </option>
+            {vendorOptions.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.businessName}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {reward.source === "points_shop" && (
         <div>

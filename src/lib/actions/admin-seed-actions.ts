@@ -12,6 +12,7 @@ import {
   seedDemoRewards,
   seedJournalPosts,
   seedLaunchClubs,
+  seedWano40DiscoveriesTrail,
 } from "@/lib/seed-content";
 
 /** One-time (but safe to re-run) production bootstrap for Milestone S:
@@ -76,6 +77,14 @@ export async function runDemoRewardsBackfillAction() {
   revalidatePath("/admin/rewards");
   revalidatePath("/admin/funzone");
   revalidatePath("/admin/match-day");
+  return result;
+}
+
+export async function runWano40TrailSeedAction() {
+  const session = await requireAdminLevel("super");
+  const result = await seedWano40DiscoveriesTrail();
+  await logAdminAction(session.userId, "seed.wano_40_trail_run", "Ran the Wano 40 Discoveries trail seed");
+  revalidatePath("/admin/trails");
   return result;
 }
 

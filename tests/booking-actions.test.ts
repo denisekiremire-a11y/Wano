@@ -32,6 +32,7 @@ vi.mock("next/navigation", async () => {
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/auth", () => ({
   requireRole: vi.fn(async () => ({ userId: "user-1", role: "traveller", email: "amina@example.com" })),
+  requireVerifiedTraveller: vi.fn(async () => ({ userId: "user-1", role: "traveller", email: "amina@example.com" })),
 }));
 vi.mock("@/lib/analytics", () => ({ logEvent: vi.fn() }));
 vi.mock("@/lib/booking-notifications", () => ({

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { DistanceBadge } from "@/components/afcon/distance-badge";
+import { BestPriceBadge } from "@/components/best-price-badge";
 import { HeartIcon } from "@/components/icons";
 import { ListingTypeIcon } from "@/components/listing-type-icon";
 import { OfferTeaser } from "@/components/offer-teaser";
@@ -61,6 +62,7 @@ export function PartnerCard({
               {listingTypeLabels[type]}
             </span>
             <VerifiedBadge status={vendor.accreditationStatus} />
+            <BestPriceBadge show={vendor.bestPriceOnWano} />
           </div>
           {session?.role === "traveller" ? (
             <SaveButton listingId={listing.id} initialSaved={saved ?? false} />

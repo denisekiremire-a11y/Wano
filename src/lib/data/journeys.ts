@@ -124,7 +124,8 @@ export async function searchListings(filters: ListingSearchFilters = {}) {
       promoCodes,
       and(eq(promoCodes.listingId, listings.id), eq(promoCodes.active, true)),
     )
-    .where(and(...conditions));
+    .where(and(...conditions))
+    .orderBy(desc(vendorProfiles.bestPriceOnWano));
 }
 
 /** A single listing (with offer/vendor/promo) for the detail page — not

@@ -13,7 +13,7 @@ import { generateVoucherCode } from "@/lib/codes";
 import type { DbOrTx } from "@/lib/db-context";
 import { withRlsContext } from "@/lib/db-context";
 import { enforceBudgetCapIfNeeded } from "@/lib/data/budget";
-import { getOwningVendorProfileId, getRewardsSummary, getUserRewardById } from "@/lib/data/rewards";
+import { getClaimableRewardsAtVendorForTraveller, getOwningVendorProfileId, getRewardsSummary, getUserRewardById } from "@/lib/data/rewards";
 import { vendorRewardContentSchema } from "@/lib/actions/reward-shared";
 import { getPendingEditSubmission } from "@/lib/data/submissions";
 import { getTravellerProfileById, getTravellerProfileByUserId } from "@/lib/data/traveller";
@@ -21,6 +21,7 @@ import { getVendorProfileByUserId } from "@/lib/data/vendor";
 import { notifyAdmin } from "@/lib/notify";
 import { notifyRewardClaimed, notifyRewardRedeemed } from "@/lib/reward-notifications";
 import { signRewardToken, verifyRewardToken } from "@/lib/reward-token";
+import { signVisitorToken, verifyVisitorToken } from "@/lib/visitor-token";
 import type { ActionState } from "@/lib/validation";
 
 // UGX has no subdivision, but every "minor unit" integer in this codebase
@@ -126,6 +127,36 @@ export async function mintUserReward(travellerId: string, rewardId: string) {
   await notifyRewardClaimed(created.id);
 
   return created;
+}
+
+/** Wano Collabs issuance — called from the booking-completion cron, same
+ * spot as the trail-completion check, right after a booking flips to
+ * completed. Finds every active "collab" reward this vendor triggers and
+ * mints one for the traveller via the unchanged mintUserReward (its
+ * existing cap/status/window checks already stop issuance once a cap
+ * fills — "That reward has run out" and similar are expected, not real
+ * failures, so each one is caught and skipped rather than surfaced). */
+export async function issueCollabRewardsForBooking(travellerId: string, vendorProfileId: string) {
+  const candidates = await db
+    .select()
+    .from(rewards)
+    .where(
+      and(
+        eq(rewards.source, "collab"),
+        eq(rewards.active, true),
+        eq(rewards.status, "active"),
+        eq(rewards.collabTriggerVendorProfileId, vendorProfileId),
+      ),
+    );
+
+  for (const reward of candidates) {
+    try {
+      await mintUserReward(travellerId, reward.id);
+    } catch {
+      // Expected for a filled cap or a reward that fell out of its window
+      // between the select above and the mint — nothing to surface here.
+    }
+  }
 }
 
 /** Spends points on a points-shop reward the traveller picked. Points
@@ -243,6 +274,52 @@ export async function generateRewardQrAction(userRewardId: string) {
   const qrDataUrl = await QRCode.toDataURL(verifyUrl, { margin: 1, width: 240 });
 
   return { qrDataUrl, expiresInSeconds: 120 };
+}
+
+/** Generates a fresh 120s signed QR for this traveller's own personal
+ * "Wano QR" — same refresh-while-open pattern as generateRewardQrAction,
+ * just encoding the traveller themself (visitor-token.ts) rather than one
+ * specific voucher. Scanned by venue staff to see this traveller's
+ * claimable rewards at that venue (see verifyVisitorTokenForVendor). */
+export async function generateVisitorQrAction() {
+  const session = await requireRole("traveller");
+  const travellerProfile = await getTravellerProfileByUserId(session.userId);
+  if (!travellerProfile) throw new Error("Traveller profile not found.");
+
+  const token = await signVisitorToken(travellerProfile.id);
+  const verifyUrl = `${APP_URL}/vendor/dashboard/redeem/visitor/${token}`;
+  const qrDataUrl = await QRCode.toDataURL(verifyUrl, { margin: 1, width: 240 });
+
+  return { qrDataUrl, expiresInSeconds: 120 };
+}
+
+export type VisitorCheck =
+  | { ok: true; travellerName: string; claimable: Awaited<ReturnType<typeof getClaimableRewardsAtVendorForTraveller>> }
+  | { ok: false; reason: "invalid" };
+
+/** Server-side check for the /vendor/dashboard/redeem/visitor/[token]
+ * page — validates the QR token, then lists this traveller's claimable
+ * vouchers at this vendor's own listings/events. Redemption itself still
+ * goes through the existing RedeemVoucherPanel/markRewardRedeemedAction
+ * per voucher, unchanged — this only resolves who's standing there and
+ * what they can claim. */
+export async function verifyVisitorTokenForVendor(token: string): Promise<VisitorCheck> {
+  const session = await requireRole("vendor");
+  const vendorProfile = await getVendorProfileByUserId(session.userId);
+  if (!vendorProfile) return { ok: false, reason: "invalid" };
+
+  const decoded = await verifyVisitorToken(token);
+  if (!decoded) return { ok: false, reason: "invalid" };
+
+  const traveller = await getTravellerProfileById(decoded.travellerProfileId);
+  if (!traveller) return { ok: false, reason: "invalid" };
+
+  const claimable = await withRlsContext(
+    { userId: session.userId, role: "vendor", vendorProfileId: vendorProfile.id },
+    (tx) => getClaimableRewardsAtVendorForTraveller(decoded.travellerProfileId, vendorProfile.id, tx),
+  );
+
+  return { ok: true, travellerName: traveller.displayName, claimable };
 }
 
 export type RedeemCheck =
@@ -509,8 +586,9 @@ const rewardSchema = z.object({
   discountType: z.enum(["percent", "fixed", "freebie", "spend_perk", "points"]),
   discountValue: z.string().optional().or(z.literal("")),
   minBillMinor: z.coerce.number().int().min(0).optional(),
-  source: z.enum(["manual", "funzone", "xp_draw", "points_shop"]),
+  source: z.enum(["manual", "funzone", "xp_draw", "points_shop", "collab"]),
   pointsCost: z.coerce.number().int().optional(),
+  collabTriggerVendorProfileId: z.string().optional().or(z.literal("")),
   fundedBy: z.string().optional().or(z.literal("")),
   wanoSharePct: z.coerce.number().int().min(0).max(100).optional(),
   totalCap: z.coerce.number().int().min(1).optional(),
@@ -530,6 +608,7 @@ function rewardFieldsFromFormData(formData: FormData) {
     minBillMinor: formData.get("minBillMinor") || undefined,
     source: formData.get("source") || "manual",
     pointsCost: formData.get("pointsCost") || undefined,
+    collabTriggerVendorProfileId: formData.get("collabTriggerVendorProfileId") ?? "",
     fundedBy: formData.get("fundedBy") ?? "",
     wanoSharePct: formData.get("wanoSharePct") || undefined,
     totalCap: formData.get("totalCap") || undefined,
@@ -547,6 +626,9 @@ function validateRewardFields(data: z.infer<typeof rewardSchema>): string | null
   }
   if (data.source === "points_shop" && (!data.pointsCost || data.pointsCost < 1)) {
     return "Enter how many points this reward costs to redeem.";
+  }
+  if (data.source === "collab" && !data.collabTriggerVendorProfileId) {
+    return "Pick the vendor whose completed booking triggers this collab.";
   }
   return null;
 }
@@ -581,6 +663,7 @@ export async function createRewardAction(_prev: ActionState, formData: FormData)
         minBillMinor: parsed.data.discountType === "spend_perk" ? parsed.data.minBillMinor : null,
         source: parsed.data.source,
         pointsCost: parsed.data.source === "points_shop" ? parsed.data.pointsCost : null,
+        collabTriggerVendorProfileId: parsed.data.source === "collab" ? parsed.data.collabTriggerVendorProfileId || null : null,
         fundedBy: parsed.data.fundedBy || null,
         wanoSharePct: parsed.data.wanoSharePct ?? null,
         totalCap: parsed.data.totalCap ?? null,
@@ -634,6 +717,7 @@ export async function updateRewardAction(_prev: ActionState, formData: FormData)
         discountValue: parsed.data.discountType === "freebie" ? null : parsed.data.discountValue || null,
         minBillMinor: parsed.data.discountType === "spend_perk" ? parsed.data.minBillMinor : null,
         pointsCost: parsed.data.source === "points_shop" ? parsed.data.pointsCost : null,
+        collabTriggerVendorProfileId: parsed.data.source === "collab" ? parsed.data.collabTriggerVendorProfileId || null : null,
         fundedBy: parsed.data.fundedBy || null,
         wanoSharePct: parsed.data.wanoSharePct ?? null,
         totalCap: parsed.data.totalCap ?? null,

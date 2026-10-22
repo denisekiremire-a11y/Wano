@@ -5,6 +5,7 @@ import { getListingImageIdsFor } from "@/lib/data/listing-images";
 import { requireAdminPage } from "@/lib/auth";
 import { withRlsContext } from "@/lib/db-context";
 import { AccreditationPanel } from "./accreditation-panel";
+import { BestPriceToggle } from "./best-price-toggle";
 import { DocumentReviewRow } from "./document-review-row";
 import { ListingForm } from "./listing-form";
 
@@ -38,6 +39,10 @@ export default async function AdminVendorDetailPage({
       </div>
 
       <AccreditationPanel vendorProfileId={vendorProfile.id} status={vendorProfile.accreditationStatus} />
+
+      <section className="border border-ink/10 bg-white p-5">
+        <BestPriceToggle vendorProfileId={vendorProfile.id} value={vendorProfile.bestPriceOnWano} />
+      </section>
 
       <section className="space-y-3 border border-ink/10 bg-white p-5">
         <h2 className="font-serif-editorial text-lg text-ink">KYC documents</h2>
@@ -86,6 +91,7 @@ export default async function AdminVendorDetailPage({
                 discountText: listingRow.offer?.discountText ?? "",
                 freebieText: listingRow.offer?.freebieText ?? "",
                 journeyIds: listingRow.journeyTags.map((j) => j.id),
+                wanoOnlyExtras: listingRow.listing.wanoOnlyExtras,
                 hotel: listingRow.hotel,
                 restaurant: listingRow.restaurant,
                 experience: listingRow.experience,

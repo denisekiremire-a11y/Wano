@@ -25,7 +25,7 @@ export async function getTrendingListings(limit = 24): Promise<TrendingListing[]
     .from(listings)
     .innerJoin(vendorProfiles, eq(listings.vendorProfileId, vendorProfiles.id))
     .where(and(eq(vendorProfiles.accreditationStatus, "trusted"), ...listingPublishConditions))
-    .orderBy(desc(listings.viewCount))
+    .orderBy(desc(vendorProfiles.bestPriceOnWano), desc(listings.viewCount))
     .limit(limit);
 
   return rows.map((r) => ({

@@ -45,7 +45,7 @@ export function RedeemPointsRewardButton({
             <p className="font-medium text-forest-900">{title}</p>
             <p>{discountLabel}</p>
             <p className="mt-2">
-              {pointsCost.toLocaleString()} pts will be deducted from your balance, and it&apos;ll show up in your Passport
+              {pointsCost.toLocaleString()} XP will be deducted from your balance, and it&apos;ll show up in your Passport
               wallet.
             </p>
           </>
@@ -59,7 +59,7 @@ export function RedeemPointsRewardButton({
             disabled={pending}
             className="rounded-full bg-marigold-500 px-3 py-1.5 text-xs font-semibold text-forest-950 transition hover:bg-marigold-400 disabled:opacity-60"
           >
-            {pending ? "Redeeming…" : `Redeem · ${pointsCost.toLocaleString()} pts`}
+            {pending ? "Redeeming…" : `Redeem · ${pointsCost.toLocaleString()} XP`}
           </button>
         )}
       />

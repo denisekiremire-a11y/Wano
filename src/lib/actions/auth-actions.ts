@@ -15,6 +15,7 @@ import {
 import { hashPassword, verifyPassword } from "@/lib/auth";
 import { logEvent } from "@/lib/analytics";
 import { finalizeFunzoneClaim } from "@/lib/actions/funzone-actions";
+import { sendVerificationEmail } from "@/lib/actions/email-verification-actions";
 import { withRlsContext } from "@/lib/db-context";
 import { notifyAdmin } from "@/lib/notify";
 import { generateReferralCode } from "@/lib/referral";
@@ -150,6 +151,8 @@ export async function signupAction(_prev: ActionState, formData: FormData): Prom
       username: await uniqueUsername(parsed.data.name),
     })
     .returning();
+
+  await sendVerificationEmail(user.id, user.email);
 
   if (parsed.data.role === "traveller") {
     let referrer = null;

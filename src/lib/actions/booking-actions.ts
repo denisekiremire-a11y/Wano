@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { bookingItems, bookings, events, listingItems, listingJourneys, listings, restaurantDetails, rewards, userRewards } from "@/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requireRole, requireVerifiedTraveller } from "@/lib/auth";
 import { logEvent } from "@/lib/analytics";
 import {
   notifyTravellerOfBookingStatus,
@@ -92,7 +92,7 @@ export async function previewBookingAction(formData: FormData) {
   const listingId = formData.get("listingId");
   if (typeof listingId !== "string" || !listingId) throw new Error("Missing listing.");
 
-  await requireRole("traveller");
+  await requireVerifiedTraveller();
 
   const [listing] = await db.select().from(listings).where(eq(listings.id, listingId)).limit(1);
   if (!listing || !listing.active) throw new Error("This listing is not available.");
@@ -120,7 +120,7 @@ export async function bookListingFormAction(formData: FormData) {
   const listingId = formData.get("listingId");
   if (typeof listingId !== "string" || !listingId) throw new Error("Missing listing.");
 
-  const session = await requireRole("traveller");
+  const session = await requireVerifiedTraveller();
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
   if (!travellerProfile) throw new Error("Traveller profile not found.");
 
@@ -283,7 +283,7 @@ export async function previewEventTicketAction(formData: FormData) {
   const eventId = formData.get("eventId");
   if (typeof eventId !== "string" || !eventId) throw new Error("Missing event.");
 
-  await requireRole("traveller");
+  await requireVerifiedTraveller();
 
   const [event] = await db.select().from(events).where(eq(events.id, eventId)).limit(1);
   if (!event || !event.active) throw new Error("This event is not available.");
@@ -299,7 +299,7 @@ export async function buyEventTicketsAction(formData: FormData) {
   const eventId = formData.get("eventId");
   if (typeof eventId !== "string" || !eventId) throw new Error("Missing event.");
 
-  const session = await requireRole("traveller");
+  const session = await requireVerifiedTraveller();
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
   if (!travellerProfile) throw new Error("Traveller profile not found.");
 
