@@ -6,7 +6,7 @@ import { CopyCodeButton } from "@/components/copy-code-button";
 import { ShareBookingButton } from "@/components/share-booking-button";
 import { TicketQrCard } from "@/components/ticket-qr-card";
 import { requireRole } from "@/lib/auth";
-import { CANCELLATION_CUTOFF_HOURS } from "@/lib/booking-config";
+import { CANCELLATION_CUTOFF_HOURS, REQUEST_EXPIRY_HOURS } from "@/lib/booking-config";
 import { formatMinor } from "@/lib/currency";
 import { getBookingByRef, getBookingItems, getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { verifyFlutterwaveTransaction } from "@/lib/flutterwave";
@@ -22,7 +22,7 @@ const STATUS_COPY: Record<string, { label: string; detail: string }> = {
   },
   pending: {
     label: "Booking request sent",
-    detail: "This is confirmed on our end — we've passed it to the partner, who'll accept it from their dashboard shortly.",
+    detail: `This is confirmed on our end — we've passed it to the partner. The vendor replies within ${REQUEST_EXPIRY_HOURS} hours, or your request expires.`,
   },
   confirmed: {
     label: "Booking confirmed",
@@ -216,6 +216,7 @@ export default async function BookingConfirmationPage({
                 <span>Total</span>
                 <span>{formatMinor(booking.totalMinor)}</span>
               </p>
+              {booking.status !== "held" && <p className="text-xs font-normal text-ink/50">Pay at the venue.</p>}
             </div>
           )}
         </div>

@@ -8,7 +8,7 @@ import { SaveButton } from "@/components/save-button";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { GettingThere, type TransportOption } from "@/components/afcon/getting-there";
 import { getBirthdayPerksForListing } from "@/lib/data/birthday";
-import { CANCELLATION_CUTOFF_HOURS } from "@/lib/booking-config";
+import { CANCELLATION_CUTOFF_HOURS, REQUEST_EXPIRY_HOURS } from "@/lib/booking-config";
 import { formatListingPrice, formatMinor } from "@/lib/currency";
 import { AFCON_CLUB_ENABLED } from "@/lib/feature-flags";
 import {
@@ -306,11 +306,20 @@ export default async function ListingDetailPage({
               </div>
             </div>
 
-            {listing.bookingMode === "instant" && (
+            {listing.bookingMode === "instant" ? (
               <p className="mt-4 border-l-2 border-ink/20 pl-3 text-xs text-ink/60">
                 Free cancellation up to {CANCELLATION_CUTOFF_HOURS} hours before your slot. After that, this
                 booking is non-refundable.
               </p>
+            ) : (
+              <div className="mt-4 space-y-1 border-l-2 border-ink/20 pl-3 text-xs text-ink/60">
+                <p className="font-medium text-ink/80">Pay at the venue — {formatMinor(reviewTotals.totalMinor)}.</p>
+                <p>
+                  Free cancellation up to {CANCELLATION_CUTOFF_HOURS} hours before your slot. After that, this
+                  booking is non-refundable.
+                </p>
+                <p>The vendor replies within {REQUEST_EXPIRY_HOURS} hours, or your request expires.</p>
+              </div>
             )}
 
             <form action={bookListingFormAction} className="mt-4">
