@@ -415,6 +415,38 @@ export async function getVendorActiveCampaigns(vendorProfileId: string, client: 
   return all.filter((r) => targets.some((t) => t.targetType === r.targetType && t.targetId === r.targetId));
 }
 
+// This traveller's claimed vouchers redeemable at one specific vendor —
+// what the vendor dashboard's "scan a visitor" flow shows after scanning
+// their personal QR. Same own-listings/own-events resolution approach as
+// getVendorActiveCampaigns, but against every listing (not just one) —
+// see getVendorRewards for the same multi-listing pattern.
+export async function getClaimableRewardsAtVendorForTraveller(
+  travellerId: string,
+  vendorProfileId: string,
+  client: DbOrTx = db,
+) {
+  const [ownListings, ownEvents] = await Promise.all([
+    db.select({ id: listings.id }).from(listings).where(eq(listings.vendorProfileId, vendorProfileId)),
+    db.select({ id: events.id }).from(events).where(eq(events.organizerVendorProfileId, vendorProfileId)),
+  ]);
+  const listingIds = ownListings.map((l) => l.id);
+  const eventIds = ownEvents.map((e) => e.id);
+  if (listingIds.length === 0 && eventIds.length === 0) return [];
+
+  const rows = await client
+    .select({ userReward: userRewards, reward: rewards })
+    .from(userRewards)
+    .innerJoin(rewards, eq(userRewards.rewardId, rewards.id))
+    .where(and(eq(userRewards.travellerId, travellerId), eq(userRewards.status, "claimed")))
+    .orderBy(desc(userRewards.claimedAt));
+
+  return rows.filter(
+    ({ userReward }) =>
+      (userReward.targetType === "listing" && listingIds.includes(userReward.targetId)) ||
+      (userReward.targetType === "event" && eventIds.includes(userReward.targetId)),
+  );
+}
+
 // Admin voucher search — by code, traveller (name/email), venue, and/or
 // status. venueId filters after the fact since a voucher's venue is only
 // resolvable via its polymorphic target (see getOwningVendorProfileId),

@@ -13,7 +13,7 @@ import { generateVoucherCode } from "@/lib/codes";
 import type { DbOrTx } from "@/lib/db-context";
 import { withRlsContext } from "@/lib/db-context";
 import { enforceBudgetCapIfNeeded } from "@/lib/data/budget";
-import { getOwningVendorProfileId, getRewardsSummary, getUserRewardById } from "@/lib/data/rewards";
+import { getClaimableRewardsAtVendorForTraveller, getOwningVendorProfileId, getRewardsSummary, getUserRewardById } from "@/lib/data/rewards";
 import { vendorRewardContentSchema } from "@/lib/actions/reward-shared";
 import { getPendingEditSubmission } from "@/lib/data/submissions";
 import { getTravellerProfileById, getTravellerProfileByUserId } from "@/lib/data/traveller";
@@ -21,6 +21,7 @@ import { getVendorProfileByUserId } from "@/lib/data/vendor";
 import { notifyAdmin } from "@/lib/notify";
 import { notifyRewardClaimed, notifyRewardRedeemed } from "@/lib/reward-notifications";
 import { signRewardToken, verifyRewardToken } from "@/lib/reward-token";
+import { signVisitorToken, verifyVisitorToken } from "@/lib/visitor-token";
 import type { ActionState } from "@/lib/validation";
 
 // UGX has no subdivision, but every "minor unit" integer in this codebase
@@ -243,6 +244,52 @@ export async function generateRewardQrAction(userRewardId: string) {
   const qrDataUrl = await QRCode.toDataURL(verifyUrl, { margin: 1, width: 240 });
 
   return { qrDataUrl, expiresInSeconds: 120 };
+}
+
+/** Generates a fresh 120s signed QR for this traveller's own personal
+ * "Wano QR" — same refresh-while-open pattern as generateRewardQrAction,
+ * just encoding the traveller themself (visitor-token.ts) rather than one
+ * specific voucher. Scanned by venue staff to see this traveller's
+ * claimable rewards at that venue (see verifyVisitorTokenForVendor). */
+export async function generateVisitorQrAction() {
+  const session = await requireRole("traveller");
+  const travellerProfile = await getTravellerProfileByUserId(session.userId);
+  if (!travellerProfile) throw new Error("Traveller profile not found.");
+
+  const token = await signVisitorToken(travellerProfile.id);
+  const verifyUrl = `${APP_URL}/vendor/dashboard/redeem/visitor/${token}`;
+  const qrDataUrl = await QRCode.toDataURL(verifyUrl, { margin: 1, width: 240 });
+
+  return { qrDataUrl, expiresInSeconds: 120 };
+}
+
+export type VisitorCheck =
+  | { ok: true; travellerName: string; claimable: Awaited<ReturnType<typeof getClaimableRewardsAtVendorForTraveller>> }
+  | { ok: false; reason: "invalid" };
+
+/** Server-side check for the /vendor/dashboard/redeem/visitor/[token]
+ * page — validates the QR token, then lists this traveller's claimable
+ * vouchers at this vendor's own listings/events. Redemption itself still
+ * goes through the existing RedeemVoucherPanel/markRewardRedeemedAction
+ * per voucher, unchanged — this only resolves who's standing there and
+ * what they can claim. */
+export async function verifyVisitorTokenForVendor(token: string): Promise<VisitorCheck> {
+  const session = await requireRole("vendor");
+  const vendorProfile = await getVendorProfileByUserId(session.userId);
+  if (!vendorProfile) return { ok: false, reason: "invalid" };
+
+  const decoded = await verifyVisitorToken(token);
+  if (!decoded) return { ok: false, reason: "invalid" };
+
+  const traveller = await getTravellerProfileById(decoded.travellerProfileId);
+  if (!traveller) return { ok: false, reason: "invalid" };
+
+  const claimable = await withRlsContext(
+    { userId: session.userId, role: "vendor", vendorProfileId: vendorProfile.id },
+    (tx) => getClaimableRewardsAtVendorForTraveller(decoded.travellerProfileId, vendorProfile.id, tx),
+  );
+
+  return { ok: true, travellerName: traveller.displayName, claimable };
 }
 
 export type RedeemCheck =

@@ -14,6 +14,7 @@ import { PastVouchersSection } from "@/components/past-vouchers-section";
 import { RedeemPointsRewardButton } from "@/components/redeem-points-reward-button";
 import { ResendVerificationButton } from "@/components/resend-verification-button";
 import { ReviewForm } from "@/components/review-form";
+import { VisitorQrCard } from "@/components/visitor-qr-card";
 import { PASSPORT_TABS, type PassportTabKey } from "@/lib/passport-tabs";
 import { getSession, type SessionPayload } from "@/lib/session";
 import { claimDealFormAction } from "@/lib/actions/deal-actions";
@@ -541,6 +542,8 @@ function RewardsTab({
           </p>
         </div>
       </div>
+
+      <VisitorQrCard />
 
       <section>
         <h3 className="font-serif-editorial text-lg text-ink">Redeem your XP</h3>
