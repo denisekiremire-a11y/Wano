@@ -79,6 +79,11 @@ export type ReserveSlotHoldInput = {
   appliedUserRewardId: string | null;
   subtotalMinor: number | null;
   totalMinor: number | null;
+  // UGX commission for this booking — 0 unless the Part B paid-pilot flow
+  // is actually active for this vendor/booking. Computed by the caller via
+  // computeEstimatedCommission (booking-shared.ts), not here, since that
+  // needs the vendor's paidBookingsPilot flag this module doesn't load.
+  estimatedCommission: string;
   lineItems: { itemId: string; name: string; priceMinor: number | null; quantity: number }[];
 };
 
@@ -122,7 +127,7 @@ export async function reserveSlotHold(
         status: "held",
         heldUntil,
         bookingRef: generateBookingRef(),
-        estimatedCommission: "15.00",
+        estimatedCommission: input.estimatedCommission,
         subtotalMinor: input.subtotalMinor,
         totalMinor: input.totalMinor,
       })

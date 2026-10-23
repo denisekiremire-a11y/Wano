@@ -519,7 +519,9 @@ async function main() {
           journeyId: bookJourneyId,
           status: "confirmed",
           bookingRef: bookingRef(),
-          estimatedCommission: "18.00",
+          // Every real booking today is pay-at-venue, so seed data should
+          // match reality instead of a vestigial placeholder fee.
+          estimatedCommission: "0",
         })
         .returning();
 
