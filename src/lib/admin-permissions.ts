@@ -43,6 +43,7 @@ export const ADMIN_MIN_LEVEL = {
   // flag is on, same "demo/backfill utility" precedent as the seed pages
   // below.
   "/admin/rewards/reserve": "super",
+  "/admin/rewards/price-match": "super",
   "/admin/funzone": "super",
   "/admin/match-day": "super",
   "/admin/journal": "super",
