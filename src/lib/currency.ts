@@ -10,13 +10,12 @@ export function formatCostRange(minMinor: number, maxMinor: number, currency = "
   return `${currency} ${new Intl.NumberFormat("en-UG").format(minMinor)} – ${new Intl.NumberFormat("en-UG").format(maxMinor)}`;
 }
 
-/** bookings.estimatedCommission is a decimal string/number (e.g. "15.00")
- * denominated in USD — Wano's own referral fee, tracked separately from the
- * UGX price the traveller pays. Formats it properly instead of the raw
- * `$${n.toFixed(2)}` concatenation this used to be, which had no thousands
- * separator. */
+/** bookings.estimatedCommission is a decimal string/number, UGX-denominated
+ * like everything else on a booking — Wano's cut of a Part B paid-pilot
+ * booking, 0 for every pay-at-venue booking (which is still all of them
+ * outside the pilot). Shares formatMinor's thousands-separator style. */
 export function formatCommission(amount: string | number) {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(amount));
+  return formatMinor(Math.round(Number(amount)));
 }
 
 /** The one formatter for a listing's price line — "From UGX 670,000/night",

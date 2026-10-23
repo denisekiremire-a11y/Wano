@@ -60,6 +60,7 @@ function holdInput(overrides: Partial<ReserveSlotHoldInput> & { slotId: string; 
     appliedUserRewardId: null,
     subtotalMinor: null,
     totalMinor: null,
+    estimatedCommission: "0",
     lineItems: [],
     ...overrides,
   };

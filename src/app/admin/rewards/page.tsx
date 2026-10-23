@@ -43,6 +43,12 @@ export default async function AdminRewardsPage() {
           <Link href="/admin/rewards/settlement" className="hover:underline">
             Weekly settlement →
           </Link>
+          <Link href="/admin/rewards/reserve" className="hover:underline">
+            Points reserve →
+          </Link>
+          <Link href="/admin/rewards/price-match" className="hover:underline">
+            Price match reports →
+          </Link>
         </div>
       </div>
 

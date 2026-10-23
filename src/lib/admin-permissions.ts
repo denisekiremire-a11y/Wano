@@ -39,6 +39,11 @@ export const ADMIN_MIN_LEVEL = {
   "/admin/rewards/points": "super",
   "/admin/rewards/budget": "super",
   "/admin/rewards/settlement": "super",
+  // Part B paid-bookings pilot only — not linked from nav until the pilot
+  // flag is on, same "demo/backfill utility" precedent as the seed pages
+  // below.
+  "/admin/rewards/reserve": "super",
+  "/admin/rewards/price-match": "super",
   "/admin/funzone": "super",
   "/admin/match-day": "super",
   "/admin/journal": "super",

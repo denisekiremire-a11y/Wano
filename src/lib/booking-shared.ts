@@ -1,10 +1,26 @@
 import type { ListingItem } from "@/lib/data/listing-items";
 import type { ListingType } from "@/lib/listing-type";
+import { COMMISSION_BY_LISTING_TYPE } from "@/lib/rewards-config";
 
 export type BookingItemSelection = { itemId: string; quantity: number };
 
 export function generateBookingRef() {
   return `PAM-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+}
+
+/** The UGX amount to record on bookings.estimatedCommission — 0 unless
+ * this specific booking is actually going through the Part B paid-pilot
+ * flow (flag on, the vendor opted in, and it's really being paid online,
+ * not request-mode/pay-at-venue). Despite the column's name and its
+ * formatCommission display, this was never real money before Part B —
+ * every booking today is pay-at-venue, so it's always 0. */
+export function computeEstimatedCommission(
+  listingType: ListingType,
+  totalMinor: number,
+  paidPilotActive: boolean,
+): string {
+  if (!paidPilotActive) return "0";
+  return (totalMinor * COMMISSION_BY_LISTING_TYPE[listingType]).toFixed(2);
 }
 
 export const bookingActionLabel: Record<ListingType, string> = {
