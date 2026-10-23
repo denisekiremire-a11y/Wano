@@ -1,8 +1,9 @@
 import "server-only";
-import { and, desc, eq, gte, ilike, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { pointsLedger, travellerProfiles, users } from "@/db/schema";
+import { bookings, pointsLedger, travellerProfiles, users } from "@/db/schema";
 import { withRlsContext } from "@/lib/db-context";
+import { PAID_BOOKINGS_ENABLED } from "@/lib/feature-flags";
 
 // 1 point = UGX 50 (business rule). Tiers are based on points+XP *earned*
 // in the trailing 12 months, not lifetime — a corrective reversing entry
@@ -56,6 +57,83 @@ export async function getPointsSummary(travellerId: string) {
     getPointsLedgerFor(travellerId),
   ]);
   return { balance, earnedLast12Months, tier: tierForPoints(earnedLast12Months), ledger };
+}
+
+export type SpendPointsResult =
+  | { error: string }
+  | { outcome: "applied"; pointsApplied: number; appliedMinor: number };
+
+/** Applies points toward a booking's cost — Part B pilot only, and only
+ * before the booking is confirmed (pointsAppliedMinor is set once, at
+ * booking time, never adjusted after). Gated on phone verification
+ * whenever the pilot flag is on: a simplification of the plan's
+ * "referral/welcome points become spendable only once phone is
+ * verified" — rather than tagging which of a traveller's ledger rows
+ * came from referral/welcome (the ledger has no such split at balance
+ * time), every point a traveller holds needs phone verification to
+ * spend once the pilot is live. The vendor still gets paid totalMinor
+ * in full outside this app (per the plan, Wano's reserve covers the
+ * points-covered share) — this function only ever touches
+ * pointsLedger/bookings, nothing payment-related. */
+export async function spendPointsOnBooking(
+  bookingId: string,
+  travellerId: string,
+  pointsToSpend: number,
+): Promise<SpendPointsResult> {
+  if (!PAID_BOOKINGS_ENABLED) return { error: "Points can't be applied to bookings right now." };
+  if (!Number.isInteger(pointsToSpend) || pointsToSpend <= 0) return { error: "Enter a valid number of points." };
+
+  const [booking] = await db
+    .select({
+      travellerId: bookings.travellerId,
+      totalMinor: bookings.totalMinor,
+      pointsAppliedMinor: bookings.pointsAppliedMinor,
+      status: bookings.status,
+      bookingRef: bookings.bookingRef,
+    })
+    .from(bookings)
+    .where(eq(bookings.id, bookingId))
+    .limit(1);
+  if (!booking || booking.travellerId !== travellerId) return { error: "Booking not found." };
+  if (booking.status !== "held" && booking.status !== "pending") {
+    return { error: "Points can only be applied before a booking is confirmed." };
+  }
+  if (booking.pointsAppliedMinor) return { error: "Points have already been applied to this booking." };
+  if (!booking.totalMinor) return { error: "This booking has no price to apply points against." };
+
+  const [traveller] = await db
+    .select({ phoneVerifiedAt: travellerProfiles.phoneVerifiedAt })
+    .from(travellerProfiles)
+    .where(eq(travellerProfiles.id, travellerId))
+    .limit(1);
+  if (!traveller?.phoneVerifiedAt) return { error: "Verify your phone number to spend points." };
+
+  const appliedMinor = pointsToSpend * POINT_VALUE_MINOR;
+  if (appliedMinor > booking.totalMinor) return { error: "Can't apply more points than the booking total." };
+
+  const balance = await getPointsBalance(travellerId);
+  if (pointsToSpend > balance) return { error: "You don't have enough points." };
+
+  const applied = await withRlsContext({ role: "admin" }, async (tx) => {
+    const [updated] = await tx
+      .update(bookings)
+      .set({ pointsAppliedMinor: appliedMinor })
+      .where(and(eq(bookings.id, bookingId), isNull(bookings.pointsAppliedMinor)))
+      .returning({ id: bookings.id });
+    if (!updated) return false;
+
+    await tx.insert(pointsLedger).values({
+      travellerId,
+      delta: -pointsToSpend,
+      reason: `Applied to booking ${booking.bookingRef}`,
+      sourceType: "booking_spend",
+      sourceId: bookingId,
+    });
+    return true;
+  });
+  if (!applied) return { error: "Points have already been applied to this booking." };
+
+  return { outcome: "applied", pointsApplied: pointsToSpend, appliedMinor };
 }
 
 /** Admin traveller lookup by name, email, or referral code — small demo
