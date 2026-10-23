@@ -46,3 +46,17 @@ CREATE POLICY price_match_reports_update_admin ON price_match_reports FOR UPDATE
 ) WITH CHECK (
   current_setting('app.role', true) = 'admin'
 );
+
+-- phone_verification_codes: same "admin-only, the real access control is
+-- the raw code value itself" reasoning as email_verification_tokens — the
+-- sending/verifying actions run under withRlsContext({role: "admin"})
+-- after their own requireRole("traveller") + ownership checks, same
+-- trusted-system-write pattern used throughout this file.
+ALTER TABLE phone_verification_codes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE phone_verification_codes FORCE ROW LEVEL SECURITY;
+
+CREATE POLICY phone_verification_codes_admin_only ON phone_verification_codes FOR ALL USING (
+  current_setting('app.role', true) = 'admin'
+) WITH CHECK (
+  current_setting('app.role', true) = 'admin'
+);

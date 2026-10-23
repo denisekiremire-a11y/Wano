@@ -1064,6 +1064,22 @@ export const priceMatchReports = pgTable("price_match_reports", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Part B: short-lived WhatsApp OTP codes for travellerProfiles.
+// phoneVerifiedAt — same "admin-only, the real access control is the raw
+// value itself" reasoning as emailVerificationTokens, except the value
+// here is a guessable 6-digit code rather than an unguessable random
+// token, so it's also short-lived (10 minutes) and single-use (usedAt).
+export const phoneVerificationCodes = pgTable("phone_verification_codes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  travellerId: uuid("traveller_id")
+    .notNull()
+    .references(() => travellerProfiles.id, { onDelete: "cascade" }),
+  code: text("code").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const referralCreditStatusEnum = pgEnum("referral_credit_status", [
   "pending",
   "awarded",
