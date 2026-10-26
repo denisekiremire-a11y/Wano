@@ -713,6 +713,10 @@ export const events = pgTable("events", {
   // query, RSVP and ticket works unchanged; the series id only lets admin
   // see and end the whole run at once. Null for one-off events.
   seriesId: uuid("series_id"),
+  // For the home filters: the cheapest way in, in UGX (0 = free; null =
+  // not given), and whether it happens indoors (null = not given).
+  priceFromMinor: integer("price_from_minor"),
+  indoors: boolean("indoors"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -1051,6 +1055,23 @@ export const weeklyChallengeCompletions = pgTable(
     completedAt: timestamp("completed_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [unique().on(table.travellerId, table.weeklyChallengeId)],
+);
+
+// A partner's 30-second "tonight" line ("Live band from 8, 2-for-1
+// cocktails till 9"). One per venue per Kampala day; shown on the home page
+// for that day only.
+export const vendorTonightUpdates = pgTable(
+  "vendor_tonight_updates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    vendorProfileId: uuid("vendor_profile_id")
+      .notNull()
+      .references(() => vendorProfiles.id, { onDelete: "cascade" }),
+    kampalaDate: date("kampala_date").notNull(),
+    text: text("text").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.vendorProfileId, t.kampalaDate), index("vendor_tonight_updates_date_idx").on(t.kampalaDate)],
 );
 
 // A plan: "let's go here, then". One member makes it for a place or an

@@ -6,6 +6,8 @@ import { kampalaDayBounds, kampalaUpcomingWeekend } from "@/lib/kampala-time";
 import { listingPublishConditions } from "@/lib/listing-publish";
 import {
   assembleTonight,
+  CHEAP_MAX_MINOR,
+  type HomeFilter,
   TONIGHT_LIMIT,
   TONIGHT_MAX_PERKS,
   type TonightEvent,
@@ -26,7 +28,13 @@ function toTonightEvent(row: { event: typeof events.$inferSelect; organizer: { b
 
 /** Events still worth going to today (Kampala day): not started yet, or
  * started but with an end time still ahead. */
-async function getTodayEvents(now: Date, limit: number): Promise<TonightEvent[]> {
+function filterCondition(filter: HomeFilter | null) {
+  if (filter === "cheap") return lte(events.priceFromMinor, CHEAP_MAX_MINOR);
+  if (filter === "indoors") return eq(events.indoors, true);
+  return undefined;
+}
+
+async function getTodayEvents(now: Date, limit: number, filter: HomeFilter | null = null): Promise<TonightEvent[]> {
   const { start, end } = kampalaDayBounds(now);
   const rows = await db
     .select({ event: events, organizer: { businessName: vendorProfiles.businessName } })
@@ -38,6 +46,7 @@ async function getTodayEvents(now: Date, limit: number): Promise<TonightEvent[]>
         gte(events.startAt, start),
         lt(events.startAt, end),
         or(gte(events.startAt, now), gt(events.endAt, now))!,
+        filterCondition(filter),
       ),
     )
     .orderBy(asc(events.startAt))
@@ -45,14 +54,14 @@ async function getTodayEvents(now: Date, limit: number): Promise<TonightEvent[]>
   return rows.map(toTonightEvent);
 }
 
-async function getWeekendEvents(now: Date, limit: number): Promise<TonightEvent[]> {
+async function getWeekendEvents(now: Date, limit: number, filter: HomeFilter | null = null): Promise<TonightEvent[]> {
   const { start, end } = kampalaUpcomingWeekend(now);
   if (start >= end) return [];
   const rows = await db
     .select({ event: events, organizer: { businessName: vendorProfiles.businessName } })
     .from(events)
     .leftJoin(vendorProfiles, eq(events.organizerVendorProfileId, vendorProfiles.id))
-    .where(and(eq(events.active, true), gte(events.startAt, start), lt(events.startAt, end)))
+    .where(and(eq(events.active, true), gte(events.startAt, start), lt(events.startAt, end), filterCondition(filter)))
     .orderBy(asc(events.startAt))
     .limit(limit);
   return rows.map(toTonightEvent);
@@ -99,11 +108,13 @@ async function readLivePerks(client: DbOrTx, now: Date, limit: number): Promise<
 /** The home page's "Kampala, today" cards — never empty while there is any
  * event, perk or journey in the system. `journey` comes from the caller,
  * which already loads the journey list. */
-export async function getTonightFeed(journey: TonightJourney | null, now = new Date()) {
+export async function getTonightFeed(journey: TonightJourney | null, now = new Date(), filter: HomeFilter | null = null) {
+  // With a filter on, only matching events show: perks and the journey
+  // fallback are left out, since they can't promise the price or setting.
   const [today, perks, weekend] = await Promise.all([
-    getTodayEvents(now, TONIGHT_LIMIT),
-    getLivePerks(now, TONIGHT_MAX_PERKS),
-    getWeekendEvents(now, TONIGHT_LIMIT),
+    getTodayEvents(now, TONIGHT_LIMIT, filter),
+    filter ? Promise.resolve([]) : getLivePerks(now, TONIGHT_MAX_PERKS),
+    getWeekendEvents(now, TONIGHT_LIMIT, filter),
   ]);
-  return assembleTonight({ today, perks, weekend, journey });
+  return assembleTonight({ today, perks, weekend, journey: filter ? null : journey });
 }

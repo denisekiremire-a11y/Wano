@@ -43,6 +43,18 @@ export function CreateListedEventForm({ vendors }: { vendors: { id: string; name
           <input name="priceHint" placeholder="Free entry" className={input} />
         </label>
         <label className="text-sm font-medium text-ink">
+          Cheapest way in, UGX (for the &ldquo;Under UGX 30k&rdquo; filter)
+          <input name="priceFrom" type="number" min={0} step={1000} placeholder="0 for free" className={input} />
+        </label>
+        <label className="text-sm font-medium text-ink">
+          Indoors or outdoors
+          <select name="setting" className={input} defaultValue="">
+            <option value="">Not sure</option>
+            <option value="indoors">Indoors</option>
+            <option value="outdoors">Outdoors</option>
+          </select>
+        </label>
+        <label className="text-sm font-medium text-ink">
           Partner
           <select name="organizerVendorProfileId" className={input} defaultValue="">
             <option value="">None (show as a Wano pick)</option>

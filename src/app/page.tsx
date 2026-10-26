@@ -20,7 +20,8 @@ import { getSession } from "@/lib/session";
 import { getTonightFeed } from "@/lib/data/tonight";
 import { getHomeDrops, type DropView } from "@/lib/data/drops";
 import { formatKampalaDayTime, formatKampalaTime } from "@/lib/kampala-time";
-import type { TonightCard } from "@/lib/tonight";
+import { parseHomeFilter, type HomeFilter, type TonightCard } from "@/lib/tonight";
+import { getTonightUpdates } from "@/lib/data/tonight-updates";
 
 const CATEGORIES = [
   { href: "/explore?type=restaurant", label: "Eat & Drink" },
@@ -166,6 +167,34 @@ function DailyDropStrip({ today, tomorrow }: { today: DropView | null; tomorrow:
   );
 }
 
+const FILTER_CHIPS: { key: HomeFilter | null; label: string }[] = [
+  { key: null, label: "Everything" },
+  { key: "cheap", label: "Under UGX 30k" },
+  { key: "indoors", label: "Indoors" },
+];
+
+/** Quick filters for "Kampala, today". Plain links, so they work without
+ * JavaScript and can be shared. */
+function HomeFilterChips({ active }: { active: HomeFilter | null }) {
+  return (
+    <nav aria-label="Filter today" className="mt-6 flex flex-wrap gap-2">
+      {FILTER_CHIPS.map((c) => (
+        <Link
+          key={c.label}
+          href={c.key ? `/?f=${c.key}#today` : "/#today"}
+          scroll={false}
+          aria-current={active === c.key ? "page" : undefined}
+          className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
+            active === c.key ? "border-ink bg-ink text-white" : "border-ink/20 text-ink hover:border-ink"
+          }`}
+        >
+          {c.label}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
 /** One card in "Kampala, today". The eyebrow says why it is here (tonight,
  * a perk, this weekend), so a mixed list still reads clearly. */
 function TonightCardLink({ card, friendsGoing }: { card: TonightCard; friendsGoing: string | null }) {
@@ -199,7 +228,8 @@ function TonightCardLink({ card, friendsGoing }: { card: TonightCard; friendsGoi
   );
 }
 
-export default async function LandingPage() {
+export default async function LandingPage({ searchParams }: { searchParams: Promise<{ f?: string }> }) {
+  const filter = parseHomeFilter((await searchParams).f);
   const session = await getSession();
   if (session?.role === "vendor") redirect("/vendor/dashboard");
   if (session?.role === "admin") redirect("/admin");
@@ -227,12 +257,15 @@ export default async function LandingPage() {
   const fallbackJourney =
     journeyList.find((j) => j.status === "published") ?? journeyList.find((j) => j.kind === "editorial") ?? null;
   const homeDropsPromise = getHomeDrops();
+  const tonightUpdatesPromise = getTonightUpdates();
   const tonight = await getTonightFeed(
     fallbackJourney
       ? { slug: fallbackJourney.slug, name: fallbackJourney.name, tagline: fallbackJourney.tagline }
       : null,
+    undefined,
+    filter,
   );
-  const [homeDrops, friendsGoing] = await Promise.all([
+  const [homeDrops, friendsGoing, tonightUpdates] = await Promise.all([
     homeDropsPromise,
     me?.travellerId
       ? getFriendsGoingByEvent(
@@ -240,6 +273,7 @@ export default async function LandingPage() {
           tonight.flatMap((c) => (c.kind === "today" || c.kind === "weekend" ? [c.eventId] : [])),
         )
       : Promise.resolve(new Map<string, string[]>()),
+    tonightUpdatesPromise,
   ]);
   const featuredListings = featured.slice(0, 3);
   const [journeyTagsByListing, ratings, birthdayPerks, imagesByListing] = await Promise.all([
@@ -302,7 +336,7 @@ export default async function LandingPage() {
       </section>
 
       {/* What's happening today */}
-      <section className="mx-auto max-w-6xl px-4 py-16 md:px-6">
+      <section id="today" className="mx-auto max-w-6xl px-4 py-16 md:px-6">
         <div className="flex items-end justify-between gap-4">
           <div>
             <p className="eyebrow text-ember">Kampala, today</p>
@@ -316,6 +350,8 @@ export default async function LandingPage() {
         </div>
 
         <DailyDropStrip today={homeDrops.today} tomorrow={homeDrops.tomorrow} />
+
+        <HomeFilterChips active={filter} />
 
         {/* Never empty: today's events, then live Passport perks, then the
             weekend, then a journey (see src/lib/tonight.ts). Individually
@@ -335,10 +371,39 @@ export default async function LandingPage() {
         </div>
         {tonight.length === 0 && (
           <div className="mt-8 border border-ink/10 bg-white px-6 py-10 text-center">
-            <p className="text-sm text-ink/60">New places and events are being added every day.</p>
-            <ArrowLink href="/explore" className="mt-3 text-sm font-semibold text-ember">
-              Explore Kampala
+            <p className="text-sm text-ink/60">
+              {filter
+                ? `Nothing ${filter === "cheap" ? "under UGX 30k" : "indoors"} listed for today or this weekend yet.`
+                : "New places and events are being added every day."}
+            </p>
+            <ArrowLink href={filter ? "/" : "/explore"} className="mt-3 text-sm font-semibold text-ember">
+              {filter ? "Show everything" : "Explore Kampala"}
             </ArrowLink>
+          </div>
+        )}
+
+        {tonightUpdates.length > 0 && !filter && (
+          <div className="mt-10">
+            <p className="eyebrow text-ink/50">Tonight at Wano partners</p>
+            <ul className="mt-3 divide-y divide-ink/10 border-y border-ink/10">
+              {tonightUpdates.map((u) => (
+                <li key={u.id} className="py-3">
+                  {u.listingId ? (
+                    <Link href={`/explore/${u.listingId}`} className="group block">
+                      <span className="font-semibold text-ink group-hover:text-ember">{u.vendorName}</span>
+                      <span className="text-ink/40"> · {u.location}</span>
+                      <span className="mt-0.5 block text-sm text-ink/70">{u.text}</span>
+                    </Link>
+                  ) : (
+                    <>
+                      <span className="font-semibold text-ink">{u.vendorName}</span>
+                      <span className="text-ink/40"> · {u.location}</span>
+                      <span className="mt-0.5 block text-sm text-ink/70">{u.text}</span>
+                    </>
+                  )}
+                </li>
+              ))}
+            </ul>
           </div>
         )}
         <span className="mt-5 block sm:hidden">

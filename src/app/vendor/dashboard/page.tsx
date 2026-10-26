@@ -2,6 +2,8 @@ import Link from "next/link";
 import { getVendorListings, getVendorProfileByUserId } from "@/lib/data/vendor";
 import { getVendorRewards } from "@/lib/data/rewards";
 import { getVendorDropToday } from "@/lib/data/drops";
+import { getMyTonightUpdate } from "@/lib/data/tonight-updates";
+import { TonightUpdateForm } from "./tonight-update-form";
 import { formatKampalaTime, kampalaDayBounds } from "@/lib/kampala-time";
 import { getSubmissionsForVendor } from "@/lib/data/submissions";
 import { withRlsContext } from "@/lib/db-context";
@@ -27,12 +29,13 @@ export default async function VendorDashboardPage() {
   const vendorProfile = await getVendorProfileByUserId(session!.userId);
   if (!vendorProfile) return null;
 
-  const [listingRows, [rewardRows, submissions], myDrops] = await Promise.all([
+  const [listingRows, [rewardRows, submissions], myDrops, tonightUpdate] = await Promise.all([
     getVendorListings(vendorProfile.id),
     withRlsContext({ userId: session!.userId, role: "vendor", vendorProfileId: vendorProfile.id }, (tx) =>
       Promise.all([getVendorRewards(vendorProfile.id, tx), getSubmissionsForVendor(vendorProfile.id, tx)]),
     ),
     getVendorDropToday(vendorProfile.id),
+    getMyTonightUpdate(vendorProfile.id),
   ]);
   const todayEnd = kampalaDayBounds(new Date()).end;
   const status = statusCopy[vendorProfile.accreditationStatus];
@@ -47,6 +50,11 @@ export default async function VendorDashboardPage() {
         </div>
         <span className={`eyebrow ${status.className}`}>{status.label}</span>
       </div>
+
+      <TonightUpdateForm
+        current={tonightUpdate?.text ?? null}
+        verified={vendorProfile.accreditationStatus === "trusted"}
+      />
 
       {myDrops.map((drop) => (
         <div key={drop.dropId} className="border-2 border-ember bg-white p-4 text-sm text-ink/80">

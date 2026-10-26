@@ -111,6 +111,8 @@ const listedEventSchema = z.object({
   priceHint: z.string().max(60).optional().or(z.literal("")),
   organizerVendorProfileId: z.string().uuid().optional().or(z.literal("")),
   weeks: z.coerce.number().int().min(1).max(MAX_WEEKLY_OCCURRENCES),
+  priceFrom: z.union([z.literal(""), z.coerce.number().int().min(0).max(100_000_000)]),
+  setting: z.enum(["", "indoors", "outdoors"]),
 });
 
 /** Admin listing an event for the home page and Events tab — either a
@@ -131,6 +133,8 @@ export async function createListedEventAction(_prev: ActionState, formData: Form
     priceHint: formData.get("priceHint") ?? "",
     organizerVendorProfileId: formData.get("organizerVendorProfileId") ?? "",
     weeks: formData.get("weeks") ?? 1,
+    priceFrom: formData.get("priceFrom") ?? "",
+    setting: formData.get("setting") ?? "",
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Please check the event fields." };
 
@@ -159,6 +163,8 @@ export async function createListedEventAction(_prev: ActionState, formData: Form
     priceHint: parsed.data.priceHint || null,
     organizerVendorProfileId: parsed.data.organizerVendorProfileId || null,
     seriesId,
+    priceFromMinor: parsed.data.priceFrom === "" ? null : parsed.data.priceFrom,
+    indoors: parsed.data.setting === "" ? null : parsed.data.setting === "indoors",
   }));
 
   const created = await db.insert(events).values(rows).returning({ id: events.id });

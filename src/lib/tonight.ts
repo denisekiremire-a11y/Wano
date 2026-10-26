@@ -41,6 +41,15 @@ export type TonightCard =
   | { kind: "journey"; key: string; href: string; title: string; place: string };
 
 export const TONIGHT_LIMIT = 6;
+
+/** Home page filters. "cheap" is a cheapest way in under UGX 30,000 (free
+ * counts); "indoors" is for rainy evenings. Only events the team tagged
+ * show under a filter. */
+export type HomeFilter = "cheap" | "indoors";
+export const CHEAP_MAX_MINOR = 30_000;
+export function parseHomeFilter(value: string | undefined): HomeFilter | null {
+  return value === "cheap" || value === "indoors" ? value : null;
+}
 /** Perks are a filler, not the headline: cap them so the weekend still shows. */
 export const TONIGHT_MAX_PERKS = 2;
 /** Below this many cards the section looks thin, so a journey is added. */
