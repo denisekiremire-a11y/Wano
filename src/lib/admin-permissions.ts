@@ -33,6 +33,7 @@ export const ADMIN_MIN_LEVEL = {
   "/admin/supply-leads": "ops",
 
   "/admin/promotions": "super",
+  "/admin/trails": "super",
   "/admin/rewards": "super",
   "/admin/rewards/vouchers": "super",
   "/admin/rewards/points": "super",

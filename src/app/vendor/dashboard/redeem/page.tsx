@@ -28,6 +28,9 @@ export default async function VendorRedeemPage() {
         <Link href="/vendor/dashboard/redeem/tickets" className="mt-2 inline-block text-sm text-ember hover:underline">
           Checking in event tickets instead? →
         </Link>
+        <Link href="/vendor/dashboard/redeem/visitor" className="mt-1 block text-sm text-ember hover:underline">
+          Scanning a visitor&apos;s personal QR instead? →
+        </Link>
       </div>
 
       <section className="space-y-3 border border-ink/10 bg-white p-5">

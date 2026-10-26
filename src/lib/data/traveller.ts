@@ -18,9 +18,11 @@ import {
   travellerInterests,
   travellerProfiles,
   userRewards,
+  users,
   vendorProfiles,
 } from "@/db/schema";
 import { withRlsContext } from "@/lib/db-context";
+import { WELCOME_POINTS } from "@/lib/rewards-config";
 import { getPublicListingsForJourney } from "./journeys";
 
 export async function getTravellerProfileByUserId(userId: string) {
@@ -235,6 +237,18 @@ export async function awardReferralCreditOnFirstBooking(travellerId: string) {
     .limit(1);
   if (!pendingCredit) return;
 
+  // Unverified users can still be referred and book — they just don't
+  // trigger either payout until their email is verified. A referee who
+  // verifies after this already ran stays unpaid (no retry path); kept
+  // this simple on purpose, per the Wano additions plan.
+  const [refereeUser] = await db
+    .select({ emailVerifiedAt: users.emailVerifiedAt })
+    .from(travellerProfiles)
+    .innerJoin(users, eq(users.id, travellerProfiles.userId))
+    .where(eq(travellerProfiles.id, travellerId))
+    .limit(1);
+  if (!refereeUser?.emailVerifiedAt) return;
+
   const priorConfirmed = await withRlsContext({ role: "traveller", travellerProfileId: travellerId }, (tx) =>
     tx
       .select({ id: bookings.id })
@@ -265,6 +279,27 @@ export async function awardReferralCreditOnFirstBooking(travellerId: string) {
       sourceId: pendingCredit.id,
     }),
   );
+
+  // Welcome points for the new user themself — check-then-insert, same
+  // idempotency style as the referral award above (both run here, once,
+  // on the referee's first confirmed booking, so a retry/race never pays
+  // either bonus twice).
+  const [existingWelcome] = await db
+    .select({ id: pointsLedger.id })
+    .from(pointsLedger)
+    .where(and(eq(pointsLedger.travellerId, travellerId), eq(pointsLedger.sourceType, "welcome_bonus")))
+    .limit(1);
+  if (!existingWelcome) {
+    await withRlsContext({ role: "admin" }, (tx) =>
+      tx.insert(pointsLedger).values({
+        travellerId,
+        delta: WELCOME_POINTS,
+        reason: "Welcome bonus",
+        sourceType: "welcome_bonus",
+        sourceId: pendingCredit.id,
+      }),
+    );
+  }
 }
 
 export async function getSavedListingsForTraveller(travellerId: string) {

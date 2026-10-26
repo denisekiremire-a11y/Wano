@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckIcon, StampIcon, StarIcon, TrophyIcon, UsersIcon } from "@/components/icons";
+import { CheckIcon, MapIcon, StampIcon, StarIcon, TicketIcon, TrophyIcon, UsersIcon } from "@/components/icons";
 
 const BREAKDOWN_ICONS: Record<string, (props: { className?: string }) => React.ReactElement> = {
   "Passport stamps": StampIcon,
@@ -9,6 +9,8 @@ const BREAKDOWN_ICONS: Record<string, (props: { className?: string }) => React.R
   "Reviews written": StarIcon,
   "Friends referred": UsersIcon,
   "Profile complete": CheckIcon,
+  "Bookings completed": TicketIcon,
+  "Trails completed": MapIcon,
 };
 
 type BreakdownRow = { label: string; count: number; points: number };
@@ -42,7 +44,7 @@ export function HowYouGotHereSection({ breakdown, pendingReferrals }: { breakdow
                   <p className="mt-1.5 text-sm font-medium text-forest-900">{row.label}</p>
                   <div className="mt-0.5 flex items-baseline justify-between">
                     <p className="text-xs text-forest-800/50">{row.count}</p>
-                    <span className="text-xs font-semibold text-forest-800">+{row.points} pts</span>
+                    <span className="text-xs font-semibold text-forest-800">+{row.points} XP</span>
                   </div>
                 </div>
               );

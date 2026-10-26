@@ -141,6 +141,28 @@ export const users = pgTable("users", {
   // not suspended.
   suspendedAt: timestamp("suspended_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  // Null = unverified. An unverified traveller can browse but not send a
+  // booking request or earn referral/welcome points (see
+  // requireVerifiedEmail in src/lib/auth.ts and
+  // awardReferralCreditOnFirstBooking in data/traveller.ts). Set once by
+  // verifyEmailAction; nothing ever clears it back to null.
+  emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+});
+
+// One-time emailed links, same shape/reasoning as the newsletter confirm
+// flow (see newsletter-actions.ts) generalised into a real table instead
+// of a bespoke column on the target row. usedAt set (not deleted) once
+// consumed, so a re-click of an already-used link can say so rather than
+// 404ing.
+export const emailVerificationTokens = pgTable("email_verification_tokens", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const travellerProfiles = pgTable(
@@ -317,6 +339,11 @@ export const vendorProfiles = pgTable("vendor_profiles", {
   // dashboard so support can spot a vendor who's cancelling a lot.
   vendorCancellationCount: integer("vendor_cancellation_count").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  // Admin-set "Best Price on Wano" flag — never vendor-settable. Shown as
+  // a badge on this vendor's listings and nudges them ahead in
+  // searchListings/getTrendingListings' ordering (see journeys.ts,
+  // discover.ts).
+  bestPriceOnWano: boolean("best_price_on_wano").notNull().default(false),
 });
 
 export const listings = pgTable("listings", {
@@ -354,6 +381,9 @@ export const listings = pgTable("listings", {
   isPublished: boolean("is_published").notNull().default(true),
   viewCount: integer("view_count").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  // Free-text perks the vendor or admin wants to call out (late checkout,
+  // airport pickup) — shown on the listing page and booking confirmation.
+  wanoOnlyExtras: jsonb("wano_only_extras").$type<string[]>(),
 });
 
 // One bookable time window for an instant-mode listing — a vendor (or
@@ -454,6 +484,52 @@ export const listingJourneys = pgTable(
       .references(() => journeys.id, { onDelete: "cascade" }),
   },
   (table) => [unique().on(table.listingId, table.journeyId)],
+);
+
+// A named set of listings that earns bonus XP once a traveller has a
+// qualifying (confirmed/completed) booking at every listing in the set.
+// Lighter-weight than journeys — no itinerary content, just a completion
+// target. Admin-authored only; see trail_listings/trail_completions below.
+export const trails = pgTable("trails", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  description: text("description"),
+  bonusXp: integer("bonus_xp").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const trailListings = pgTable(
+  "trail_listings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    trailId: uuid("trail_id")
+      .notNull()
+      .references(() => trails.id, { onDelete: "cascade" }),
+    listingId: uuid("listing_id")
+      .notNull()
+      .references(() => listings.id, { onDelete: "cascade" }),
+  },
+  (table) => [unique().on(table.trailId, table.listingId)],
+);
+
+// One row per traveller per completed trail — written once, by the
+// booking-completion cron, the moment every trail_listings member has a
+// qualifying booking. The unique constraint is the idempotency backstop.
+export const trailCompletions = pgTable(
+  "trail_completions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    trailId: uuid("trail_id")
+      .notNull()
+      .references(() => trails.id, { onDelete: "cascade" }),
+    travellerId: uuid("traveller_id")
+      .notNull()
+      .references(() => travellerProfiles.id, { onDelete: "cascade" }),
+    completedAt: timestamp("completed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique().on(table.trailId, table.travellerId)],
 );
 
 export const hotelDetails = pgTable("hotel_details", {
@@ -787,6 +863,10 @@ export const rewardSourceEnum = pgEnum("reward_source", [
   "campaign",
   "manual",
   "points_shop",
+  // Wano Collabs — a completed booking at the trigger vendor unlocks this
+  // reward at a partner (the reward's own targetType/targetId). See
+  // collabTriggerVendorProfileId below.
+  "collab",
 ]);
 // draft = not yet visible/claimable. active = live. paused = temporarily
 // off (manual, or automatic — see the monthly Wano-funded budget cap in
@@ -837,6 +917,13 @@ export const rewards = pgTable("rewards", {
   startsAt: timestamp("starts_at", { withTimezone: true }),
   endsAt: timestamp("ends_at", { withTimezone: true }),
   status: rewardStatusEnum("status").notNull().default("active"),
+  // Only set when source="collab" — the vendor whose completed booking
+  // triggers this reward being minted for the traveller (the reward's own
+  // targetType/targetId is the partner vendor/listing it's redeemed at).
+  collabTriggerVendorProfileId: uuid("collab_trigger_vendor_profile_id").references(
+    () => vendorProfiles.id,
+    { onDelete: "cascade" },
+  ),
 });
 
 export const userRewardStatusEnum = pgEnum("user_reward_status", [

@@ -37,6 +37,7 @@ export function VendorListingForm({
     discountText: string;
     freebieText: string;
     journeyIds: string[];
+    wanoOnlyExtras?: string[] | null;
     hotel?: { roomTypes: string | null; amenities: string | null; checkInTime: string | null; checkOutTime: string | null } | null;
     restaurant?: {
       cuisine: string | null;
@@ -329,6 +330,20 @@ export function VendorListingForm({
             className="rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
         </div>
+      </div>
+
+      <div>
+        <label className="text-sm font-medium text-ink">Wano-only extras (optional, one per line)</label>
+        <textarea
+          name="wanoOnlyExtras"
+          rows={3}
+          placeholder={"Late checkout\nFree airport pickup"}
+          defaultValue={existing?.wanoOnlyExtras?.join("\n") ?? ""}
+          className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
+        />
+        <p className="mt-1 text-xs text-ink/50">
+          Shown on your listing page and in the booking confirmation — perks only Wano guests get.
+        </p>
       </div>
 
       <div className="space-y-3 bg-ember/5 p-4">

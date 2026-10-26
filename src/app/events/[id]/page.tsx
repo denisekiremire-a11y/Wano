@@ -21,6 +21,7 @@ import { confirmXpPayment } from "@/lib/actions/xp-actions";
 import { computeBookingTotals, decodeBookingDraft } from "@/lib/booking-shared";
 import { buyEventTicketsAction } from "@/lib/actions/booking-actions";
 import { formatMinor } from "@/lib/currency";
+import { CANCELLATION_CUTOFF_HOURS, REQUEST_EXPIRY_HOURS } from "@/lib/booking-config";
 import { getSession } from "@/lib/session";
 import { MATCH_DAY_CATEGORY } from "@/lib/xp-config";
 import { TargetRewardsSection } from "@/components/target-rewards-section";
@@ -194,6 +195,17 @@ export default async function EventDetailPage({
                   </p>
                 </div>
               )}
+            </div>
+
+            <div className="mt-4 space-y-1 border-l-2 border-ink/20 pl-3 text-xs text-ink/60">
+              {reviewTotals.totalMinor > 0 && (
+                <p className="font-medium text-ink/80">Pay at the venue — {formatMinor(reviewTotals.totalMinor)}.</p>
+              )}
+              <p>
+                Free cancellation up to {CANCELLATION_CUTOFF_HOURS} hours before the event. After that, this
+                booking is non-refundable.
+              </p>
+              <p>The organizer replies within {REQUEST_EXPIRY_HOURS} hours, or your request expires.</p>
             </div>
 
             <form action={buyEventTicketsAction} className="mt-4">

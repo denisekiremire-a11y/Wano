@@ -4,20 +4,22 @@ import { db } from "@/db";
 import { pointsLedger, travellerProfiles, users } from "@/db/schema";
 import { withRlsContext } from "@/lib/db-context";
 
-// 1 point = UGX 50 (business rule). Tiers are based on points *earned* in
-// the trailing 12 months, not lifetime — a corrective reversing entry
+// 1 point = UGX 50 (business rule). Tiers are based on points+XP *earned*
+// in the trailing 12 months, not lifetime — a corrective reversing entry
 // reduces the earned total for that window, same as it reduces balance.
+// Canonical source for both constants — rewards-config.ts re-exports them
+// rather than redefining, so there's exactly one literal of each.
 export const POINT_VALUE_MINOR = 50;
-export const TIER_THRESHOLDS = { insider: 1000, legend: 5000 } as const;
-export type Tier = "legend" | "insider" | null;
+export const TIER_THRESHOLDS = { explorer: 0, insider: 1000, legend: 5000 } as const;
+export type Tier = "legend" | "insider" | "explorer";
 
 export function tierForPoints(earnedLast12Months: number): Tier {
   if (earnedLast12Months >= TIER_THRESHOLDS.legend) return "legend";
   if (earnedLast12Months >= TIER_THRESHOLDS.insider) return "insider";
-  return null;
+  return "explorer";
 }
 
-function twelveMonthsAgo() {
+export function twelveMonthsAgo() {
   const d = new Date();
   d.setFullYear(d.getFullYear() - 1);
   return d;

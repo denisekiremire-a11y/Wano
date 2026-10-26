@@ -11,11 +11,16 @@ export function TargetRewardsSection({
   claimed,
   offer,
   promo,
+  showHeading = true,
 }: {
   claimable: Awaited<ReturnType<typeof getClaimableRewardsForTarget>>;
   claimed: Awaited<ReturnType<typeof getMyClaimedRewardsForTarget>>;
   offer?: VendorOffer;
   promo?: WanoDeal;
+  // false when a caller already renders its own heading above both this
+  // and a sibling block (e.g. "Your bookings and rewards" on a listing
+  // page) — see explore/[id]/page.tsx.
+  showHeading?: boolean;
 }) {
   const claimedRewardIds = new Set(claimed.map((c) => c.userReward.rewardId));
   const stillClaimable = claimable.filter((r) => !claimedRewardIds.has(r.id));
@@ -24,7 +29,7 @@ export function TargetRewardsSection({
 
   return (
     <section className="mt-8 rounded-2xl border border-forest-900/10 bg-white p-5">
-      <h2 className="font-display text-lg font-semibold text-forest-900">Rewards</h2>
+      {showHeading && <h2 className="font-display text-lg font-semibold text-forest-900">Rewards</h2>}
       <div className="mt-3 space-y-3">
         {offer && (
           <div className="rounded-xl bg-forest-50 px-4 py-3">

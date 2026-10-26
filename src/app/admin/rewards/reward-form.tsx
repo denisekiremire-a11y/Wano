@@ -8,18 +8,21 @@ const initialState: ActionState = {};
 
 type ListingOption = { id: string; title: string; businessName: string };
 type EventOption = { id: string; title: string };
+type VendorOption = { id: string; businessName: string };
 type DiscountType = "percent" | "fixed" | "freebie" | "spend_perk" | "points";
 
 export function RewardForm({
   listingOptions,
   eventOptions,
+  vendorOptions,
 }: {
   listingOptions: ListingOption[];
   eventOptions: EventOption[];
+  vendorOptions: VendorOption[];
 }) {
   const [state, formAction, pending] = useActionState(createRewardAction, initialState);
   const [discountType, setDiscountType] = useState<DiscountType>("percent");
-  const [source, setSource] = useState<"manual" | "funzone" | "xp_draw" | "points_shop">("manual");
+  const [source, setSource] = useState<"manual" | "funzone" | "xp_draw" | "points_shop" | "collab">("manual");
 
   return (
     <form action={formAction} className="space-y-4 border border-ink/10 bg-white p-5">
@@ -84,8 +87,34 @@ export function RewardForm({
           <option value="funzone">Fun Zone — staff issue it to a game winner</option>
           <option value="xp_draw">XP draw — awarded to a match-day draw winner</option>
           <option value="points_shop">Points shop — travellers spend points to redeem</option>
+          <option value="collab">Wano Collab — unlocked by a completed booking elsewhere</option>
         </select>
       </div>
+
+      {source === "collab" && (
+        <div>
+          <label className="text-sm font-medium text-ink">Triggered by visiting</label>
+          <select
+            name="collabTriggerVendorProfileId"
+            required
+            defaultValue=""
+            className="mt-1 w-full rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm outline-none focus:border-ember"
+          >
+            <option value="" disabled>
+              Choose the trigger vendor
+            </option>
+            {vendorOptions.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.businessName}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-ink/50">
+            A completed booking at this vendor mints the reward below (set under &ldquo;Applies
+            to&rdquo;) for that traveller.
+          </p>
+        </div>
+      )}
 
       {source === "points_shop" && (
         <div>
