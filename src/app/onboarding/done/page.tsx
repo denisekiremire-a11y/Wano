@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/auth";
+import { InviteFriendsCard } from "@/components/invite-friends-card";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 
 const firstActionByPersona = {
@@ -47,6 +48,12 @@ export default async function OnboardingDonePage() {
             Just take me to Explore →
           </Link>
         </div>
+
+        {travellerProfile?.referralCode && (
+          <div className="mt-10">
+            <InviteFriendsCard referralCode={travellerProfile.referralCode} displayName={travellerProfile.displayName} />
+          </div>
+        )}
       </div>
     </main>
   );

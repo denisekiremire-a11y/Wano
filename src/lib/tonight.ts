@@ -28,6 +28,7 @@ export type TonightCard =
   | {
       kind: "today" | "weekend";
       key: string;
+      eventId: string;
       href: string;
       title: string;
       startAt: Date;
@@ -63,6 +64,7 @@ export function assembleTonight(
     cards.push({
       kind,
       key: `${kind}:${e.id}`,
+      eventId: e.id,
       href: `/events/${e.id}`,
       title: e.title,
       startAt: e.startAt,

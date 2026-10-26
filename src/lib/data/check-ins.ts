@@ -3,6 +3,7 @@ import { and, asc, eq, gt, gte, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   listings,
+  travellerProfiles,
   vendorProfiles,
   venueCheckIns,
   visitorCodeFailures,
@@ -120,6 +121,18 @@ export async function countAreaStampsEarned(travellerId: string, since?: Date) {
     .from(venueCheckIns)
     .where(and(eq(venueCheckIns.travellerId, travellerId), sql`${venueCheckIns.area} is not null`))
     .groupBy(venueCheckIns.area);
+  return rows.filter((r) => !since || new Date(r.first) >= since).length;
+}
+
+/** Friends this member invited who have made their first verified visit
+ * (on or after `since` when given). Each pays the inviter XP. */
+export async function countInvitedFriendsVisited(travellerId: string, since?: Date) {
+  const rows = await db
+    .select({ first: sql<Date>`min(${venueCheckIns.checkedInAt})` })
+    .from(venueCheckIns)
+    .innerJoin(travellerProfiles, eq(travellerProfiles.id, venueCheckIns.travellerId))
+    .where(eq(travellerProfiles.referredByTravellerId, travellerId))
+    .groupBy(venueCheckIns.travellerId);
   return rows.filter((r) => !since || new Date(r.first) >= since).length;
 }
 

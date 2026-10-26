@@ -1,5 +1,6 @@
 import { and, asc, count, eq, gte, ilike, inArray, lt, or } from "drizzle-orm";
 import { db } from "@/db";
+import { withRlsContext } from "@/lib/db-context";
 import { kampalaDayBounds } from "@/lib/kampala-time";
 import { bookings, eventAttendance, events, follows, travellerProfiles, users, vendorProfiles } from "@/db/schema";
 
@@ -178,6 +179,58 @@ export async function getFollowedEventBookers(eventId: string, travellerId: stri
       ),
     );
   return rows;
+}
+
+/** First names of people the member follows who have booked, or marked
+ * themselves going, for each event. Powers "Joan and 2 friends going" on
+ * the home cards. Read as a trusted aggregate, names only. */
+export async function getFriendsGoingByEvent(travellerId: string, eventIds: string[]) {
+  const map = new Map<string, string[]>();
+  if (eventIds.length === 0) return map;
+  const [booked, marked] = await withRlsContext({ role: "admin" }, (tx) =>
+    Promise.all([
+      tx
+        .select({ eventId: bookings.eventId, id: travellerProfiles.id, name: travellerProfiles.displayName })
+        .from(bookings)
+        .innerJoin(follows, eq(follows.followingId, bookings.travellerId))
+        .innerJoin(travellerProfiles, eq(travellerProfiles.id, bookings.travellerId))
+        .where(
+          and(
+            inArray(bookings.eventId, eventIds),
+            eq(follows.followerId, travellerId),
+            inArray(bookings.status, ACTIVE_BOOKING_STATUSES),
+          ),
+        ),
+      tx
+        .select({ eventId: eventAttendance.eventId, id: travellerProfiles.id, name: travellerProfiles.displayName })
+        .from(eventAttendance)
+        .innerJoin(follows, eq(follows.followingId, eventAttendance.travellerId))
+        .innerJoin(travellerProfiles, eq(travellerProfiles.id, eventAttendance.travellerId))
+        .where(
+          and(
+            inArray(eventAttendance.eventId, eventIds),
+            eq(follows.followerId, travellerId),
+            eq(eventAttendance.status, "going"),
+            eq(eventAttendance.visible, true),
+          ),
+        ),
+    ]),
+  );
+  const seen = new Set<string>();
+  for (const r of [...booked, ...marked]) {
+    if (!r.eventId || seen.has(`${r.eventId}:${r.id}`)) continue;
+    seen.add(`${r.eventId}:${r.id}`);
+    map.set(r.eventId, [...(map.get(r.eventId) ?? []), r.name.split(" ")[0]]);
+  }
+  return map;
+}
+
+/** "Joan going", "Joan and Sam going", "Joan and 3 friends going". */
+export function friendsGoingLabel(names: string[]): string | null {
+  if (names.length === 0) return null;
+  if (names.length === 1) return `${names[0]} is going`;
+  if (names.length === 2) return `${names[0]} and ${names[1]} are going`;
+  return `${names[0]} and ${names.length - 1} friends are going`;
 }
 
 /** Has this traveller already got a booking against this event? Used to
