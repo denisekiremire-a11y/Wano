@@ -1,5 +1,6 @@
-import { and, asc, count, eq, gte, ilike, inArray, or } from "drizzle-orm";
+import { and, asc, count, eq, gte, ilike, inArray, lt, or } from "drizzle-orm";
 import { db } from "@/db";
+import { kampalaDayBounds } from "@/lib/kampala-time";
 import { bookings, eventAttendance, events, follows, travellerProfiles, users, vendorProfiles } from "@/db/schema";
 
 const ACTIVE_BOOKING_STATUSES = ["pending", "confirmed"] as const;
@@ -36,21 +37,19 @@ export async function getUpcomingEvents(filters: { category?: string; venueId?: 
   return rows;
 }
 
-/** Events starting later today (server-local calendar day) — backs the
- * homepage's "What's happening today?" strip. Uses the server's own day
- * boundary, same simple approach as the rest of the app's date handling
- * (no per-traveller timezone lookup). */
+/** Events starting later today (Kampala calendar day — the server runs in
+ * UTC, so a server-local day would roll over at 3 am Kampala time). */
 export async function getEventsForToday(limit = 4) {
   const now = new Date();
-  const endOfDay = new Date(now);
-  endOfDay.setHours(23, 59, 59, 999);
+  const { end } = kampalaDayBounds(now);
   const rows = await db
     .select({ event: events, organizer: vendorProfiles })
     .from(events)
     .leftJoin(vendorProfiles, eq(events.organizerVendorProfileId, vendorProfiles.id))
-    .where(and(eq(events.active, true), gte(events.startAt, now)))
-    .orderBy(asc(events.startAt));
-  return rows.filter((r) => new Date(r.event.startAt) <= endOfDay).slice(0, limit);
+    .where(and(eq(events.active, true), gte(events.startAt, now), lt(events.startAt, end)))
+    .orderBy(asc(events.startAt))
+    .limit(limit);
+  return rows;
 }
 
 export async function getEventsStartingWithinHours(hours: number, limit = 3) {

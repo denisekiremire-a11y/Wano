@@ -708,6 +708,11 @@ export const events = pgTable("events", {
   // reasoning as fixtures.venueId: only ever those two values, not worth a
   // DB enum. Null for every non-match event and any event elsewhere.
   venueId: text("venue_id"),
+  // Shared by every occurrence of a weekly regular (quiz night, live band,
+  // Sunday brunch). Each week is still its own event row, so every existing
+  // query, RSVP and ticket works unchanged; the series id only lets admin
+  // see and end the whole run at once. Null for one-off events.
+  seriesId: uuid("series_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

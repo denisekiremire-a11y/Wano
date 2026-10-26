@@ -50,6 +50,7 @@ const ADMIN_NAV_ITEMS: (NavItem & { minLevelKey: keyof typeof ADMIN_MIN_LEVEL })
   { href: "/admin/submissions", label: "Submissions", icon: "mail", minLevelKey: "/admin/submissions" },
   { href: "/admin/bookings", label: "Bookings", icon: "ticket", minLevelKey: "/admin/bookings" },
   { href: "/admin/slots", label: "Slots", icon: "calendar", minLevelKey: "/admin/slots" },
+  { href: "/admin/events", label: "Events", icon: "calendar", minLevelKey: "/admin/events" },
   { href: "/admin/travellers", label: "Members", icon: "grid", minLevelKey: "/admin/travellers" },
   {
     href: "/admin/rewards",
@@ -70,14 +71,14 @@ const ADMIN_NAV_ITEMS: (NavItem & { minLevelKey: keyof typeof ADMIN_MIN_LEVEL })
   { href: "/admin/action-log", label: "Action log", icon: "file", minLevelKey: "/admin/action-log" },
 ];
 
-// Admin's flat list (16 sections) doesn't fit a desktop header — grouped
+// Admin's flat list (17 sections) doesn't fit a desktop header — grouped
 // into 5 categories plus a standalone Overview link, each a dropdown that
 // leads to its members. The mobile bottom nav keeps the flat list (see
 // mobileNavItemsFor / bottom-nav.tsx) since a horizontally-scrollable
 // strip already works fine there and doesn't need this collapsing.
 const ADMIN_GROUPS: { label: string; hrefs: string[] }[] = [
   { label: "Partners", hrefs: ["/admin/vendors", "/admin/submissions"] },
-  { label: "Bookings", hrefs: ["/admin/bookings", "/admin/slots", "/admin/match-day"] },
+  { label: "Bookings", hrefs: ["/admin/bookings", "/admin/slots", "/admin/events", "/admin/match-day"] },
   {
     label: "Community",
     hrefs: ["/admin/travellers", "/admin/clubs", "/admin/moderation", "/admin/influencers"],
