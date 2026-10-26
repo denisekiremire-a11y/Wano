@@ -6,6 +6,7 @@ import { notifyTravellerToReview } from "@/lib/booking-notifications";
 import { withRlsContext } from "@/lib/db-context";
 import { checkAndAwardTrailCompletions } from "@/lib/data/trails";
 import { issueCollabRewardsForBooking } from "@/lib/actions/reward-actions";
+import { awardPointsForCompletedBooking } from "@/lib/points-on-booking";
 
 // Flips "confirmed" bookings whose date has passed to "completed" — the
 // only other place status reaches "completed" today is a manual admin
@@ -70,6 +71,7 @@ export async function GET(request: Request) {
     await notifyTravellerToReview(id);
     if (listingId) await checkAndAwardTrailCompletions(travellerId, listingId);
     await issueCollabRewardsForBooking(travellerId, vendorProfileId);
+    await awardPointsForCompletedBooking(id);
   }
 
   return NextResponse.json({

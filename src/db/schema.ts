@@ -199,6 +199,11 @@ export const travellerProfiles = pgTable(
     // follow rows. Zero for every real account.
     bonusFollowers: integer("bonus_followers").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    // Part B: SMS/WhatsApp OTP via whatsapp.ts. Null = unverified. Only
+    // matters while PAID_BOOKINGS_ENABLED is on — referral/welcome points
+    // (already gated on email verification) become spendable only once
+    // this is also set, per the plan.
+    phoneVerifiedAt: timestamp("phone_verified_at", { withTimezone: true }),
   },
   (table) => [index("traveller_profiles_referred_by_idx").on(table.referredByTravellerId)],
 );
@@ -344,6 +349,12 @@ export const vendorProfiles = pgTable("vendor_profiles", {
   // searchListings/getTrendingListings' ordering (see journeys.ts,
   // discover.ts).
   bestPriceOnWano: boolean("best_price_on_wano").notNull().default(false),
+  // Part B pilot opt-in (5-10 vendors), admin-set only — commission and
+  // points only apply to this vendor's paid bookings when this is true
+  // AND NEXT_PUBLIC_PAID_BOOKINGS_ENABLED is also on. False for every
+  // other vendor, same reasoning as accreditationStatus's default-safe
+  // "pending" gate.
+  paidBookingsPilot: boolean("paid_bookings_pilot").notNull().default(false),
 });
 
 export const listings = pgTable("listings", {
@@ -779,6 +790,11 @@ export const bookings = pgTable("bookings", {
   // vendorCancelConfirmedBookingAction). Never set for a traveller's own
   // cancellation, which needs no follow-up.
   flaggedForSupport: boolean("flagged_for_support").notNull().default(false),
+  // Part B only — how much of totalMinor this booking paid for with
+  // points rather than cash (see spendPointsOnBooking). Null/0 for every
+  // booking today. "Cash paid" for earn-rate purposes is always
+  // totalMinor minus this, never the full total.
+  pointsAppliedMinor: integer("points_applied_minor"),
 });
 
 // A line item actually selected for one booking — a chosen room, vehicle,
@@ -1020,6 +1036,47 @@ export const pointRedemptions = pgTable("point_redemptions", {
     .references(() => rewards.id, { onDelete: "cascade" }),
   pointsCost: integer("points_cost").notNull(),
   userRewardId: uuid("user_reward_id").references(() => userRewards.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const priceMatchStatusEnum = pgEnum("price_match_status", ["pending", "reviewed"]);
+
+// Part B: a traveller reports finding a cheaper direct price for a booking
+// they made. Admin reviews the evidence in `details` and, if it holds up,
+// credits the difference as points via the existing
+// addManualPointsAdjustment — no new crediting logic needed, this table
+// only tracks the report itself.
+export const priceMatchReports = pgTable("price_match_reports", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  bookingId: uuid("booking_id")
+    .notNull()
+    .references(() => bookings.id, { onDelete: "cascade" }),
+  travellerId: uuid("traveller_id")
+    .notNull()
+    .references(() => travellerProfiles.id, { onDelete: "cascade" }),
+  details: text("details").notNull(),
+  status: priceMatchStatusEnum("status").notNull().default("pending"),
+  // Set once reviewed, whether or not a credit was actually given — null
+  // creditedPoints + status="reviewed" means "reviewed, declined".
+  creditedPoints: integer("credited_points"),
+  reviewedByUserId: uuid("reviewed_by_user_id").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Part B: short-lived WhatsApp OTP codes for travellerProfiles.
+// phoneVerifiedAt — same "admin-only, the real access control is the raw
+// value itself" reasoning as emailVerificationTokens, except the value
+// here is a guessable 6-digit code rather than an unguessable random
+// token, so it's also short-lived (10 minutes) and single-use (usedAt).
+export const phoneVerificationCodes = pgTable("phone_verification_codes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  travellerId: uuid("traveller_id")
+    .notNull()
+    .references(() => travellerProfiles.id, { onDelete: "cascade" }),
+  code: text("code").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

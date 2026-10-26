@@ -4,7 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import { bookingItems, bookings, events, listingItems, listingJourneys, listings, restaurantDetails, rewards, userRewards } from "@/db/schema";
+import { bookingItems, bookings, events, listingItems, listingJourneys, listings, restaurantDetails, rewards, userRewards, vendorProfiles } from "@/db/schema";
 import { requireRole, requireVerifiedTraveller } from "@/lib/auth";
 import { logEvent } from "@/lib/analytics";
 import {
@@ -17,6 +17,7 @@ import {
 import { REQUEST_EXPIRY_HOURS } from "@/lib/booking-config";
 import {
   computeBookingTotals,
+  computeEstimatedCommission,
   decodeBookingDraft,
   encodeBookingDraft,
   generateBookingRef,
@@ -24,6 +25,7 @@ import {
   parseEventBookingDraft,
 } from "@/lib/booking-shared";
 import { withRlsContext } from "@/lib/db-context";
+import { PAID_BOOKINGS_ENABLED } from "@/lib/feature-flags";
 import { createFlutterwavePayment, isFlutterwaveConfigured, missingFlutterwaveEnv } from "@/lib/flutterwave";
 import type { ListingType } from "@/lib/listing-type";
 import { cancelBooking, confirmHeldBookingWithoutPayment, releaseHeldBooking, reserveSlotHold } from "@/lib/slot-booking";
@@ -152,6 +154,14 @@ export async function bookListingFormAction(formData: FormData) {
       throw new Error("Paid bookings aren't available right now — please try again later.");
     }
 
+    const [vendor] = await db
+      .select({ paidBookingsPilot: vendorProfiles.paidBookingsPilot })
+      .from(vendorProfiles)
+      .where(eq(vendorProfiles.id, listing.vendorProfileId))
+      .limit(1);
+    const paidPilotActive =
+      PAID_BOOKINGS_ENABLED && !!vendor?.paidBookingsPilot && isFlutterwaveConfigured() && !!totalMinor;
+
     const result = await reserveSlotHold({
       travellerId: travellerProfile.id,
       listingId: listing.id,
@@ -163,6 +173,7 @@ export async function bookListingFormAction(formData: FormData) {
       appliedUserRewardId: rewardRow?.userReward.id ?? null,
       subtotalMinor: subtotalMinor || null,
       totalMinor: subtotalMinor ? totalMinor : null,
+      estimatedCommission: computeEstimatedCommission(listing.type, totalMinor, paidPilotActive),
       lineItems: lineItems.filter((li) => li.item).map((li) => ({
         itemId: li.item!.id,
         name: li.item!.name,
@@ -237,7 +248,9 @@ export async function bookListingFormAction(formData: FormData) {
           status: "pending",
           requestExpiresAt: new Date(Date.now() + REQUEST_EXPIRY_HOURS * 60 * 60 * 1000),
           bookingRef: generateBookingRef(),
-          estimatedCommission: "15.00",
+          // Request mode is always pay-at-venue — nothing is paid here, so
+          // no commission, regardless of the Part B pilot flag.
+          estimatedCommission: "0",
           subtotalMinor: subtotalMinor || null,
           totalMinor: subtotalMinor ? totalMinor : null,
         })
@@ -336,7 +349,9 @@ export async function buyEventTicketsAction(formData: FormData) {
           appliedUserRewardId: rewardRow?.userReward.id ?? null,
           status: "pending",
           bookingRef: generateBookingRef(),
-          estimatedCommission: "15.00",
+          // Event tickets are always pay-at-venue too — no instant/paid
+          // path exists for events, so this is always 0.
+          estimatedCommission: "0",
           subtotalMinor: subtotalMinor || null,
           totalMinor: subtotalMinor ? totalMinor : null,
         })
