@@ -18,7 +18,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { checkInVisitorAction, getVisitorCodeAction, lookupVisitorCodeAction } from "@/lib/actions/check-in-actions";
-import { CODE_FAILURE_LIMIT, getWeeklyChallengeStatus, recordCheckIn } from "@/lib/data/check-ins";
+import { CODE_FAILURE_LIMIT, getStreakStatus, getWeeklyChallengeStatus, recordCheckIn } from "@/lib/data/check-ins";
 import { getRewardsSummary, getXpEarnedLast12Months } from "@/lib/data/rewards";
 import { AREA_STAMP_XP } from "@/lib/rewards-config";
 import { signVisitorToken } from "@/lib/visitor-token";
@@ -171,5 +171,27 @@ describe("backup visitor code", () => {
     asVendor(guesser);
     fd.set("code", code);
     expect(await lookupVisitorCodeAction(undefined, fd)).toMatchObject({ error: expect.stringContaining("Too many") });
+  });
+});
+
+describe("weekly streak", () => {
+  it("counts weeks with a visit and pays the 4-week milestone once", async () => {
+    const t = await makeTraveller();
+    const WEEK = 7 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    for (let i = 3; i >= 1; i--) await recordCheckIn(t.travellerId, ntinda.vendorId, "qr", new Date(now - i * WEEK));
+    expect(await getStreakStatus(t.travellerId)).toMatchObject({ current: 3, thisWeekDone: false });
+
+    const before = await getXpEarnedLast12Months(t.travellerId);
+    await recordCheckIn(t.travellerId, ntinda.vendorId, "qr", new Date(now));
+    expect(await getStreakStatus(t.travellerId)).toMatchObject({ current: 4, best: 4, thisWeekDone: true });
+    const summary = await getRewardsSummary(t.travellerId, null, null);
+    expect(summary.breakdown.find((b) => b.label === "Streak milestones")).toMatchObject({ count: 1, points: 300 });
+    // The new visit may also finish this week's "Out and about"; the
+    // streak adds exactly 300 on top of challenge XP.
+    const challengeXp = (await getWeeklyChallengeStatus(t.travellerId))
+      .filter((c) => c.done)
+      .reduce((sum, c) => sum + c.challenge.xp, 0);
+    expect((await getXpEarnedLast12Months(t.travellerId)) - before).toBe(300 + challengeXp);
   });
 });

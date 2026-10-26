@@ -17,7 +17,8 @@ import { ReviewForm } from "@/components/review-form";
 import { TrailStamps } from "@/components/trail-stamps";
 import { VisitorQrCard } from "@/components/visitor-qr-card";
 import { getTrailProgressForTraveller } from "@/lib/data/trails";
-import { getAreaStamps, getWeeklyChallengeStatus } from "@/lib/data/check-ins";
+import { getAreaStamps, getStreakStatus, getWeeklyChallengeStatus } from "@/lib/data/check-ins";
+import { STREAK_MILESTONES } from "@/lib/streaks";
 import { LAUNCH_AREAS, STAMP_AREAS } from "@/lib/areas";
 import { PASSPORT_TABS, type PassportTabKey } from "@/lib/passport-tabs";
 import { getSession, type SessionPayload } from "@/lib/session";
@@ -102,6 +103,7 @@ export default async function PassportPage({
     savedListingRows,
     weeklyStatus,
     areaStamps,
+    streak,
   ] = await Promise.all([
     db.select().from(users).where(eq(users.id, session.userId)).limit(1).then((r) => r[0]),
     getPassportProgress(travellerProfile.id),
@@ -119,6 +121,7 @@ export default async function PassportPage({
     getSavedListingsForTraveller(travellerProfile.id),
     getWeeklyChallengeStatus(travellerProfile.id),
     getAreaStamps(travellerProfile.id),
+    getStreakStatus(travellerProfile.id),
   ]);
 
   const [wallet, pointsShopCatalog] = await withRlsContext(
@@ -230,6 +233,7 @@ export default async function PassportPage({
             trailProgress={trailProgress}
             weeklyStatus={weeklyStatus}
             areaStamps={areaStamps}
+            streak={streak}
           />
         )}
         {activeTab === "saved" && (
@@ -296,6 +300,7 @@ function StampsTab({
   trailProgress,
   weeklyStatus,
   areaStamps,
+  streak,
 }: {
   progress: Awaited<ReturnType<typeof getPassportProgress>>["progress"];
   stampCount: number;
@@ -304,7 +309,9 @@ function StampsTab({
   trailProgress: Awaited<ReturnType<typeof getTrailProgressForTraveller>>;
   weeklyStatus: Awaited<ReturnType<typeof getWeeklyChallengeStatus>>;
   areaStamps: string[];
+  streak: Awaited<ReturnType<typeof getStreakStatus>>;
 }) {
+  const nextMilestone = STREAK_MILESTONES.find((m) => m.weeks > streak.current);
   const earned = new Set(areaStamps);
   const shownAreas = STAMP_AREAS.filter((a) => (LAUNCH_AREAS as readonly string[]).includes(a) || earned.has(a));
   return (
@@ -342,6 +349,26 @@ function StampsTab({
             </li>
           ))}
         </ul>
+      </section>
+      <section className="border border-ink/10 bg-white p-6">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="font-serif-editorial text-xl text-ink">Weekly streak</h2>
+          <p className="font-mono-data text-xs text-ink/50">Best {streak.best}</p>
+        </div>
+        <p className="font-serif-editorial mt-2 text-3xl text-ink">
+          {streak.current} {streak.current === 1 ? "week" : "weeks"}
+        </p>
+        <p className="mt-1 text-sm text-ink/60">
+          {streak.thisWeekDone ? "This week counts already." : "One verified visit any day this week keeps it going."}{" "}
+          {streak.skipAvailable
+            ? "You can miss one week a month without losing it."
+            : "You've used this month's skip week."}
+        </p>
+        {nextMilestone && (
+          <p className="font-mono-data mt-2 text-xs text-ink/50">
+            {nextMilestone.weeks} weeks: +{nextMilestone.xp.toLocaleString()} XP
+          </p>
+        )}
       </section>
       <section className="border border-ink/10 bg-white p-6">
         <h2 className="font-serif-editorial text-xl text-ink">Neighbourhood stamps</h2>

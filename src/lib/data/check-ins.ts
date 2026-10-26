@@ -14,6 +14,7 @@ import {
 import { areaForLocation, STAMP_AREAS } from "@/lib/areas";
 import { kampalaDateIso } from "@/lib/drops";
 import { kampalaWeekBounds, kampalaWeekStartIso } from "@/lib/kampala-time";
+import { computeStreak } from "@/lib/streaks";
 import {
   challengeProgress,
   defaultChallengesForWeek,
@@ -134,6 +135,24 @@ export async function countInvitedFriendsVisited(travellerId: string, since?: Da
     .where(eq(travellerProfiles.referredByTravellerId, travellerId))
     .groupBy(venueCheckIns.travellerId);
   return rows.filter((r) => !since || new Date(r.first) >= since).length;
+}
+
+/** The member's weekly streak (see src/lib/streaks.ts). */
+export async function getStreakStatus(travellerId: string, now = new Date()) {
+  const rows = await db
+    .selectDistinct({ day: venueCheckIns.kampalaDate })
+    .from(venueCheckIns)
+    .where(eq(venueCheckIns.travellerId, travellerId));
+  const weeks = rows.map((r) => kampalaWeekStartIso(new Date(`${r.day}T12:00:00+03:00`)));
+  return computeStreak(weeks, kampalaWeekStartIso(now));
+}
+
+/** XP from streak milestones reached (in weeks starting on or after `since`). */
+export async function getStreakXp(travellerId: string, since?: Date) {
+  const { milestones } = await getStreakStatus(travellerId);
+  const sinceIso = since ? kampalaWeekStartIso(since) : null;
+  const counted = milestones.filter((m) => !sinceIso || m.weekStart >= sinceIso);
+  return { count: counted.length, xp: counted.reduce((sum, m) => sum + m.xp, 0) };
 }
 
 /** XP from weekly challenges completed (optionally since a date). */
