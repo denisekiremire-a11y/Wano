@@ -11,12 +11,14 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { getBirthdayPerksForListings } from "@/lib/data/birthday";
 import { AFCON_CLUB_ENABLED } from "@/lib/feature-flags";
-import { getEventsForToday } from "@/lib/data/events";
 import { getJourneyTagsForListings, getJourneys, searchListings } from "@/lib/data/journeys";
 import { getListingImageIds } from "@/lib/data/listing-images";
 import { getRatingSummaries } from "@/lib/data/reviews";
 import { journeyTheme } from "@/lib/journey-theme";
 import { getSession } from "@/lib/session";
+import { getTonightFeed } from "@/lib/data/tonight";
+import { formatKampalaDayTime, formatKampalaTime } from "@/lib/kampala-time";
+import type { TonightCard } from "@/lib/tonight";
 
 const CATEGORIES = [
   { href: "/explore?type=restaurant", label: "Eat & Drink" },
@@ -130,6 +132,38 @@ function CategoryMarquee() {
   );
 }
 
+/** One card in "Kampala, today". The eyebrow says why it is here (tonight,
+ * a perk, this weekend), so a mixed list still reads clearly. */
+function TonightCardLink({ card }: { card: TonightCard }) {
+  let eyebrow: string;
+  let note: string | null = null;
+  if (card.kind === "today" || card.kind === "weekend") {
+    eyebrow = card.kind === "today" ? `Today · ${formatKampalaTime(card.startAt)}` : `This weekend · ${formatKampalaDayTime(card.startAt)}`;
+    note = card.organizerName ? null : "Wano pick";
+    if (card.isWeeklyRegular) note = note ? `${note} · Every week` : "Every week";
+  } else if (card.kind === "perk") {
+    eyebrow = "Passport perk";
+  } else {
+    eyebrow = "Plan an outing";
+  }
+  const place =
+    (card.kind === "today" || card.kind === "weekend") && card.organizerName
+      ? `${card.place} · ${card.organizerName}`
+      : card.place;
+
+  return (
+    <Link
+      href={card.href}
+      className="group border border-ink/10 bg-white p-6 transition-colors duration-200 hover:border-ember"
+    >
+      <p className="eyebrow text-ember">{eyebrow}</p>
+      <h3 className="font-serif-editorial mt-3 text-xl text-ink">{card.title}</h3>
+      <p className="mt-2 text-sm text-ink/55">{place}</p>
+      {note && <p className="font-mono-data mt-3 text-[11px] uppercase tracking-wide text-ink/40">{note}</p>}
+    </Link>
+  );
+}
+
 export default async function LandingPage() {
   const session = await getSession();
   if (session?.role === "vendor") redirect("/vendor/dashboard");
@@ -150,11 +184,16 @@ export default async function LandingPage() {
         .then((rows) => rows[0]?.username ?? null)
     : null;
 
-  const [journeyList, featured, todayEvents] = await Promise.all([
-    getJourneys(),
-    searchListings(),
-    getEventsForToday(4),
-  ]);
+  const [journeyList, featured] = await Promise.all([getJourneys(), searchListings()]);
+  // The five fixed editorial journeys are public whatever their status
+  // (this page already lists them all); user/creator ones only once published.
+  const fallbackJourney =
+    journeyList.find((j) => j.status === "published") ?? journeyList.find((j) => j.kind === "editorial") ?? null;
+  const tonight = await getTonightFeed(
+    fallbackJourney
+      ? { slug: fallbackJourney.slug, name: fallbackJourney.name, tagline: fallbackJourney.tagline }
+      : null,
+  );
   const featuredListings = featured.slice(0, 3);
   const [journeyTagsByListing, ratings, birthdayPerks, imagesByListing] = await Promise.all([
     getJourneyTagsForListings(featuredListings.map((r) => r.listing.id)),
@@ -229,35 +268,19 @@ export default async function LandingPage() {
           </span>
         </div>
 
-        {todayEvents.length > 0 ? (
-          // Individually bordered cards, not a shared hairline-grid
-          // background — todayEvents is rarely a full row (often 1-2 on a
-          // quiet day), and a shared background under a partly-empty grid
-          // paints the unused tracks as a solid block. A border per card
-          // reads the same "sharp, gridded" way at any count.
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {todayEvents.map(({ event, organizer }) => (
-              <Link
-                key={event.id}
-                href={`/events/${event.id}`}
-                className="group border border-ink/10 bg-white p-6 transition-colors duration-200 hover:border-ember"
-              >
-                <p className="eyebrow text-ember">
-                  {new Date(event.startAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
-                </p>
-                <h3 className="font-serif-editorial mt-3 text-xl text-ink">{event.title}</h3>
-                <p className="mt-2 text-sm text-ink/55">
-                  {event.location}
-                  {organizer?.businessName ? ` · ${organizer.businessName}` : ""}
-                </p>
-              </Link>
-            ))}
-          </div>
-        ) : (
+        {/* Never empty: today's events, then live Passport perks, then the
+            weekend, then a journey (see src/lib/tonight.ts). Individually
+            bordered cards, since the count varies from one to six. */}
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {tonight.map((card) => (
+            <TonightCardLink key={card.key} card={card} />
+          ))}
+        </div>
+        {tonight.length === 0 && (
           <div className="mt-8 border border-ink/10 bg-white px-6 py-10 text-center">
-            <p className="text-sm text-ink/60">Nothing scheduled for today yet.</p>
-            <ArrowLink href="/events" className="mt-3 text-sm font-semibold text-ember">
-              See what&apos;s coming up
+            <p className="text-sm text-ink/60">New places and events are being added every day.</p>
+            <ArrowLink href="/explore" className="mt-3 text-sm font-semibold text-ember">
+              Explore Kampala
             </ArrowLink>
           </div>
         )}

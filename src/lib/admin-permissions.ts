@@ -29,6 +29,7 @@ export const ADMIN_MIN_LEVEL = {
   "/admin/submissions": "ops",
   "/admin/slots": "ops",
   "/admin/clubs": "ops",
+  "/admin/events": "ops",
   "/admin/journeys": "ops",
   "/admin/supply-leads": "ops",
 
