@@ -75,3 +75,19 @@ export function formatKampalaDateTime(date: Date): string {
   const day = date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "Africa/Kampala" });
   return `${day}, ${formatKampalaTime(date)}`;
 }
+
+/** "2026-12-07": the Monday (Kampala time) of the week containing `now`.
+ * Weeks run Monday 00:00 to Sunday 23:59 Kampala time. */
+export function kampalaWeekStartIso(now: Date): string {
+  const weekday = kampalaWeekday(now); // 0 = Sunday
+  const back = (weekday + 6) % 7;
+  const monday = new Date(kampalaStartOfDay(now).getTime() - back * DAY_MS);
+  return new Date(monday.getTime() + KAMPALA_OFFSET_MS).toISOString().slice(0, 10);
+}
+
+/** [start, end) instants of the Kampala week beginning on `weekStartIso`. */
+export function kampalaWeekBounds(weekStartIso: string): { start: Date; end: Date } {
+  const [y, m, d] = weekStartIso.split("-").map(Number);
+  const start = new Date(Date.UTC(y, m - 1, d) - KAMPALA_OFFSET_MS);
+  return { start, end: new Date(start.getTime() + 7 * DAY_MS) };
+}

@@ -17,6 +17,8 @@ import { ReviewForm } from "@/components/review-form";
 import { TrailStamps } from "@/components/trail-stamps";
 import { VisitorQrCard } from "@/components/visitor-qr-card";
 import { getTrailProgressForTraveller } from "@/lib/data/trails";
+import { getAreaStamps, getWeeklyChallengeStatus } from "@/lib/data/check-ins";
+import { LAUNCH_AREAS, STAMP_AREAS } from "@/lib/areas";
 import { PASSPORT_TABS, type PassportTabKey } from "@/lib/passport-tabs";
 import { getSession, type SessionPayload } from "@/lib/session";
 import { claimDealFormAction } from "@/lib/actions/deal-actions";
@@ -98,6 +100,8 @@ export default async function PassportPage({
     blockedList,
     myClubs,
     savedListingRows,
+    weeklyStatus,
+    areaStamps,
   ] = await Promise.all([
     db.select().from(users).where(eq(users.id, session.userId)).limit(1).then((r) => r[0]),
     getPassportProgress(travellerProfile.id),
@@ -113,6 +117,8 @@ export default async function PassportPage({
     getMyBlockedList(travellerProfile.id),
     getMyClubs(travellerProfile.id),
     getSavedListingsForTraveller(travellerProfile.id),
+    getWeeklyChallengeStatus(travellerProfile.id),
+    getAreaStamps(travellerProfile.id),
   ]);
 
   const [wallet, pointsShopCatalog] = await withRlsContext(
@@ -222,6 +228,8 @@ export default async function PassportPage({
             totalJourneys={totalJourneys}
             grandPrizeQualified={grandPrizeQualified}
             trailProgress={trailProgress}
+            weeklyStatus={weeklyStatus}
+            areaStamps={areaStamps}
           />
         )}
         {activeTab === "saved" && (
@@ -286,15 +294,72 @@ function StampsTab({
   totalJourneys,
   grandPrizeQualified,
   trailProgress,
+  weeklyStatus,
+  areaStamps,
 }: {
   progress: Awaited<ReturnType<typeof getPassportProgress>>["progress"];
   stampCount: number;
   totalJourneys: number;
   grandPrizeQualified: boolean;
   trailProgress: Awaited<ReturnType<typeof getTrailProgressForTraveller>>;
+  weeklyStatus: Awaited<ReturnType<typeof getWeeklyChallengeStatus>>;
+  areaStamps: string[];
 }) {
+  const earned = new Set(areaStamps);
+  const shownAreas = STAMP_AREAS.filter((a) => (LAUNCH_AREAS as readonly string[]).includes(a) || earned.has(a));
   return (
     <div className="space-y-6">
+      <section className="border border-ink/10 bg-white p-6">
+        <p className="eyebrow text-ember">This week</p>
+        <h2 className="font-serif-editorial mt-1 text-xl text-ink">Weekly challenges</h2>
+        <p className="mt-1 text-sm text-ink/60">
+          Show your Wano QR when you visit a partner. Staff scanning it is what counts, and new
+          challenges arrive every Monday.
+        </p>
+        <Link href="/passport?tab=rewards" className="mt-2 inline-block text-sm text-ember hover:underline">
+          Open my Wano QR →
+        </Link>
+        <ul className="mt-4 space-y-3">
+          {weeklyStatus.map(({ challenge, progress, target, done }) => (
+            <li key={challenge.id} className="border border-ink/10 p-3">
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="font-semibold text-ink">
+                  {done && <span aria-hidden>✓ </span>}
+                  {challenge.title}
+                </p>
+                <p className="font-mono-data shrink-0 text-xs text-ink/50">+{challenge.xp} XP</p>
+              </div>
+              <p className="mt-0.5 text-sm text-ink/60">{challenge.description}</p>
+              <div className="mt-2 h-[3px] w-full bg-ink/10">
+                <div
+                  className={`h-full ${done ? "bg-emerald-600" : "bg-ember"}`}
+                  style={{ width: `${Math.min(100, (progress / target) * 100)}%` }}
+                />
+              </div>
+              <p className="font-mono-data mt-1 text-xs text-ink/50">
+                {done ? "Done" : `${progress} / ${target}`}
+              </p>
+            </li>
+          ))}
+        </ul>
+      </section>
+      <section className="border border-ink/10 bg-white p-6">
+        <h2 className="font-serif-editorial text-xl text-ink">Neighbourhood stamps</h2>
+        <p className="mt-1 text-sm text-ink/60">Your first verified visit in each area earns its stamp.</p>
+        <ul className="mt-4 flex flex-wrap gap-2">
+          {shownAreas.map((area) => (
+            <li
+              key={area}
+              className={`rounded-full border px-3 py-1 text-sm ${
+                earned.has(area) ? "border-ember bg-ember/10 text-ink" : "border-dashed border-ink/20 text-ink/40"
+              }`}
+            >
+              {earned.has(area) ? "✓ " : ""}
+              {area}
+            </li>
+          ))}
+        </ul>
+      </section>
       <div>
         <h2 className="font-serif-editorial text-2xl text-ink">Wano Passport</h2>
         <p className="mt-1 text-sm text-ink/60">
