@@ -234,6 +234,7 @@ export default async function PassportPage({
             weeklyStatus={weeklyStatus}
             areaStamps={areaStamps}
             streak={streak}
+            isCreator={Boolean(travellerProfile.creatorApprovedAt)}
           />
         )}
         {activeTab === "saved" && (
@@ -301,6 +302,7 @@ function StampsTab({
   weeklyStatus,
   areaStamps,
   streak,
+  isCreator,
 }: {
   progress: Awaited<ReturnType<typeof getPassportProgress>>["progress"];
   stampCount: number;
@@ -310,6 +312,7 @@ function StampsTab({
   weeklyStatus: Awaited<ReturnType<typeof getWeeklyChallengeStatus>>;
   areaStamps: string[];
   streak: Awaited<ReturnType<typeof getStreakStatus>>;
+  isCreator: boolean;
 }) {
   const nextMilestone = STREAK_MILESTONES.find((m) => m.weeks > streak.current);
   const earned = new Set(areaStamps);
@@ -319,9 +322,19 @@ function StampsTab({
       <section className="border border-ink/10 bg-white p-6">
         <div className="flex items-baseline justify-between gap-3">
           <p className="eyebrow text-ember">This week</p>
-          <Link href="/plans" className="text-sm font-semibold text-ember hover:underline">
-            My plans →
-          </Link>
+          <span className="flex flex-wrap justify-end gap-x-4">
+            {isCreator && (
+              <Link href="/creator/lists" className="text-sm font-semibold text-ember hover:underline">
+                My lists →
+              </Link>
+            )}
+            <Link href="/crew" className="text-sm font-semibold text-ember hover:underline">
+              My crew →
+            </Link>
+            <Link href="/plans" className="text-sm font-semibold text-ember hover:underline">
+              My plans →
+            </Link>
+          </span>
         </div>
         <h2 className="font-serif-editorial mt-1 text-xl text-ink">Weekly challenges</h2>
         <p className="mt-1 text-sm text-ink/60">

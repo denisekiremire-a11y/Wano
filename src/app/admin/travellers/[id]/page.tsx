@@ -5,6 +5,7 @@ import { getMyWallet } from "@/lib/data/rewards";
 import { getPostsByTraveller } from "@/lib/data/social";
 import { getPassportProgress, getReferralStats, getTravellerBookings } from "@/lib/data/traveller";
 import { requireAdminPage } from "@/lib/auth";
+import { setCreatorAction } from "@/lib/actions/creator-list-actions";
 import { formatRewardDiscount } from "@/lib/reward-format";
 
 type WalletEntry = Awaited<ReturnType<typeof getMyWallet>>["active"][number];
@@ -68,6 +69,13 @@ export default async function AdminTravellerDetailPage({
           Joined {traveller.createdAt.toLocaleDateString()}
           {traveller.city ? ` · ${traveller.city}` : ""}
         </p>
+        <form action={setCreatorAction.bind(null, traveller.id, !traveller.creatorApprovedAt)} className="mt-3">
+          <button className="rounded-full border border-ink/20 px-3 py-1.5 text-xs font-semibold text-ink hover:border-ink">
+            {traveller.creatorApprovedAt
+              ? `Creator since ${traveller.creatorApprovedAt.toLocaleDateString("en-GB")} · Remove from creator programme`
+              : "Add to creator programme"}
+          </button>
+        </form>
       </div>
 
       <div className="grid grid-cols-2 gap-px overflow-hidden border border-ink/10 bg-ink/10 sm:grid-cols-4">
