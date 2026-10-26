@@ -18,9 +18,9 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { checkInVisitorAction, getVisitorCodeAction, lookupVisitorCodeAction } from "@/lib/actions/check-in-actions";
-import { CODE_FAILURE_LIMIT, getStreakStatus, getWeeklyChallengeStatus, recordCheckIn } from "@/lib/data/check-ins";
+import { CODE_FAILURE_LIMIT, countXpDropDays, getStreakStatus, getWeeklyChallengeStatus, recordCheckIn } from "@/lib/data/check-ins";
 import { getRewardsSummary, getXpEarnedLast12Months } from "@/lib/data/rewards";
-import { AREA_STAMP_XP } from "@/lib/rewards-config";
+import { AREA_STAMP_XP, XP_DROP_XP } from "@/lib/rewards-config";
 import { signVisitorToken } from "@/lib/visitor-token";
 
 function suffix() {
@@ -113,7 +113,9 @@ describe("verified visits", () => {
     const done = status.filter((s) => s.done);
     const challengeXp = done.reduce((sum, s) => sum + s.challenge.xp, 0);
     const after = await getXpEarnedLast12Months(t.travellerId);
-    expect(after - before).toBe(challengeXp + 2 * AREA_STAMP_XP);
+    // Today's XP Drop area may be Ntinda or Kololo, depending on the date.
+    const xpDrop = (await countXpDropDays(t.travellerId)) * XP_DROP_XP;
+    expect(after - before).toBe(challengeXp + 2 * AREA_STAMP_XP + xpDrop);
 
     const summary = await getRewardsSummary(t.travellerId, null, null);
     expect(summary.breakdown.find((b) => b.label === "Neighbourhood stamps")?.count).toBe(2);

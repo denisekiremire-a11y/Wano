@@ -2,7 +2,15 @@ import Link from "next/link";
 import { PhoneVerifyInline } from "@/components/phone-verify-inline";
 import { ResendVerificationButton } from "@/components/resend-verification-button";
 import { VoucherCard } from "@/components/voucher-card";
-import { checkDropIdentity, getDropNoShows, getHomeDrops, getMyDropVoucher, type DropView } from "@/lib/data/drops";
+import {
+  checkDropIdentity,
+  getDropNoShows,
+  getHomeDrops,
+  getHomeXpDrops,
+  getMyDropVoucher,
+  type DropView,
+  type XpDropView,
+} from "@/lib/data/drops";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { DROP_ANNOUNCE_HOUR, dropPausedUntil } from "@/lib/drops";
 import { formatKampalaDateTime, formatKampalaTime, kampalaStartOfDay } from "@/lib/kampala-time";
@@ -16,9 +24,28 @@ function windowLabel(drop: DropView) {
   return `${formatKampalaTime(drop.redeemFrom)} to ${formatKampalaTime(drop.redeemUntil)}`;
 }
 
+/** On days with no venue perk: XP for a verified visit in that day's area. */
+function XpDropCard({ drop, when }: { drop: XpDropView; when: "Today" | "Tomorrow" }) {
+  return (
+    <article className="border border-ink/10 bg-white p-6">
+      <p className="eyebrow text-ember">{when}&apos;s XP Drop · all day</p>
+      <h2 className="font-serif-editorial mt-3 text-2xl text-ink">
+        +{drop.xp} XP for a visit in {drop.area}
+      </h2>
+      <p className="mt-2 text-sm text-ink/70">
+        Visit any Wano partner in {drop.area} and show your Wano QR. Nothing to claim, and it counts once per day.
+      </p>
+      <p className="mt-2 text-sm text-ink/60">Try {drop.venues.join(", ")}.</p>
+      <Link href={`/explore?q=${encodeURIComponent(drop.area)}`} className="mt-4 inline-block text-sm font-semibold text-ember hover:underline">
+        See partners in {drop.area} →
+      </Link>
+    </article>
+  );
+}
+
 export default async function DropsPage() {
   const now = new Date();
-  const [session, drops] = await Promise.all([getSession(), getHomeDrops(now)]);
+  const [session, drops, xpDrops] = await Promise.all([getSession(), getHomeDrops(now), getHomeXpDrops(now)]);
   const traveller = session?.role === "traveller" ? await getTravellerProfileByUserId(session.userId) : null;
 
   const [identity, noShows] = traveller
@@ -41,7 +68,7 @@ export default async function DropsPage() {
         <h1 className="font-serif-editorial mt-2 text-4xl text-ink">The Daily Drop</h1>
         <p className="mt-3 text-ink/60">
           One perk from a Kampala partner, announced at 5 pm for the next day so you can plan. The first people to
-          claim it get a voucher to use at the venue. Using it earns Passport XP.
+          claim it get a voucher to use at the venue. Using it earns Passport XP. On days without one, there&apos;s an XP Drop: Passport XP for a visit in that day&apos;s neighbourhood.
         </p>
 
         {traveller && identity && !identity.ok && (
@@ -119,7 +146,10 @@ export default async function DropsPage() {
             );
           })}
 
-          {!drops.tomorrow && (
+          {xpDrops.today && <XpDropCard drop={xpDrops.today} when="Today" />}
+          {xpDrops.tomorrow && <XpDropCard drop={xpDrops.tomorrow} when="Tomorrow" />}
+
+          {!drops.tomorrow && !xpDrops.tomorrow && (
             <div className="border border-dashed border-ink/20 px-6 py-8 text-center text-sm text-ink/60">
               {beforeAnnouncement
                 ? "Tomorrow's Drop is announced at 5 pm today."

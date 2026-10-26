@@ -22,9 +22,10 @@ import {
 } from "@/db/schema";
 import type { DbOrTx } from "@/lib/db-context";
 import { getPointsEarnedLast12Months, tierForPoints, twelveMonthsAgo, type Tier } from "@/lib/data/points";
-import { AREA_STAMP_XP, BOOKING_COMPLETION_XP, FRIEND_FIRST_VISIT_XP, DROP_REDEMPTION_XP, TIER_THRESHOLDS } from "@/lib/rewards-config";
+import { AREA_STAMP_XP, BOOKING_COMPLETION_XP, FRIEND_FIRST_VISIT_XP, DROP_REDEMPTION_XP, TIER_THRESHOLDS, XP_DROP_XP } from "@/lib/rewards-config";
 import {
   countAreaStampsEarned,
+  countXpDropDays,
   countInvitedFriendsVisited,
   getStreakXp,
   getWeeklyChallengeXp,
@@ -100,6 +101,7 @@ export async function getRewardsSummary(travellerId: string, persona: string | n
     friendsVisited,
     streak,
     groupOutings,
+    xpDrops,
   ] = await Promise.all([
     getPassportProgress(travellerId),
     getChallengesWithStatus(travellerId),
@@ -125,6 +127,7 @@ export async function getRewardsSummary(travellerId: string, persona: string | n
     countInvitedFriendsVisited(travellerId),
     getStreakXp(travellerId),
     countCompletedGroupOutings(travellerId),
+    countXpDropDays(travellerId),
   ]);
 
   const completedChallenges = challenges.filter((c) => c.completion?.status === "verified").length;
@@ -151,6 +154,7 @@ export async function getRewardsSummary(travellerId: string, persona: string | n
     },
     { label: "Trails completed", count: trailXpRows.length, points: trailsXp },
     { label: "Daily Drops used", count: dropsUsed, points: dropsUsed * DROP_REDEMPTION_XP },
+    { label: "XP Drops", count: xpDrops, points: xpDrops * XP_DROP_XP },
     { label: "Weekly challenges", count: weekly.count, points: weekly.xp },
     { label: "Neighbourhood stamps", count: areaStamps, points: areaStamps * AREA_STAMP_XP },
     { label: "Invited friends out", count: friendsVisited, points: friendsVisited * FRIEND_FIRST_VISIT_XP },
@@ -193,7 +197,7 @@ function bookingCompletionDateFilter(since: Date) {
 export async function getXpEarnedLast12Months(travellerId: string): Promise<number> {
   const since = twelveMonthsAgo();
 
-  const [stampRows, completionRows, reviewRows, referralRows, completedBookingRows, trailRows, dropsUsed, weekly, areaStamps, friendsVisited, streak, groupOutings] =
+  const [stampRows, completionRows, reviewRows, referralRows, completedBookingRows, trailRows, dropsUsed, weekly, areaStamps, friendsVisited, streak, groupOutings, xpDrops] =
     await Promise.all([
     db
       .select({ id: stamps.id })
@@ -242,6 +246,7 @@ export async function getXpEarnedLast12Months(travellerId: string): Promise<numb
     countInvitedFriendsVisited(travellerId, since),
     getStreakXp(travellerId, since),
     countCompletedGroupOutings(travellerId, since),
+    countXpDropDays(travellerId, since),
   ]);
 
   return (
@@ -256,7 +261,8 @@ export async function getXpEarnedLast12Months(travellerId: string): Promise<numb
     areaStamps * AREA_STAMP_XP +
     friendsVisited * FRIEND_FIRST_VISIT_XP +
     streak.xp +
-    groupOutings * BOOKING_COMPLETION_XP
+    groupOutings * BOOKING_COMPLETION_XP +
+    xpDrops * XP_DROP_XP
   );
 }
 
