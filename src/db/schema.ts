@@ -888,6 +888,9 @@ export const rewardSourceEnum = pgEnum("reward_source", [
   // reward at a partner (the reward's own targetType/targetId). See
   // collabTriggerVendorProfileId below.
   "collab",
+  // One Daily Drop (see dailyDrops). Never self-claimable through the
+  // generic claim path — only claimDropAction issues these.
+  "drop",
 ]);
 // draft = not yet visible/claimable. active = live. paused = temporarily
 // off (manual, or automatic — see the monthly Wano-funded budget cap in
@@ -945,6 +948,27 @@ export const rewards = pgTable("rewards", {
     () => vendorProfiles.id,
     { onDelete: "cascade" },
   ),
+});
+
+// The Daily Drop: one vendor-funded perk per Kampala date, announced at
+// 17:00 the day before for the first N people, redeemed at the venue on
+// the day. The perk itself is an ordinary reward row (source "drop":
+// startsAt = claims open, endsAt = redeem window end, totalCap = N,
+// perUserCap = 1), so vouchers, QR scanning and redemption all reuse the
+// existing rewards system. This row only adds the date and the redeem
+// window, which a plain reward can't express.
+export const dailyDrops = pgTable("daily_drops", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  dropDate: date("drop_date").notNull().unique(),
+  rewardId: uuid("reward_id")
+    .notNull()
+    .unique()
+    .references(() => rewards.id, { onDelete: "cascade" }),
+  claimsOpenAt: timestamp("claims_open_at", { withTimezone: true }).notNull(),
+  redeemFrom: timestamp("redeem_from", { withTimezone: true }).notNull(),
+  redeemUntil: timestamp("redeem_until", { withTimezone: true }).notNull(),
+  createdByUserId: uuid("created_by_user_id").references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const userRewardStatusEnum = pgEnum("user_reward_status", [

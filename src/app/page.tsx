@@ -17,6 +17,7 @@ import { getRatingSummaries } from "@/lib/data/reviews";
 import { journeyTheme } from "@/lib/journey-theme";
 import { getSession } from "@/lib/session";
 import { getTonightFeed } from "@/lib/data/tonight";
+import { getHomeDrops, type DropView } from "@/lib/data/drops";
 import { formatKampalaDayTime, formatKampalaTime } from "@/lib/kampala-time";
 import type { TonightCard } from "@/lib/tonight";
 
@@ -132,6 +133,38 @@ function CategoryMarquee() {
   );
 }
 
+/** The Daily Drop, above the "today" cards: today's (to use tonight) and
+ * tomorrow's once announced at 5 pm (to claim now). Hidden when neither. */
+function DailyDropStrip({ today, tomorrow }: { today: DropView | null; tomorrow: DropView | null }) {
+  const items = [
+    today && { drop: today, label: `Today's Drop · until ${formatKampalaTime(today.redeemUntil)}` },
+    tomorrow && { drop: tomorrow, label: "Tomorrow's Drop · claim now" },
+  ].filter((x): x is { drop: DropView; label: string } => Boolean(x));
+  if (items.length === 0) return null;
+
+  return (
+    <div className="mt-8 grid gap-4 sm:grid-cols-2">
+      {items.map(({ drop, label }) => {
+        const left = Math.max(0, drop.cap - drop.claimed);
+        return (
+          <Link
+            key={drop.dropId}
+            href="/drops"
+            className="group border-2 border-ember bg-white p-6 transition-colors duration-200 hover:bg-ember/5"
+          >
+            <p className="eyebrow text-ember">{label}</p>
+            <h3 className="font-serif-editorial mt-3 text-xl text-ink">{drop.title}</h3>
+            <p className="mt-2 text-sm text-ink/55">{drop.vendorName}</p>
+            <p className="font-mono-data mt-3 text-[11px] uppercase tracking-wide text-ink/50">
+              {left > 0 ? `${left} of ${drop.cap} left` : "All gone"}
+            </p>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
 /** One card in "Kampala, today". The eyebrow says why it is here (tonight,
  * a perk, this weekend), so a mixed list still reads clearly. */
 function TonightCardLink({ card }: { card: TonightCard }) {
@@ -189,11 +222,13 @@ export default async function LandingPage() {
   // (this page already lists them all); user/creator ones only once published.
   const fallbackJourney =
     journeyList.find((j) => j.status === "published") ?? journeyList.find((j) => j.kind === "editorial") ?? null;
+  const homeDropsPromise = getHomeDrops();
   const tonight = await getTonightFeed(
     fallbackJourney
       ? { slug: fallbackJourney.slug, name: fallbackJourney.name, tagline: fallbackJourney.tagline }
       : null,
   );
+  const homeDrops = await homeDropsPromise;
   const featuredListings = featured.slice(0, 3);
   const [journeyTagsByListing, ratings, birthdayPerks, imagesByListing] = await Promise.all([
     getJourneyTagsForListings(featuredListings.map((r) => r.listing.id)),
@@ -267,6 +302,8 @@ export default async function LandingPage() {
             </ArrowLink>
           </span>
         </div>
+
+        <DailyDropStrip today={homeDrops.today} tomorrow={homeDrops.tomorrow} />
 
         {/* Never empty: today's events, then live Passport perks, then the
             weekend, then a journey (see src/lib/tonight.ts). Individually

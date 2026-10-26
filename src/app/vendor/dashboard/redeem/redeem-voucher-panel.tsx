@@ -14,6 +14,7 @@ const REJECTION_COPY: Record<Exclude<RedeemCheck, { ok: true }>["reason"], strin
   wrong_venue: "This voucher isn't for your venue.",
   void: "This voucher was voided and can't be redeemed.",
   not_active: "This reward isn't currently active.",
+  not_yet: "This is a Daily Drop voucher for a later day. It can only be used during that Drop's time window.",
 };
 
 // Which discount types need the bill amount entered at redemption:

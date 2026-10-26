@@ -59,6 +59,7 @@ const ADMIN_NAV_ITEMS: (NavItem & { minLevelKey: keyof typeof ADMIN_MIN_LEVEL })
     minLevelKey: "/admin/rewards",
     matchPrefixes: ["/admin/promotions"],
   },
+  { href: "/admin/drops", label: "Daily Drops", icon: "ticket", minLevelKey: "/admin/drops" },
   { href: "/admin/trails", label: "Trails", icon: "map", minLevelKey: "/admin/trails" },
   { href: "/admin/funzone", label: "Fun Zone", icon: "megaphone", minLevelKey: "/admin/funzone" },
   { href: "/admin/match-day", label: "Match Day", icon: "calendar", minLevelKey: "/admin/match-day" },
@@ -71,7 +72,7 @@ const ADMIN_NAV_ITEMS: (NavItem & { minLevelKey: keyof typeof ADMIN_MIN_LEVEL })
   { href: "/admin/action-log", label: "Action log", icon: "file", minLevelKey: "/admin/action-log" },
 ];
 
-// Admin's flat list (17 sections) doesn't fit a desktop header — grouped
+// Admin's flat list (18 sections) doesn't fit a desktop header — grouped
 // into 5 categories plus a standalone Overview link, each a dropdown that
 // leads to its members. The mobile bottom nav keeps the flat list (see
 // mobileNavItemsFor / bottom-nav.tsx) since a horizontally-scrollable
@@ -83,7 +84,7 @@ const ADMIN_GROUPS: { label: string; hrefs: string[] }[] = [
     label: "Community",
     hrefs: ["/admin/travellers", "/admin/clubs", "/admin/moderation", "/admin/influencers"],
   },
-  { label: "Marketing", hrefs: ["/admin/rewards", "/admin/funzone", "/admin/journal"] },
+  { label: "Marketing", hrefs: ["/admin/rewards", "/admin/drops", "/admin/funzone", "/admin/journal"] },
   { label: "System", hrefs: ["/admin/analytics", "/admin/accounts", "/admin/action-log"] },
 ];
 

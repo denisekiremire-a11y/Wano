@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { getVendorListings, getVendorProfileByUserId } from "@/lib/data/vendor";
 import { getVendorRewards } from "@/lib/data/rewards";
+import { getVendorDropToday } from "@/lib/data/drops";
+import { formatKampalaTime, kampalaDayBounds } from "@/lib/kampala-time";
 import { getSubmissionsForVendor } from "@/lib/data/submissions";
 import { withRlsContext } from "@/lib/db-context";
 import { getSession } from "@/lib/session";
@@ -25,12 +27,14 @@ export default async function VendorDashboardPage() {
   const vendorProfile = await getVendorProfileByUserId(session!.userId);
   if (!vendorProfile) return null;
 
-  const [listingRows, [rewardRows, submissions]] = await Promise.all([
+  const [listingRows, [rewardRows, submissions], myDrops] = await Promise.all([
     getVendorListings(vendorProfile.id),
     withRlsContext({ userId: session!.userId, role: "vendor", vendorProfileId: vendorProfile.id }, (tx) =>
       Promise.all([getVendorRewards(vendorProfile.id, tx), getSubmissionsForVendor(vendorProfile.id, tx)]),
     ),
+    getVendorDropToday(vendorProfile.id),
   ]);
+  const todayEnd = kampalaDayBounds(new Date()).end;
   const status = statusCopy[vendorProfile.accreditationStatus];
   const pendingSubmissions = submissions.filter((s) => s.status === "pending");
 
@@ -43,6 +47,23 @@ export default async function VendorDashboardPage() {
         </div>
         <span className={`eyebrow ${status.className}`}>{status.label}</span>
       </div>
+
+      {myDrops.map((drop) => (
+        <div key={drop.dropId} className="border-2 border-ember bg-white p-4 text-sm text-ink/80">
+          <p className="eyebrow text-ember">
+            {drop.redeemFrom < todayEnd ? "Your Wano Daily Drop is today" : "Your Wano Daily Drop is tomorrow"}
+          </p>
+          <p className="mt-1">
+            <span className="font-semibold text-ink">{drop.title}</span> · {drop.claimed} of {drop.cap} claimed ·{" "}
+            {drop.redeemed} used · {formatKampalaTime(drop.redeemFrom)} to {formatKampalaTime(drop.redeemUntil)}. Scan
+            vouchers on the{" "}
+            <Link href="/vendor/dashboard/redeem" className="font-medium text-ember underline">
+              Redeem
+            </Link>{" "}
+            page.
+          </p>
+        </div>
+      ))}
 
       {vendorProfile.accreditationStatus === "pending" && (
         <div className="border border-ink/10 bg-white p-4 text-sm text-ink/70">

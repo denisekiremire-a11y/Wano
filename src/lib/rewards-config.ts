@@ -21,6 +21,10 @@ export const WELCOME_POINTS = 50;
 // other XP source).
 export const BOOKING_COMPLETION_XP = 100;
 
+// XP for each Daily Drop voucher used at the venue (live-counted the same
+// way, from redeemed user_rewards whose reward is a Drop).
+export const DROP_REDEMPTION_XP = 50;
+
 // Commission per listing type. Used only by Part B (paid bookings, behind
 // NEXT_PUBLIC_PAID_BOOKINGS_ENABLED) — 0 while every booking is pay-at-venue.
 // Events charge no commission but a 5% customer-paid booking fee instead.
