@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, gt, gte, inArray, isNull, lt, lte, or } from "drizzle-orm";
 import { db } from "@/db";
 import { events, listings, rewards, vendorProfiles } from "@/db/schema";
+import { withRlsContext, type DbOrTx } from "@/lib/db-context";
 import { kampalaDayBounds, kampalaUpcomingWeekend } from "@/lib/kampala-time";
 import { listingPublishConditions } from "@/lib/listing-publish";
 import {
@@ -60,7 +61,14 @@ async function getWeekendEvents(now: Date, limit: number): Promise<TonightEvent[
 /** Passport perks a member can claim right now at a visible listing — the
  * same self-claimable sources a listing page shows (campaign, manual). */
 async function getLivePerks(now: Date, limit: number): Promise<TonightPerk[]> {
-  const rows = await db
+  // rewards is under row-level security that requires a role to be set
+  // (see manual_rls_round_b.sql). This is a read of the public perk
+  // catalog, so a bare traveller context is enough, signed in or not.
+  return withRlsContext({ role: "traveller" }, (tx) => readLivePerks(tx, now, limit));
+}
+
+async function readLivePerks(client: DbOrTx, now: Date, limit: number): Promise<TonightPerk[]> {
+  const rows = await client
     .select({
       rewardId: rewards.id,
       title: rewards.title,
