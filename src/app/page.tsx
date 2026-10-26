@@ -8,7 +8,8 @@ import { CornerMarks } from "@/components/corner-marks";
 import { JourneyArt } from "@/components/journey-art";
 import { PartnerCard } from "@/components/partner-card";
 import { db } from "@/db";
-import { users } from "@/db/schema";
+import { travellerProfiles, users } from "@/db/schema";
+import { friendsGoingLabel, getFriendsGoingByEvent } from "@/lib/data/events";
 import { getBirthdayPerksForListings } from "@/lib/data/birthday";
 import { AFCON_CLUB_ENABLED } from "@/lib/feature-flags";
 import { getJourneyTagsForListings, getJourneys, searchListings } from "@/lib/data/journeys";
@@ -167,7 +168,7 @@ function DailyDropStrip({ today, tomorrow }: { today: DropView | null; tomorrow:
 
 /** One card in "Kampala, today". The eyebrow says why it is here (tonight,
  * a perk, this weekend), so a mixed list still reads clearly. */
-function TonightCardLink({ card }: { card: TonightCard }) {
+function TonightCardLink({ card, friendsGoing }: { card: TonightCard; friendsGoing: string | null }) {
   let eyebrow: string;
   let note: string | null = null;
   if (card.kind === "today" || card.kind === "weekend") {
@@ -192,6 +193,7 @@ function TonightCardLink({ card }: { card: TonightCard }) {
       <p className="eyebrow text-ember">{eyebrow}</p>
       <h3 className="font-serif-editorial mt-3 text-xl text-ink">{card.title}</h3>
       <p className="mt-2 text-sm text-ink/55">{place}</p>
+      {friendsGoing && <p className="mt-3 text-sm font-medium text-ink">{friendsGoing}</p>}
       {note && <p className="font-mono-data mt-3 text-[11px] uppercase tracking-wide text-ink/40">{note}</p>}
     </Link>
   );
@@ -208,14 +210,16 @@ export default async function LandingPage() {
   // traveller's current username, not a stale one. Falls back to
   // Passport (which also carries the share-referral block) if they
   // somehow have no username yet.
-  const travellerUsername = session
+  const me = session
     ? await db
-        .select({ username: users.username })
+        .select({ username: users.username, travellerId: travellerProfiles.id })
         .from(users)
+        .leftJoin(travellerProfiles, eq(travellerProfiles.userId, users.id))
         .where(eq(users.id, session.userId))
         .limit(1)
-        .then((rows) => rows[0]?.username ?? null)
+        .then((rows) => rows[0] ?? null)
     : null;
+  const travellerUsername = me?.username ?? null;
 
   const [journeyList, featured] = await Promise.all([getJourneys(), searchListings()]);
   // The five fixed editorial journeys are public whatever their status
@@ -228,7 +232,15 @@ export default async function LandingPage() {
       ? { slug: fallbackJourney.slug, name: fallbackJourney.name, tagline: fallbackJourney.tagline }
       : null,
   );
-  const homeDrops = await homeDropsPromise;
+  const [homeDrops, friendsGoing] = await Promise.all([
+    homeDropsPromise,
+    me?.travellerId
+      ? getFriendsGoingByEvent(
+          me.travellerId,
+          tonight.flatMap((c) => (c.kind === "today" || c.kind === "weekend" ? [c.eventId] : [])),
+        )
+      : Promise.resolve(new Map<string, string[]>()),
+  ]);
   const featuredListings = featured.slice(0, 3);
   const [journeyTagsByListing, ratings, birthdayPerks, imagesByListing] = await Promise.all([
     getJourneyTagsForListings(featuredListings.map((r) => r.listing.id)),
@@ -310,7 +322,15 @@ export default async function LandingPage() {
             bordered cards, since the count varies from one to six. */}
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {tonight.map((card) => (
-            <TonightCardLink key={card.key} card={card} />
+            <TonightCardLink
+              key={card.key}
+              card={card}
+              friendsGoing={
+                card.kind === "today" || card.kind === "weekend"
+                  ? friendsGoingLabel(friendsGoing.get(card.eventId) ?? [])
+                  : null
+              }
+            />
           ))}
         </div>
         {tonight.length === 0 && (

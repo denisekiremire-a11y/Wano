@@ -21,8 +21,8 @@ import {
 } from "@/db/schema";
 import type { DbOrTx } from "@/lib/db-context";
 import { getPointsEarnedLast12Months, tierForPoints, twelveMonthsAgo, type Tier } from "@/lib/data/points";
-import { AREA_STAMP_XP, BOOKING_COMPLETION_XP, DROP_REDEMPTION_XP, TIER_THRESHOLDS } from "@/lib/rewards-config";
-import { countAreaStampsEarned, getWeeklyChallengeXp } from "@/lib/data/check-ins";
+import { AREA_STAMP_XP, BOOKING_COMPLETION_XP, FRIEND_FIRST_VISIT_XP, DROP_REDEMPTION_XP, TIER_THRESHOLDS } from "@/lib/rewards-config";
+import { countAreaStampsEarned, countInvitedFriendsVisited, getWeeklyChallengeXp } from "@/lib/data/check-ins";
 import { withRlsContext } from "@/lib/db-context";
 import { getChallengesWithStatus, getPassportProgress, getReferralStats } from "./traveller";
 import { resolvePostContexts } from "./post-context";
@@ -72,6 +72,7 @@ export async function getRewardsSummary(travellerId: string, persona: string | n
     dropsUsed,
     weekly,
     areaStamps,
+    friendsVisited,
   ] = await Promise.all([
     getPassportProgress(travellerId),
     getChallengesWithStatus(travellerId),
@@ -94,6 +95,7 @@ export async function getRewardsSummary(travellerId: string, persona: string | n
     countRedeemedDrops(travellerId),
     getWeeklyChallengeXp(travellerId),
     countAreaStampsEarned(travellerId),
+    countInvitedFriendsVisited(travellerId),
   ]);
 
   const completedChallenges = challenges.filter((c) => c.completion?.status === "verified").length;
@@ -122,6 +124,7 @@ export async function getRewardsSummary(travellerId: string, persona: string | n
     { label: "Daily Drops used", count: dropsUsed, points: dropsUsed * DROP_REDEMPTION_XP },
     { label: "Weekly challenges", count: weekly.count, points: weekly.xp },
     { label: "Neighbourhood stamps", count: areaStamps, points: areaStamps * AREA_STAMP_XP },
+    { label: "Invited friends out", count: friendsVisited, points: friendsVisited * FRIEND_FIRST_VISIT_XP },
   ];
 
   // "totalPoints"/"availablePoints" are this function's existing field
@@ -159,7 +162,7 @@ function bookingCompletionDateFilter(since: Date) {
 export async function getXpEarnedLast12Months(travellerId: string): Promise<number> {
   const since = twelveMonthsAgo();
 
-  const [stampRows, completionRows, reviewRows, referralRows, completedBookingRows, trailRows, dropsUsed, weekly, areaStamps] =
+  const [stampRows, completionRows, reviewRows, referralRows, completedBookingRows, trailRows, dropsUsed, weekly, areaStamps, friendsVisited] =
     await Promise.all([
     db
       .select({ id: stamps.id })
@@ -205,6 +208,7 @@ export async function getXpEarnedLast12Months(travellerId: string): Promise<numb
     countRedeemedDrops(travellerId, since),
     getWeeklyChallengeXp(travellerId, since),
     countAreaStampsEarned(travellerId, since),
+    countInvitedFriendsVisited(travellerId, since),
   ]);
 
   return (
@@ -216,7 +220,8 @@ export async function getXpEarnedLast12Months(travellerId: string): Promise<numb
     trailRows.reduce((sum, r) => sum + r.bonusXp, 0) +
     dropsUsed * DROP_REDEMPTION_XP +
     weekly.xp +
-    areaStamps * AREA_STAMP_XP
+    areaStamps * AREA_STAMP_XP +
+    friendsVisited * FRIEND_FIRST_VISIT_XP
   );
 }
 

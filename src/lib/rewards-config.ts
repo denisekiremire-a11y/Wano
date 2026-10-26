@@ -61,3 +61,7 @@ export const REWARDS_SHARE_GUARDRAIL = 0.35;
 // Passport XP for each neighbourhood stamp (first verified visit in an
 // area, see src/lib/areas.ts).
 export const AREA_STAMP_XP = 100;
+
+// Passport XP to the inviter when a friend who joined with their link makes
+// a first verified visit (scan or backup code at a venue).
+export const FRIEND_FIRST_VISIT_XP = 100;

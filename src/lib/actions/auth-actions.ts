@@ -7,6 +7,7 @@ import {
   challengeCompletions,
   challenges,
   loginAttempts,
+  follows,
   referralCredits,
   travellerProfiles,
   users,
@@ -192,6 +193,16 @@ export async function signupAction(_prev: ActionState, formData: FormData): Prom
         referrerId: referrer.id,
         refereeId: newProfile.id,
       });
+
+      // Joining from a friend's invite makes them friends straight away,
+      // so the new member's home shows where that friend is going.
+      await db
+        .insert(follows)
+        .values([
+          { followerId: newProfile.id, followingId: referrer.id },
+          { followerId: referrer.id, followingId: newProfile.id },
+        ])
+        .onConflictDoNothing();
 
       const [referChallenge] = await db
         .select()
