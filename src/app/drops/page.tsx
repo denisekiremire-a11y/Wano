@@ -68,7 +68,7 @@ export default async function DropsPage() {
         <h1 className="font-serif-editorial mt-2 text-4xl text-ink">The Daily Drop</h1>
         <p className="mt-3 text-ink/60">
           One perk from a Kampala partner, announced at 5 pm for the next day so you can plan. The first people to
-          claim it get a voucher to use at the venue. Using it earns Passport XP. On days without one, there's an XP Drop: Passport XP for a visit in that day's neighbourhood.
+          claim it get a voucher to use at the venue. Using it earns Passport XP. On days without one, there&apos;s an XP Drop: Passport XP for a visit in that day&apos;s neighbourhood.
         </p>
 
         {traveller && identity && !identity.ok && (
