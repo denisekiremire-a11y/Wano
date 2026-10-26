@@ -155,6 +155,28 @@ export async function getStreakXp(travellerId: string, since?: Date) {
   return { count: counted.length, xp: counted.reduce((sum, m) => sum + m.xp, 0) };
 }
 
+/** Weekly goers, Wano's main measure: members with at least one verified
+ * visit in each Kampala week, newest week first. The current week is
+ * still in progress. */
+export async function getWeeklyGoers(weeks = 8, now = new Date()) {
+  const thisWeek = kampalaWeekStartIso(now);
+  const starts = Array.from({ length: weeks }, (_, i) => {
+    const d = new Date(Date.parse(`${thisWeek}T00:00:00Z`) - i * 7 * 24 * 60 * 60 * 1000);
+    return d.toISOString().slice(0, 10);
+  });
+  const oldest = kampalaWeekBounds(starts[starts.length - 1]).start;
+  const rows = await db
+    .select({ day: venueCheckIns.kampalaDate, travellerId: venueCheckIns.travellerId })
+    .from(venueCheckIns)
+    .where(gte(venueCheckIns.checkedInAt, oldest));
+  const byWeek = new Map<string, Set<string>>(starts.map((w) => [w, new Set()]));
+  for (const r of rows) {
+    const week = kampalaWeekStartIso(new Date(`${r.day}T12:00:00+03:00`));
+    byWeek.get(week)?.add(r.travellerId);
+  }
+  return starts.map((weekStart) => ({ weekStart, goers: byWeek.get(weekStart)!.size }));
+}
+
 /** XP from weekly challenges completed (optionally since a date). */
 export async function getWeeklyChallengeXp(travellerId: string, since?: Date) {
   const [row] = await db

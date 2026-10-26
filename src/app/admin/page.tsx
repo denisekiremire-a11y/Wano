@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getCampaignMetrics, getDashboardMetrics } from "@/lib/data/admin";
+import { getWeeklyGoers } from "@/lib/data/check-ins";
 import { requireAdminPage } from "@/lib/auth";
 import { formatCommission } from "@/lib/currency";
 import { DashboardTrendChart } from "./dashboard-trend-chart";
@@ -20,7 +21,8 @@ function DeltaTag({ delta }: { delta: { label: string; positive: boolean } | nul
 
 export default async function AdminOverviewPage() {
   await requireAdminPage("/admin");
-  const [metrics, dash] = await Promise.all([getCampaignMetrics(), getDashboardMetrics()]);
+  const [metrics, dash, goers] = await Promise.all([getCampaignMetrics(), getDashboardMetrics(), getWeeklyGoers(8)]);
+  const maxGoers = Math.max(1, ...goers.map((g) => g.goers));
 
   const decided = dash.funnel.won + dash.funnel.lost;
   const conversionRate = decided > 0 ? (dash.funnel.won / decided) * 100 : null;
@@ -73,6 +75,32 @@ export default async function AdminOverviewPage() {
           </Link>
         </div>
       </div>
+
+      {/* Weekly goers: members with at least one verified visit (venue scan
+          or backup code) in the week. Wano's main measure, ahead of opens. */}
+      <section className="border border-ink/10 bg-white p-5">
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <div>
+            <p className="eyebrow text-ember">Weekly goers</p>
+            <p className="mt-1 text-sm text-ink/60">Members with at least one verified visit, Monday to Sunday (Kampala).</p>
+          </div>
+          <p className="text-sm">
+            <span className="font-mono-data text-3xl font-semibold text-ink">{goers[0].goers}</span>
+            <span className="text-ink/40"> this week so far · last week {goers[1]?.goers ?? 0} </span>
+            <DeltaTag delta={periodDelta(goers[1]?.goers ?? 0, goers[2]?.goers ?? 0)} />
+            <span className="text-ink/40"> vs the week before</span>
+          </p>
+        </div>
+        <ol className="mt-4 grid grid-cols-8 items-end gap-2" aria-label="Weekly goers, last 8 weeks">
+          {[...goers].reverse().map((g) => (
+            <li key={g.weekStart} className="flex flex-col items-center gap-1">
+              <span className="font-mono-data text-[11px] text-ink/60">{g.goers}</span>
+              <span className="block w-full bg-ember/80" style={{ height: `${Math.max(2, (g.goers / maxGoers) * 64)}px` }} />
+              <span className="font-mono-data text-[10px] text-ink/40">{g.weekStart.slice(5)}</span>
+            </li>
+          ))}
+        </ol>
+      </section>
 
       {/* Row 1 — the headline number gets the wide column; the two supporting
           facts read as a short list, not a matching pair of cards. */}
