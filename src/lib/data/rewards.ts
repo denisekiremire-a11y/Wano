@@ -21,7 +21,8 @@ import {
 } from "@/db/schema";
 import type { DbOrTx } from "@/lib/db-context";
 import { getPointsEarnedLast12Months, tierForPoints, twelveMonthsAgo, type Tier } from "@/lib/data/points";
-import { BOOKING_COMPLETION_XP, TIER_THRESHOLDS } from "@/lib/rewards-config";
+import { BOOKING_COMPLETION_XP, DROP_REDEMPTION_XP, TIER_THRESHOLDS } from "@/lib/rewards-config";
+import { withRlsContext } from "@/lib/db-context";
 import { getChallengesWithStatus, getPassportProgress, getReferralStats } from "./traveller";
 import { resolvePostContexts } from "./post-context";
 
@@ -36,6 +37,27 @@ const POINTS = {
   profileComplete: 50,
 } as const;
 
+/** Daily Drop vouchers this member actually used at the venue (optionally
+ * since a date). user_rewards is owner-only under RLS, so the count is read
+ * in the member's own context. */
+async function countRedeemedDrops(travellerId: string, since?: Date): Promise<number> {
+  const [row] = await withRlsContext({ role: "traveller", travellerProfileId: travellerId }, (tx) =>
+    tx
+      .select({ n: sql<number>`count(*)::int` })
+      .from(userRewards)
+      .innerJoin(rewards, eq(userRewards.rewardId, rewards.id))
+      .where(
+        and(
+          eq(userRewards.travellerId, travellerId),
+          eq(userRewards.status, "redeemed"),
+          eq(rewards.source, "drop"),
+          since ? gte(userRewards.redeemedAt, since) : undefined,
+        ),
+      ),
+  );
+  return row?.n ?? 0;
+}
+
 export async function getRewardsSummary(travellerId: string, persona: string | null, city: string | null) {
   const [
     { stampCount },
@@ -46,6 +68,7 @@ export async function getRewardsSummary(travellerId: string, persona: string | n
     [{ spent }],
     completedBookings,
     trailXpRows,
+    dropsUsed,
   ] = await Promise.all([
     getPassportProgress(travellerId),
     getChallengesWithStatus(travellerId),
@@ -65,6 +88,7 @@ export async function getRewardsSummary(travellerId: string, persona: string | n
       .from(trailCompletions)
       .innerJoin(trails, eq(trailCompletions.trailId, trails.id))
       .where(eq(trailCompletions.travellerId, travellerId)),
+    countRedeemedDrops(travellerId),
   ]);
 
   const completedChallenges = challenges.filter((c) => c.completion?.status === "verified").length;
@@ -90,6 +114,7 @@ export async function getRewardsSummary(travellerId: string, persona: string | n
       points: completedBookings.length * BOOKING_COMPLETION_XP,
     },
     { label: "Trails completed", count: trailXpRows.length, points: trailsXp },
+    { label: "Daily Drops used", count: dropsUsed, points: dropsUsed * DROP_REDEMPTION_XP },
   ];
 
   // "totalPoints"/"availablePoints" are this function's existing field
@@ -127,7 +152,7 @@ function bookingCompletionDateFilter(since: Date) {
 export async function getXpEarnedLast12Months(travellerId: string): Promise<number> {
   const since = twelveMonthsAgo();
 
-  const [stampRows, completionRows, reviewRows, referralRows, completedBookingRows, trailRows] = await Promise.all([
+  const [stampRows, completionRows, reviewRows, referralRows, completedBookingRows, trailRows, dropsUsed] = await Promise.all([
     db
       .select({ id: stamps.id })
       .from(stamps)
@@ -169,6 +194,7 @@ export async function getXpEarnedLast12Months(travellerId: string): Promise<numb
       .from(trailCompletions)
       .innerJoin(trails, eq(trailCompletions.trailId, trails.id))
       .where(and(eq(trailCompletions.travellerId, travellerId), gte(trailCompletions.completedAt, since))),
+    countRedeemedDrops(travellerId, since),
   ]);
 
   return (
@@ -177,7 +203,8 @@ export async function getXpEarnedLast12Months(travellerId: string): Promise<numb
     reviewRows.length * POINTS.perReview +
     referralRows.reduce((sum, r) => sum + r.points, 0) +
     completedBookingRows.length * BOOKING_COMPLETION_XP +
-    trailRows.reduce((sum, r) => sum + r.bonusXp, 0)
+    trailRows.reduce((sum, r) => sum + r.bonusXp, 0) +
+    dropsUsed * DROP_REDEMPTION_XP
   );
 }
 

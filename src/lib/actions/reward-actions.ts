@@ -6,7 +6,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
-import { events, pointRedemptions, pointsLedger, rewards, userRewards, vendorProfiles, vendorSubmissions } from "@/db/schema";
+import { dailyDrops, events, pointRedemptions, pointsLedger, rewards, userRewards, vendorProfiles, vendorSubmissions } from "@/db/schema";
 import { requireAdminLevel, requireRole } from "@/lib/auth";
 import { logAdminAction } from "@/lib/admin-action-log";
 import { generateVoucherCode } from "@/lib/codes";
@@ -22,6 +22,7 @@ import { notifyAdmin } from "@/lib/notify";
 import { notifyRewardClaimed, notifyRewardRedeemed } from "@/lib/reward-notifications";
 import { signRewardToken, verifyRewardToken } from "@/lib/reward-token";
 import { signVisitorToken, verifyVisitorToken } from "@/lib/visitor-token";
+import { formatKampalaDateTime } from "@/lib/kampala-time";
 import type { ActionState } from "@/lib/validation";
 
 // UGX has no subdivision, but every "minor unit" integer in this codebase
@@ -81,7 +82,7 @@ function withinRewardWindow(reward: Pick<typeof rewards.$inferSelect, "startsAt"
  * voucher was earned. Caps are checked here only (at mint time) — once a
  * voucher exists, redeeming it never fails because a cap filled up after
  * the fact (see checkRedeemable). */
-export async function mintUserReward(travellerId: string, rewardId: string) {
+export async function mintUserReward(travellerId: string, rewardId: string, opts: { expiresAt?: Date } = {}) {
   // Trusted-system write: every caller (self-claim, points-shop spend,
   // Fun Zone/XP-draw/referral issuance) has already decided this traveller
   // is entitled to this reward — same reasoning as Round A's engine-level
@@ -94,6 +95,9 @@ export async function mintUserReward(travellerId: string, rewardId: string) {
     if (!withinRewardWindow(reward)) throw new Error("That reward is no longer available.");
 
     if (reward.totalCap != null) {
+      // Serialise claims on a capped reward so a rush (20 people at 17:00
+      // for a Daily Drop) can't overshoot the cap between count and insert.
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${reward.id}))`);
       const [{ count }] = await tx
         .select({ count: sql<number>`count(*)::int` })
         .from(userRewards)
@@ -107,7 +111,7 @@ export async function mintUserReward(travellerId: string, rewardId: string) {
       .where(and(eq(userRewards.rewardId, reward.id), eq(userRewards.travellerId, travellerId)));
     if (ownCount >= reward.perUserCap) throw new Error("You've already claimed the maximum for this reward.");
 
-    const expiresAt = await resolveExpiryFor(reward);
+    const expiresAt = opts.expiresAt ?? (await resolveExpiryFor(reward));
     const redemptionCode = await uniqueRedemptionCode(tx);
 
     const [row] = await tx
@@ -333,7 +337,7 @@ export type RedeemCheck =
     }
   | {
       ok: false;
-      reason: "invalid" | "already_redeemed" | "expired" | "wrong_venue" | "void" | "not_active";
+      reason: "invalid" | "already_redeemed" | "expired" | "wrong_venue" | "void" | "not_active" | "not_yet";
       detail?: string;
     };
 
@@ -361,6 +365,18 @@ async function checkRedeemable(userRewardId: string, vendorProfileId: string, cl
   // is a second, independent check against the reward.
   if (row.reward.status !== "active" || !withinRewardWindow(row.reward)) {
     return { ok: false, reason: "not_active" };
+  }
+  // A Daily Drop voucher is claimed the evening before but only good during
+  // the Drop day's redeem window.
+  if (row.reward.source === "drop") {
+    const [drop] = await client
+      .select({ redeemFrom: dailyDrops.redeemFrom })
+      .from(dailyDrops)
+      .where(eq(dailyDrops.rewardId, row.reward.id))
+      .limit(1);
+    if (drop && new Date() < drop.redeemFrom) {
+      return { ok: false, reason: "not_yet", detail: formatKampalaDateTime(drop.redeemFrom) };
+    }
   }
 
   const traveller = await getTravellerProfileById(row.userReward.travellerId);
@@ -506,6 +522,7 @@ export async function markRewardRedeemedAction(
           wrong_venue: "This voucher isn't for your venue.",
           void: "This voucher was voided.",
           not_active: "This reward isn't currently active.",
+          not_yet: `This Daily Drop voucher can be used from ${check.detail ?? "its Drop day"}.`,
         };
         return { error: messages[check.reason] };
       }
