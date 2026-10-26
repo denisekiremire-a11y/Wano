@@ -204,6 +204,10 @@ export const travellerProfiles = pgTable(
     // (already gated on email verification) become spendable only once
     // this is also set, per the plan.
     phoneVerifiedAt: timestamp("phone_verified_at", { withTimezone: true }),
+    // Set by an admin when a member joins the creator programme (Wano
+    // Discovery Makers). Shows the creator badge and unlocks creator lists,
+    // which an admin still reviews before they go public.
+    creatorApprovedAt: timestamp("creator_approved_at", { withTimezone: true }),
   },
   (table) => [index("traveller_profiles_referred_by_idx").on(table.referredByTravellerId)],
 );
@@ -1131,6 +1135,75 @@ export const bookingGuests = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [unique().on(t.bookingId, t.travellerId), index("booking_guests_traveller_idx").on(t.travellerId)],
+);
+
+// A crew: up to 12 friends sharing one Passport view (combined XP, stamps
+// and weekly challenge progress). One crew per person, enforced by the
+// unique travellerId on crewMembers. Crews add no XP of their own.
+export const crews = pgTable("crews", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  inviteToken: text("invite_token").notNull().unique(),
+  createdById: uuid("created_by_id").references(() => travellerProfiles.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const crewMembers = pgTable(
+  "crew_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    crewId: uuid("crew_id")
+      .notNull()
+      .references(() => crews.id, { onDelete: "cascade" }),
+    travellerId: uuid("traveller_id")
+      .notNull()
+      .unique()
+      .references(() => travellerProfiles.id, { onDelete: "cascade" }),
+    // "owner" can rename the crew and remove members; everyone else "member".
+    role: text("role").notNull().default("member"),
+    joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("crew_members_crew_idx").on(t.crewId)],
+);
+
+// A creator list: an approved creator's short list of Wano places or
+// events ("5 rooftops for a Friday"). Only published lists are public;
+// every list is reviewed by an admin first. Kept apart from journeys so
+// lists never count towards Passport journey stamps.
+export const creatorLists = pgTable(
+  "creator_lists",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    authorId: uuid("author_id")
+      .notNull()
+      .references(() => travellerProfiles.id, { onDelete: "cascade" }),
+    slug: text("slug").notNull().unique(),
+    title: text("title").notNull(),
+    intro: text("intro").notNull().default(""),
+    area: text("area"),
+    // draft -> in_review -> published | rejected (back to draft on edit)
+    status: text("status").notNull().default("draft"),
+    reviewNote: text("review_note"),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("creator_lists_author_idx").on(t.authorId), index("creator_lists_status_idx").on(t.status)],
+);
+
+export const creatorListItems = pgTable(
+  "creator_list_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    listId: uuid("list_id")
+      .notNull()
+      .references(() => creatorLists.id, { onDelete: "cascade" }),
+    listingId: uuid("listing_id").references(() => listings.id, { onDelete: "cascade" }),
+    eventId: uuid("event_id").references(() => events.id, { onDelete: "cascade" }),
+    note: text("note"),
+    position: integer("position").notNull().default(0),
+  },
+  (t) => [index("creator_list_items_list_idx").on(t.listId)],
 );
 
 export const userRewardStatusEnum = pgEnum("user_reward_status", [

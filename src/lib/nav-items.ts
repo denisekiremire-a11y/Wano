@@ -67,6 +67,7 @@ const ADMIN_NAV_ITEMS: (NavItem & { minLevelKey: keyof typeof ADMIN_MIN_LEVEL })
   { href: "/admin/journal", label: "Journal", icon: "file", minLevelKey: "/admin/journal" },
   { href: "/admin/moderation", label: "Moderation", icon: "flag", minLevelKey: "/admin/moderation" },
   { href: "/admin/influencers", label: "Influencers", icon: "trophy", minLevelKey: "/admin/influencers" },
+  { href: "/admin/creators", label: "Creator lists", icon: "heart", minLevelKey: "/admin/creators" },
   { href: "/admin/analytics", label: "Analytics", icon: "chart", minLevelKey: "/admin/analytics" },
   { href: "/admin/accounts", label: "Accounts", icon: "user", minLevelKey: "/admin/accounts" },
   { href: "/admin/action-log", label: "Action log", icon: "file", minLevelKey: "/admin/action-log" },
@@ -82,7 +83,7 @@ const ADMIN_GROUPS: { label: string; hrefs: string[] }[] = [
   { label: "Bookings", hrefs: ["/admin/bookings", "/admin/slots", "/admin/events", "/admin/match-day"] },
   {
     label: "Community",
-    hrefs: ["/admin/travellers", "/admin/clubs", "/admin/moderation", "/admin/influencers"],
+    hrefs: ["/admin/travellers", "/admin/clubs", "/admin/moderation", "/admin/influencers", "/admin/creators"],
   },
   { label: "Marketing", hrefs: ["/admin/rewards", "/admin/drops", "/admin/funzone", "/admin/journal"] },
   { label: "System", hrefs: ["/admin/analytics", "/admin/accounts", "/admin/action-log"] },

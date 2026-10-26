@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { getPublishedCreatorLists } from "@/lib/data/creator-lists";
 import { AfconPromoCard } from "@/components/afcon/afcon-promo-card";
 import { CornerMarks } from "@/components/corner-marks";
 import { JourneyArt } from "@/components/journey-art";
@@ -61,10 +62,11 @@ export default async function ExplorePage({
 
   const validType = validTypes.includes(type as ListingType) ? (type as ListingType) : undefined;
 
-  const [rawResults, locations, journeyList] = await Promise.all([
+  const [rawResults, locations, journeyList, creatorLists] = await Promise.all([
     searchListings({ type: validType, location: location || undefined, query: q || undefined }),
     getDistinctListingLocations(),
     getJourneys(),
+    getPublishedCreatorLists({ limit: 4 }),
   ]);
 
   // "Wano Verified" toggle: has a live discount/freebie — the same
@@ -203,6 +205,32 @@ export default async function ExplorePage({
                   </Link>
                 );
               })}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {activeView === "all" && creatorLists.length > 0 && (
+        <section className="border-b border-ink/10">
+          <div className="mx-auto max-w-6xl px-4 py-12 md:px-6">
+            <div className="flex items-baseline justify-between gap-3">
+              <div>
+                <p className="eyebrow text-ember">Creator lists</p>
+                <h2 className="font-serif-editorial mt-2 text-2xl text-ink md:text-3xl">Picked by people who go out</h2>
+              </div>
+              <Link href="/lists" className="flex-none text-sm font-semibold text-ember hover:underline">
+                All lists →
+              </Link>
+            </div>
+            <div className="mt-6 grid gap-px border border-ink/10 bg-ink/10 sm:grid-cols-2">
+              {creatorLists.map((l) => (
+                <Link key={l.id} href={`/lists/${l.slug}`} className="bg-white p-4 hover:text-ember">
+                  <p className="font-serif-editorial text-lg text-ink">{l.title}</p>
+                  <p className="mt-1 text-xs text-ink/50">
+                    {l.authorName} · {l.itemCount} picks{l.area ? ` · ${l.area}` : ""}
+                  </p>
+                </Link>
+              ))}
             </div>
           </div>
         </section>

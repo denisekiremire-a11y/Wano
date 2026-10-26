@@ -6,6 +6,8 @@ import { MessageButton } from "@/components/message-button";
 import { ReportBlockMenu } from "@/components/report-block-menu";
 import { PostCard } from "@/components/post-card";
 import { getSession } from "@/lib/session";
+import { getPublishedCreatorLists } from "@/lib/data/creator-lists";
+import { CreatorBadge } from "@/components/creator-lists/creator-badge";
 import { getPassportProgress, getTravellerInterests, getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { getTierStatus } from "@/lib/data/rewards";
 import { TierBadge } from "@/components/tier-badge";
@@ -33,13 +35,14 @@ export default async function PublicProfilePage({
   if (!row) notFound();
   const { traveller, user } = row;
 
-  const [session, { progress }, followCounts, postRows, interestRows, tierStatus] = await Promise.all([
+  const [session, { progress }, followCounts, postRows, interestRows, tierStatus, creatorLists] = await Promise.all([
     getSession(),
     getPassportProgress(traveller.id),
     getFollowCounts(traveller.id),
     getPostsByTraveller(traveller.id),
     getTravellerInterests(traveller.id),
     getTierStatus(traveller.id),
+    traveller.creatorApprovedAt ? getPublishedCreatorLists({ authorId: traveller.id, limit: 10 }) : Promise.resolve([]),
   ]);
 
   let viewerFollows = false;
@@ -96,6 +99,7 @@ export default async function PublicProfilePage({
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="font-serif-editorial text-3xl text-ink">{traveller.displayName}</h1>
             {isInfluencer && <span className="eyebrow text-ember">Influencer</span>}
+            {traveller.creatorApprovedAt && <CreatorBadge />}
           </div>
           <p className="text-sm text-ink/50">@{user.username}</p>
           {user.bio && <p className="mt-2 max-w-md text-sm text-ink/70">{user.bio}</p>}
@@ -151,6 +155,22 @@ export default async function PublicProfilePage({
           <PassportGrid progress={progress} />
         </div>
       </section>
+
+      {creatorLists.length > 0 && (
+        <section className="mt-10 border-t border-ink/10 pt-6">
+          <h2 className="font-serif-editorial text-2xl text-ink">Lists</h2>
+          <ul className="mt-3 border-t border-ink/10">
+            {creatorLists.map((l) => (
+              <li key={l.id}>
+                <Link href={`/lists/${l.slug}`} className="flex justify-between gap-3 border-b border-ink/10 py-3 text-ink hover:text-ember">
+                  {l.title}
+                  <span className="font-mono-data text-xs text-ink/40">{l.itemCount} picks</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {gridThumbnails.length > 0 && (
         <section className="mt-10 border-t border-ink/10 pt-6">
