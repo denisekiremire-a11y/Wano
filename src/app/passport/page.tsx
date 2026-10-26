@@ -317,7 +317,12 @@ function StampsTab({
   return (
     <div className="space-y-6">
       <section className="border border-ink/10 bg-white p-6">
-        <p className="eyebrow text-ember">This week</p>
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="eyebrow text-ember">This week</p>
+          <Link href="/plans" className="text-sm font-semibold text-ember hover:underline">
+            My plans →
+          </Link>
+        </div>
         <h2 className="font-serif-editorial mt-1 text-xl text-ink">Weekly challenges</h2>
         <p className="mt-1 text-sm text-ink/60">
           Show your Wano QR when you visit a partner. Staff scanning it is what counts, and new

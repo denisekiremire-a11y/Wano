@@ -1053,6 +1053,65 @@ export const weeklyChallengeCompletions = pgTable(
   (table) => [unique().on(table.travellerId, table.weeklyChallengeId)],
 );
 
+// A plan: "let's go here, then". One member makes it for a place or an
+// event and a time, shares the invite link, and friends answer going /
+// maybe / no. A plan never holds seats; the maker can book for the group
+// (see bookingGuests).
+export const plans = pgTable(
+  "plans",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    creatorId: uuid("creator_id")
+      .notNull()
+      .references(() => travellerProfiles.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    listingId: uuid("listing_id").references(() => listings.id, { onDelete: "set null" }),
+    eventId: uuid("event_id").references(() => events.id, { onDelete: "set null" }),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+    note: text("note"),
+    inviteToken: text("invite_token").notNull().unique(),
+    bookingId: uuid("booking_id").references(() => bookings.id, { onDelete: "set null" }),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("plans_creator_idx").on(t.creatorId)],
+);
+
+export const planMembers = pgTable(
+  "plan_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => plans.id, { onDelete: "cascade" }),
+    travellerId: uuid("traveller_id")
+      .notNull()
+      .references(() => travellerProfiles.id, { onDelete: "cascade" }),
+    status: text("status").notNull(), // "going" | "maybe" | "no"
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.planId, t.travellerId), index("plan_members_traveller_idx").on(t.travellerId)],
+);
+
+// Friends a group booking was made for. The booker holds the booking and
+// everyone pays at the venue; guests get the same completed-booking XP and
+// Journey stamp as the booker.
+export const bookingGuests = pgTable(
+  "booking_guests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    bookingId: uuid("booking_id")
+      .notNull()
+      .references(() => bookings.id, { onDelete: "cascade" }),
+    travellerId: uuid("traveller_id")
+      .notNull()
+      .references(() => travellerProfiles.id, { onDelete: "cascade" }),
+    planId: uuid("plan_id").references(() => plans.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.bookingId, t.travellerId), index("booking_guests_traveller_idx").on(t.travellerId)],
+);
+
 export const userRewardStatusEnum = pgEnum("user_reward_status", [
   "claimed",
   "redeemed",
