@@ -971,6 +971,88 @@ export const dailyDrops = pgTable("daily_drops", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// A verified visit: a venue scanned the member's personal QR, or typed
+// their 6-digit backup code. At most one per member, venue and Kampala day.
+// Weekly challenges, neighbourhood stamps, streaks and the "weekly goers"
+// number all count these, never anything the member taps themselves.
+export const venueCheckIns = pgTable(
+  "venue_check_ins",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    travellerId: uuid("traveller_id")
+      .notNull()
+      .references(() => travellerProfiles.id, { onDelete: "cascade" }),
+    vendorProfileId: uuid("vendor_profile_id")
+      .notNull()
+      .references(() => vendorProfiles.id, { onDelete: "cascade" }),
+    kampalaDate: date("kampala_date").notNull(),
+    // Neighbourhood at the time of the visit (see src/lib/areas.ts).
+    area: text("area"),
+    source: text("source").notNull(), // "qr" | "code"
+    checkedInAt: timestamp("checked_in_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique().on(table.travellerId, table.vendorProfileId, table.kampalaDate),
+    index("venue_check_ins_traveller_idx").on(table.travellerId, table.checkedInAt),
+  ],
+);
+
+// Short-lived 6-digit code shown under a member's QR, for when a scan
+// fails. Valid 10 minutes; staff type it on the vendor Redeem page.
+export const visitorCodes = pgTable("visitor_codes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  travellerId: uuid("traveller_id")
+    .notNull()
+    .references(() => travellerProfiles.id, { onDelete: "cascade" }),
+  code: text("code").notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});
+
+// Wrong backup codes typed at a venue. Six digits are guessable, so a venue
+// that types too many wrong codes is paused for a while.
+export const visitorCodeFailures = pgTable(
+  "visitor_code_failures",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    vendorProfileId: uuid("vendor_profile_id")
+      .notNull()
+      .references(() => vendorProfiles.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("visitor_code_failures_vendor_idx").on(t.vendorProfileId, t.createdAt)],
+);
+
+// This week's three Passport challenges (see src/lib/weekly-challenges.ts).
+// Created on first use each week from the default templates.
+export const weeklyChallenges = pgTable(
+  "weekly_challenges",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    weekStart: date("week_start").notNull(),
+    slot: text("slot").notNull(), // "easy" | "explore" | "theme"
+    title: text("title").notNull(),
+    description: text("description").notNull(),
+    rule: jsonb("rule").notNull(),
+    xp: integer("xp").notNull(),
+  },
+  (table) => [unique().on(table.weekStart, table.slot)],
+);
+
+export const weeklyChallengeCompletions = pgTable(
+  "weekly_challenge_completions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    travellerId: uuid("traveller_id")
+      .notNull()
+      .references(() => travellerProfiles.id, { onDelete: "cascade" }),
+    weeklyChallengeId: uuid("weekly_challenge_id")
+      .notNull()
+      .references(() => weeklyChallenges.id, { onDelete: "cascade" }),
+    completedAt: timestamp("completed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique().on(table.travellerId, table.weeklyChallengeId)],
+);
+
 export const userRewardStatusEnum = pgEnum("user_reward_status", [
   "claimed",
   "redeemed",

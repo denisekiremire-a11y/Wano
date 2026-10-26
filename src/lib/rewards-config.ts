@@ -57,3 +57,7 @@ export const EARN_RATE_BY_LISTING_TYPE: Record<ListingType, number> = {
 // Rewards liability (UGX value of unspent points) as a share of
 // commission revenue — the admin reserve report warns above this.
 export const REWARDS_SHARE_GUARDRAIL = 0.35;
+
+// Passport XP for each neighbourhood stamp (first verified visit in an
+// area, see src/lib/areas.ts).
+export const AREA_STAMP_XP = 100;

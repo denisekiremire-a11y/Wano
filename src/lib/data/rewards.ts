@@ -21,7 +21,8 @@ import {
 } from "@/db/schema";
 import type { DbOrTx } from "@/lib/db-context";
 import { getPointsEarnedLast12Months, tierForPoints, twelveMonthsAgo, type Tier } from "@/lib/data/points";
-import { BOOKING_COMPLETION_XP, DROP_REDEMPTION_XP, TIER_THRESHOLDS } from "@/lib/rewards-config";
+import { AREA_STAMP_XP, BOOKING_COMPLETION_XP, DROP_REDEMPTION_XP, TIER_THRESHOLDS } from "@/lib/rewards-config";
+import { countAreaStampsEarned, getWeeklyChallengeXp } from "@/lib/data/check-ins";
 import { withRlsContext } from "@/lib/db-context";
 import { getChallengesWithStatus, getPassportProgress, getReferralStats } from "./traveller";
 import { resolvePostContexts } from "./post-context";
@@ -69,6 +70,8 @@ export async function getRewardsSummary(travellerId: string, persona: string | n
     completedBookings,
     trailXpRows,
     dropsUsed,
+    weekly,
+    areaStamps,
   ] = await Promise.all([
     getPassportProgress(travellerId),
     getChallengesWithStatus(travellerId),
@@ -89,6 +92,8 @@ export async function getRewardsSummary(travellerId: string, persona: string | n
       .innerJoin(trails, eq(trailCompletions.trailId, trails.id))
       .where(eq(trailCompletions.travellerId, travellerId)),
     countRedeemedDrops(travellerId),
+    getWeeklyChallengeXp(travellerId),
+    countAreaStampsEarned(travellerId),
   ]);
 
   const completedChallenges = challenges.filter((c) => c.completion?.status === "verified").length;
@@ -115,6 +120,8 @@ export async function getRewardsSummary(travellerId: string, persona: string | n
     },
     { label: "Trails completed", count: trailXpRows.length, points: trailsXp },
     { label: "Daily Drops used", count: dropsUsed, points: dropsUsed * DROP_REDEMPTION_XP },
+    { label: "Weekly challenges", count: weekly.count, points: weekly.xp },
+    { label: "Neighbourhood stamps", count: areaStamps, points: areaStamps * AREA_STAMP_XP },
   ];
 
   // "totalPoints"/"availablePoints" are this function's existing field
@@ -152,7 +159,8 @@ function bookingCompletionDateFilter(since: Date) {
 export async function getXpEarnedLast12Months(travellerId: string): Promise<number> {
   const since = twelveMonthsAgo();
 
-  const [stampRows, completionRows, reviewRows, referralRows, completedBookingRows, trailRows, dropsUsed] = await Promise.all([
+  const [stampRows, completionRows, reviewRows, referralRows, completedBookingRows, trailRows, dropsUsed, weekly, areaStamps] =
+    await Promise.all([
     db
       .select({ id: stamps.id })
       .from(stamps)
@@ -195,6 +203,8 @@ export async function getXpEarnedLast12Months(travellerId: string): Promise<numb
       .innerJoin(trails, eq(trailCompletions.trailId, trails.id))
       .where(and(eq(trailCompletions.travellerId, travellerId), gte(trailCompletions.completedAt, since))),
     countRedeemedDrops(travellerId, since),
+    getWeeklyChallengeXp(travellerId, since),
+    countAreaStampsEarned(travellerId, since),
   ]);
 
   return (
@@ -204,7 +214,9 @@ export async function getXpEarnedLast12Months(travellerId: string): Promise<numb
     referralRows.reduce((sum, r) => sum + r.points, 0) +
     completedBookingRows.length * BOOKING_COMPLETION_XP +
     trailRows.reduce((sum, r) => sum + r.bonusXp, 0) +
-    dropsUsed * DROP_REDEMPTION_XP
+    dropsUsed * DROP_REDEMPTION_XP +
+    weekly.xp +
+    areaStamps * AREA_STAMP_XP
   );
 }
 

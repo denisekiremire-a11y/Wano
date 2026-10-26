@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { getVisitorCodeAction } from "@/lib/actions/check-in-actions";
 import { generateVisitorQrAction } from "@/lib/actions/reward-actions";
 
 const QR_REFRESH_MS = 90_000;
@@ -12,13 +13,17 @@ const QR_REFRESH_MS = 90_000;
  * it has nothing to collapse behind. */
 export function VisitorQrCard() {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [code, setCode] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     async function refreshQr() {
-      const result = await generateVisitorQrAction();
-      if (!cancelled) setQrDataUrl(result.qrDataUrl);
+      const [result, backup] = await Promise.all([generateVisitorQrAction(), getVisitorCodeAction()]);
+      if (!cancelled) {
+        setQrDataUrl(result.qrDataUrl);
+        setCode(backup.code);
+      }
     }
     refreshQr();
     intervalRef.current = setInterval(refreshQr, QR_REFRESH_MS);
@@ -32,7 +37,9 @@ export function VisitorQrCard() {
   return (
     <div className="border border-ink/10 bg-white p-5 text-center">
       <p className="eyebrow text-ink/40">Your Wano QR</p>
-      <p className="mt-1 text-sm text-ink/60">Show this at the venue — staff scan it to see what you can claim.</p>
+      <p className="mt-1 text-sm text-ink/60">
+        Show this at the venue. Staff scan it to log your visit and see what you can claim.
+      </p>
       <div className="mt-4 flex justify-center">
         {qrDataUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- data: URI, not an optimizable remote image
@@ -43,6 +50,14 @@ export function VisitorQrCard() {
           </div>
         )}
       </div>
+      {code && (
+        <p className="mt-3 text-sm text-ink/60">
+          Scan not working? Tell staff your code{" "}
+          <span className="font-mono-data text-base font-semibold tracking-widest text-ink">
+            {code.slice(0, 3)} {code.slice(3)}
+          </span>
+        </p>
+      )}
     </div>
   );
 }
