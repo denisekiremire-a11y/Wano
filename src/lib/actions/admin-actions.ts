@@ -23,6 +23,7 @@ import { generatePlaceAddedItemsForVendor } from "@/lib/feed-generators";
 import { applyListingContent, applyVendorSocialLinks, listingContentSchema } from "@/lib/actions/listing-shared";
 import { notifyTravellerOfBookingStatus } from "@/lib/booking-notifications";
 import { awardReferralCreditOnFirstBooking } from "@/lib/data/traveller";
+import { stampBookingGuests } from "@/lib/data/plans";
 import { notifyUser } from "@/lib/notify";
 import type { ActionState } from "@/lib/validation";
 
@@ -259,6 +260,7 @@ export async function adminSetBookingStatusAction(
           bookingId: row.id,
         });
       }
+      await stampBookingGuests(tx, row);
     }
 
     return row;

@@ -2,6 +2,8 @@
 
 import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
+import { attachPlanGuests } from "@/lib/data/plans";
+import { takeGroupPlanId } from "@/lib/group-plan-cookie";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { bookingItems, bookings, events, listingItems, listingJourneys, listings, restaurantDetails, rewards, userRewards, vendorProfiles } from "@/db/schema";
@@ -118,6 +120,19 @@ export async function previewBookingAction(formData: FormData) {
 
 /** Step 2: the review screen's CONFIRM button re-posts the same fields
  * (as hidden inputs) here, where the booking is actually created. */
+/** If the booker came from "Book for the group" on one of their plans,
+ * bring that plan's "going" friends onto this booking (see plans.ts). */
+async function attachGroupIfAny(booking: {
+  id: string;
+  travellerId: string;
+  listingId: string | null;
+  eventId: string | null;
+  partySize: number | null;
+}) {
+  const planId = await takeGroupPlanId();
+  if (planId) await attachPlanGuests(planId, booking);
+}
+
 export async function bookListingFormAction(formData: FormData) {
   const listingId = formData.get("listingId");
   if (typeof listingId !== "string" || !listingId) throw new Error("Missing listing.");
@@ -183,6 +198,7 @@ export async function bookListingFormAction(formData: FormData) {
     });
     if ("error" in result) throw new Error(result.error);
     const { booking } = result;
+    await attachGroupIfAny(booking);
 
     const paymentConfigured = isFlutterwaveConfigured() && !!booking.totalMinor;
     if (!paymentConfigured) {
@@ -273,6 +289,7 @@ export async function bookListingFormAction(formData: FormData) {
     },
   );
 
+  await attachGroupIfAny(booking);
   await logEvent("booking_completed", {
     userId: session.userId,
     role: session.role,
@@ -374,6 +391,7 @@ export async function buyEventTicketsAction(formData: FormData) {
     },
   );
 
+  await attachGroupIfAny(booking);
   await logEvent("booking_completed", {
     userId: session.userId,
     role: session.role,

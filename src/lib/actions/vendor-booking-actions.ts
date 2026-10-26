@@ -7,6 +7,7 @@ import { requireRole } from "@/lib/auth";
 import { notifyTravellerOfBookingStatus, notifyTravellerOfVendorCancellation } from "@/lib/booking-notifications";
 import { withRlsContext } from "@/lib/db-context";
 import { awardReferralCreditOnFirstBooking } from "@/lib/data/traveller";
+import { stampBookingGuests } from "@/lib/data/plans";
 import { getVendorProfileByUserId } from "@/lib/data/vendor";
 import { vendorCancelConfirmedBooking } from "@/lib/slot-booking";
 import type { ActionState } from "@/lib/validation";
@@ -78,6 +79,7 @@ export async function respondToBookingAction(
           bookingId: confirmedBooking.id,
         });
       }
+      await stampBookingGuests(tx, confirmedBooking);
     });
   }
 

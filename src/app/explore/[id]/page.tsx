@@ -44,6 +44,7 @@ import {
 } from "@/lib/data/traveller";
 import { listingItemSectionLabel, listingTypeGradient, listingTypeLabels, type ListingType } from "@/lib/listing-type";
 import { getSession } from "@/lib/session";
+import { GroupBookingBanner } from "@/components/plans/group-booking-banner";
 import { logEvent } from "@/lib/analytics";
 import { bookListingFormAction } from "@/lib/actions/booking-actions";
 import { TargetRewardsSection } from "@/components/target-rewards-section";
@@ -241,6 +242,7 @@ export default async function ListingDetailPage({
       )}
 
       <section className="mx-auto max-w-3xl px-4 py-10 md:px-6">
+        {rawSearchParams.group === "1" && <GroupBookingBanner />}
         {isReviewMode && reviewDraft && reviewTotals ? (
           <div className="max-w-md">
             <Link href={`/explore/${listing.id}#book`} className="eyebrow text-ink/40 hover:text-ink">
@@ -366,6 +368,11 @@ export default async function ListingDetailPage({
               <p className="max-w-2xl text-ink/60">{listing.description}</p>
               {session?.role === "traveller" && <SaveButton listingId={listing.id} initialSaved={saved} />}
             </div>
+            {session?.role === "traveller" && (
+              <Link href={`/plans/new?listingId=${listing.id}`} className="mt-3 inline-block text-sm font-semibold text-ember hover:underline">
+                Make a plan with friends →
+              </Link>
+            )}
             <p className="font-mono-data mt-2 font-medium text-ember">{formatListingPrice(listing)}</p>
 
             {listing.wanoOnlyExtras && listing.wanoOnlyExtras.length > 0 && (

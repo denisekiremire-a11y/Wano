@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ListingItemCard } from "@/components/listing-item-card";
 import { EventTicketForm } from "@/components/booking/event-ticket-form";
+import { GroupBookingBanner } from "@/components/plans/group-booking-banner";
 import { PostComposer } from "@/components/post-composer";
 import {
   getEventBookers,
@@ -147,6 +148,7 @@ export default async function EventDetailPage({
       </section>
 
       <section className="mx-auto max-w-3xl px-4 py-12 md:px-6">
+        {rawSearchParams.group === "1" && <GroupBookingBanner />}
         {isReviewMode && reviewDraft && reviewTotals ? (
           <div className="max-w-md">
             <Link href={`/events/${event.id}`} className="eyebrow text-ink/40 hover:text-ink">
@@ -363,6 +365,11 @@ export default async function EventDetailPage({
                 <p className="mt-2 text-sm font-medium text-ink">
                   {followedGoing.length} people you follow are going
                 </p>
+              )}
+              {session?.role === "traveller" && (
+                <Link href={`/plans/new?eventId=${event.id}`} className="mt-3 inline-block text-sm font-semibold text-ember hover:underline">
+                  Make a plan with friends →
+                </Link>
               )}
               {bookers.length > 0 && (
                 <p className="mt-3 text-sm text-ink/50">

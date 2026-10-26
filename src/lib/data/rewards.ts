@@ -2,6 +2,7 @@ import { and, asc, desc, eq, gte, ilike, inArray, isNotNull, sql } from "drizzle
 import { db } from "@/db";
 import {
   adminActionLog,
+  bookingGuests,
   bookings,
   challengeCompletions,
   events,
@@ -64,6 +65,25 @@ async function countRedeemedDrops(travellerId: string, since?: Date): Promise<nu
   return row?.n ?? 0;
 }
 
+/** Completed bookings a friend made for this member as a group guest. They
+ * earn the same completed-booking XP as the booker. */
+async function countCompletedGroupOutings(travellerId: string, since?: Date): Promise<number> {
+  const rows = await withRlsContext({ role: "admin" }, (tx) =>
+    tx
+      .select({ id: bookingGuests.id })
+      .from(bookingGuests)
+      .innerJoin(bookings, eq(bookings.id, bookingGuests.bookingId))
+      .where(
+        and(
+          eq(bookingGuests.travellerId, travellerId),
+          eq(bookings.status, "completed"),
+          since ? bookingCompletionDateFilter(since) : undefined,
+        ),
+      ),
+  );
+  return rows.length;
+}
+
 export async function getRewardsSummary(travellerId: string, persona: string | null, city: string | null) {
   const [
     { stampCount },
@@ -79,6 +99,7 @@ export async function getRewardsSummary(travellerId: string, persona: string | n
     areaStamps,
     friendsVisited,
     streak,
+    groupOutings,
   ] = await Promise.all([
     getPassportProgress(travellerId),
     getChallengesWithStatus(travellerId),
@@ -103,6 +124,7 @@ export async function getRewardsSummary(travellerId: string, persona: string | n
     countAreaStampsEarned(travellerId),
     countInvitedFriendsVisited(travellerId),
     getStreakXp(travellerId),
+    countCompletedGroupOutings(travellerId),
   ]);
 
   const completedChallenges = challenges.filter((c) => c.completion?.status === "verified").length;
@@ -133,6 +155,7 @@ export async function getRewardsSummary(travellerId: string, persona: string | n
     { label: "Neighbourhood stamps", count: areaStamps, points: areaStamps * AREA_STAMP_XP },
     { label: "Invited friends out", count: friendsVisited, points: friendsVisited * FRIEND_FIRST_VISIT_XP },
     { label: "Streak milestones", count: streak.count, points: streak.xp },
+    { label: "Group outings with friends", count: groupOutings, points: groupOutings * BOOKING_COMPLETION_XP },
   ];
 
   // "totalPoints"/"availablePoints" are this function's existing field
@@ -170,7 +193,7 @@ function bookingCompletionDateFilter(since: Date) {
 export async function getXpEarnedLast12Months(travellerId: string): Promise<number> {
   const since = twelveMonthsAgo();
 
-  const [stampRows, completionRows, reviewRows, referralRows, completedBookingRows, trailRows, dropsUsed, weekly, areaStamps, friendsVisited, streak] =
+  const [stampRows, completionRows, reviewRows, referralRows, completedBookingRows, trailRows, dropsUsed, weekly, areaStamps, friendsVisited, streak, groupOutings] =
     await Promise.all([
     db
       .select({ id: stamps.id })
@@ -218,6 +241,7 @@ export async function getXpEarnedLast12Months(travellerId: string): Promise<numb
     countAreaStampsEarned(travellerId, since),
     countInvitedFriendsVisited(travellerId, since),
     getStreakXp(travellerId, since),
+    countCompletedGroupOutings(travellerId, since),
   ]);
 
   return (
@@ -231,7 +255,8 @@ export async function getXpEarnedLast12Months(travellerId: string): Promise<numb
     weekly.xp +
     areaStamps * AREA_STAMP_XP +
     friendsVisited * FRIEND_FIRST_VISIT_XP +
-    streak.xp
+    streak.xp +
+    groupOutings * BOOKING_COMPLETION_XP
   );
 }
 
