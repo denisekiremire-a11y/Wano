@@ -2,6 +2,7 @@
 // Agreed with Kire on 26 Oct 2026: each Drop is announced at 17:00 Kampala
 // time the day before, so people can plan; the first N claim a voucher and
 // redeem it at the venue during the Drop day's window.
+import { LAUNCH_AREAS, type StampArea } from "@/lib/areas";
 import { KAMPALA_OFFSET_MS } from "@/lib/kampala-time";
 
 export const DROP_ANNOUNCE_HOUR = 17;
@@ -63,4 +64,19 @@ export function dropPausedUntil(noShows: Date[], now: Date): Date | null {
   const trigger = recent[recent.length - 1];
   const until = new Date(trigger.getTime() + DROP_PAUSE_DAYS * DAY_MS);
   return until > now ? until : null;
+}
+
+/** The XP Drop neighbourhood for a Kampala date. Rotates through the four
+ * launch areas one day at a time, so each gets a turn every four days and
+ * nobody has to schedule it. Used only on days with no funded Drop. */
+export function xpDropArea(dateIso: string): StampArea {
+  const [y, m, d] = dateIso.split("-").map(Number);
+  const dayNumber = Math.floor(Date.UTC(y, m - 1, d) / DAY_MS);
+  return LAUNCH_AREAS[dayNumber % LAUNCH_AREAS.length];
+}
+
+/** Whether tomorrow's Drop (funded or XP) is announced yet: from 17:00. */
+export function isDropAnnounced(now: Date): boolean {
+  const kampalaHour = new Date(now.getTime() + KAMPALA_OFFSET_MS).getUTCHours();
+  return kampalaHour >= DROP_ANNOUNCE_HOUR;
 }

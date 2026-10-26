@@ -18,7 +18,7 @@ import { getRatingSummaries } from "@/lib/data/reviews";
 import { journeyTheme } from "@/lib/journey-theme";
 import { getSession } from "@/lib/session";
 import { getTonightFeed } from "@/lib/data/tonight";
-import { getHomeDrops, type DropView } from "@/lib/data/drops";
+import { getHomeDrops, getHomeXpDrops, type DropView, type XpDropView } from "@/lib/data/drops";
 import { formatKampalaDayTime, formatKampalaTime } from "@/lib/kampala-time";
 import { parseHomeFilter, type HomeFilter, type TonightCard } from "@/lib/tonight";
 import { getTonightUpdates } from "@/lib/data/tonight-updates";
@@ -137,15 +137,42 @@ function CategoryMarquee() {
 
 /** The Daily Drop, above the "today" cards: today's (to use tonight) and
  * tomorrow's once announced at 5 pm (to claim now). Hidden when neither. */
-function DailyDropStrip({ today, tomorrow }: { today: DropView | null; tomorrow: DropView | null }) {
+function DailyDropStrip({
+  today,
+  tomorrow,
+  xpToday,
+  xpTomorrow,
+}: {
+  today: DropView | null;
+  tomorrow: DropView | null;
+  xpToday: XpDropView | null;
+  xpTomorrow: XpDropView | null;
+}) {
   const items = [
     today && { drop: today, label: `Today's Drop · until ${formatKampalaTime(today.redeemUntil)}` },
     tomorrow && { drop: tomorrow, label: "Tomorrow's Drop · claim now" },
   ].filter((x): x is { drop: DropView; label: string } => Boolean(x));
-  if (items.length === 0) return null;
+  const xpItems = [
+    xpToday && { drop: xpToday, label: "Today's XP Drop" },
+    xpTomorrow && { drop: xpTomorrow, label: "Tomorrow's XP Drop" },
+  ].filter((x): x is { drop: XpDropView; label: string } => Boolean(x));
+  if (items.length === 0 && xpItems.length === 0) return null;
 
   return (
     <div className="mt-8 grid gap-4 sm:grid-cols-2">
+      {xpItems.map(({ drop, label }) => (
+        <Link
+          key={drop.date}
+          href="/drops"
+          className="group border-2 border-ember bg-white p-6 transition-colors duration-200 hover:bg-ember/5"
+        >
+          <p className="eyebrow text-ember">{label}</p>
+          <h3 className="font-serif-editorial mt-3 text-xl text-ink">
+            +{drop.xp} XP for a visit in {drop.area}
+          </h3>
+          <p className="mt-2 text-sm text-ink/55">Any Wano partner there · show your QR</p>
+        </Link>
+      ))}
       {items.map(({ drop, label }) => {
         const left = Math.max(0, drop.cap - drop.claimed);
         return (
@@ -257,6 +284,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
   const fallbackJourney =
     journeyList.find((j) => j.status === "published") ?? journeyList.find((j) => j.kind === "editorial") ?? null;
   const homeDropsPromise = getHomeDrops();
+  const xpDropsPromise = getHomeXpDrops();
   const tonightUpdatesPromise = getTonightUpdates();
   const tonight = await getTonightFeed(
     fallbackJourney
@@ -265,7 +293,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
     undefined,
     filter,
   );
-  const [homeDrops, friendsGoing, tonightUpdates] = await Promise.all([
+  const [homeDrops, friendsGoing, tonightUpdates, xpDrops] = await Promise.all([
     homeDropsPromise,
     me?.travellerId
       ? getFriendsGoingByEvent(
@@ -274,6 +302,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
         )
       : Promise.resolve(new Map<string, string[]>()),
     tonightUpdatesPromise,
+    xpDropsPromise,
   ]);
   const featuredListings = featured.slice(0, 3);
   const [journeyTagsByListing, ratings, birthdayPerks, imagesByListing] = await Promise.all([
@@ -349,7 +378,12 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
           </span>
         </div>
 
-        <DailyDropStrip today={homeDrops.today} tomorrow={homeDrops.tomorrow} />
+        <DailyDropStrip
+          today={homeDrops.today}
+          tomorrow={homeDrops.tomorrow}
+          xpToday={xpDrops.today}
+          xpTomorrow={xpDrops.tomorrow}
+        />
 
         <HomeFilterChips active={filter} />
 

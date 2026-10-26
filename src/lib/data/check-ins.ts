@@ -12,8 +12,10 @@ import {
   weeklyChallenges,
 } from "@/db/schema";
 import { areaForLocation, STAMP_AREAS } from "@/lib/areas";
-import { kampalaDateIso } from "@/lib/drops";
+import { kampalaDateIso, xpDropArea } from "@/lib/drops";
+import { getFundedDropDates } from "@/lib/data/drops";
 import { kampalaWeekBounds, kampalaWeekStartIso } from "@/lib/kampala-time";
+import { XP_DROP_XP } from "@/lib/rewards-config";
 import { computeStreak } from "@/lib/streaks";
 import {
   challengeProgress,
@@ -192,6 +194,18 @@ export async function getWeeklyChallengeXp(travellerId: string, since?: Date) {
   return { xp: row?.xp ?? 0, count: row?.n ?? 0 };
 }
 
+/** Days the member earned the XP Drop: a verified visit in that day's XP
+ * Drop area on a day with no funded Drop (on or after `since`). */
+export async function countXpDropDays(travellerId: string, since?: Date) {
+  const rows = await db
+    .selectDistinct({ date: venueCheckIns.kampalaDate, area: venueCheckIns.area })
+    .from(venueCheckIns)
+    .where(and(eq(venueCheckIns.travellerId, travellerId), since ? gte(venueCheckIns.checkedInAt, since) : undefined));
+  const dates = [...new Set(rows.filter((r) => r.area && r.area === xpDropArea(r.date)).map((r) => r.date))];
+  const funded = await getFundedDropDates(dates);
+  return dates.filter((d) => !funded.has(d)).length;
+}
+
 export type CheckInResult = {
   created: boolean;
   newArea: string | null;
@@ -231,6 +245,16 @@ export async function recordCheckIn(
       .onConflictDoNothing()
       .returning({ id: weeklyChallengeCompletions.id });
     if (won.length > 0) completed.push({ title: s.challenge.title, xp: s.challenge.xp });
+  }
+  // First visit in today's XP Drop area (on a day without a funded Drop).
+  const date = kampalaDateIso(now);
+  if (area && area === xpDropArea(date) && !(await getFundedDropDates([date])).has(date)) {
+    const sameArea = await db
+      .select({ id: venueCheckIns.id })
+      .from(venueCheckIns)
+      .where(and(eq(venueCheckIns.travellerId, travellerId), eq(venueCheckIns.kampalaDate, date), eq(venueCheckIns.area, area)))
+      .limit(2);
+    if (sameArea.length === 1) completed.push({ title: `XP Drop in ${area}`, xp: XP_DROP_XP });
   }
   return { created: true, newArea: area && !hadArea ? area : null, completed };
 }

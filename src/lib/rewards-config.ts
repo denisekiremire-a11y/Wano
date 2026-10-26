@@ -62,6 +62,11 @@ export const REWARDS_SHARE_GUARDRAIL = 0.35;
 // area, see src/lib/areas.ts).
 export const AREA_STAMP_XP = 100;
 
+// XP Drop: on a day with no venue-funded Daily Drop, a verified visit to
+// any partner in that day's neighbourhood earns this once. XP only (no
+// cash value), so it costs Wano and vendors nothing (see src/lib/drops.ts).
+export const XP_DROP_XP = 100;
+
 // Passport XP to the inviter when a friend who joined with their link makes
 // a first verified visit (scan or backup code at a venue).
 export const FRIEND_FIRST_VISIT_XP = 100;

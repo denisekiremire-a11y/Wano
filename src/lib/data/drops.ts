@@ -2,7 +2,16 @@ import { and, asc, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { dailyDrops, listings, rewards, travellerProfiles, userRewards, users, vendorProfiles } from "@/db/schema";
 import { withRlsContext, type DbOrTx } from "@/lib/db-context";
-import { DROP_NO_SHOW_WINDOW_DAYS, dropPhase, kampalaDateIso, type DropPhase } from "@/lib/drops";
+import { areaForLocation, type StampArea } from "@/lib/areas";
+import {
+  DROP_NO_SHOW_WINDOW_DAYS,
+  dropPhase,
+  isDropAnnounced,
+  kampalaDateIso,
+  xpDropArea,
+  type DropPhase,
+} from "@/lib/drops";
+import { XP_DROP_XP } from "@/lib/rewards-config";
 import { isWhatsappConfigured } from "@/lib/whatsapp";
 
 export type DropView = {
@@ -153,4 +162,44 @@ export async function checkDropIdentity(travellerId: string): Promise<DropIdenti
   if (!row) return { ok: false, need: "email" };
   if (isWhatsappConfigured()) return row.phoneVerifiedAt ? { ok: true } : { ok: false, need: "phone" };
   return row.emailVerifiedAt ? { ok: true } : { ok: false, need: "email" };
+}
+
+/** Of the given Kampala dates, those with a funded Drop that is still on
+ * (not cancelled). An XP Drop runs only on the other days. */
+export async function getFundedDropDates(dates: string[]): Promise<Set<string>> {
+  if (dates.length === 0) return new Set();
+  const rows = await db
+    .select({ date: dailyDrops.dropDate })
+    .from(dailyDrops)
+    .innerJoin(rewards, eq(dailyDrops.rewardId, rewards.id))
+    .where(and(inArray(dailyDrops.dropDate, dates), eq(rewards.active, true), eq(rewards.status, "active")));
+  return new Set(rows.map((r) => r.date));
+}
+
+export type XpDropView = { date: string; area: StampArea; xp: number; venues: string[] };
+
+/** The XP Drop for today and, from 17:00, tomorrow, on days without a
+ * funded Drop. Names a few verified partners in the area so it's
+ * clear where to go. */
+export async function getHomeXpDrops(now = new Date()) {
+  const today = kampalaDateIso(now);
+  const tomorrow = kampalaDateIso(now, 1);
+  const dates = isDropAnnounced(now) ? [today, tomorrow] : [today];
+  const [funded, partners] = await Promise.all([
+    getFundedDropDates(dates),
+    db
+      .select({ name: vendorProfiles.businessName, location: vendorProfiles.location })
+      .from(vendorProfiles)
+      .where(eq(vendorProfiles.accreditationStatus, "trusted"))
+      .orderBy(asc(vendorProfiles.businessName)),
+  ]);
+  const view = (date: string): XpDropView | null => {
+    if (funded.has(date)) return null;
+    const area = xpDropArea(date);
+    const venues = partners.filter((p) => areaForLocation(p.location) === area).map((p) => p.name);
+    // No partner there yet means nowhere to earn it, so don't show it.
+    if (venues.length === 0) return null;
+    return { date, area, xp: XP_DROP_XP, venues: venues.slice(0, 3) };
+  };
+  return { today: view(today), tomorrow: dates.length > 1 ? view(tomorrow) : null };
 }
