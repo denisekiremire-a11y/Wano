@@ -106,6 +106,66 @@ function ArrowLink({
   );
 }
 
+const HERO_PHOTOS = [
+  {
+    src: "/images/lake-victoria-reeds.jpg",
+    alt: "Lake Victoria at dusk",
+    caption: "lake victoria, dusk",
+    className: "left-[2%] top-[16%] w-[46%] -rotate-6",
+    z: "z-10",
+    priority: false,
+  },
+  {
+    src: "/images/kampala-golden-hour.jpg",
+    alt: "Kampala skyline at golden hour",
+    caption: "golden hour, kampala",
+    className: "left-[38%] top-0 w-[54%] rotate-3",
+    z: "z-20",
+    priority: true,
+  },
+  {
+    src: "/images/sunset-dinner.jpg",
+    alt: "Dinner table at sunset",
+    caption: "nyama choma night",
+    className: "left-[18%] top-[50%] w-[46%] -rotate-2",
+    z: "z-30",
+    priority: false,
+  },
+] as const;
+
+/** A pinned stack of instant photos instead of one framed hero shot —
+ * the "Field Notes" direction the founder picked over a single clean
+ * crop: overlapping, slightly rotated prints with a handwritten-style
+ * caption, like a travel scrapbook rather than a brochure. Percentage
+ * positioning (not px) so the stack rescales with its container at
+ * every breakpoint instead of needing its own responsive overrides. */
+function HeroPhotoStack() {
+  return (
+    <div className="relative h-full w-full">
+      {HERO_PHOTOS.map((photo) => (
+        <div
+          key={photo.src}
+          className={`absolute aspect-[4/5] border border-ink bg-sand-100 ${photo.className} ${photo.z}`}
+        >
+          <div className="relative h-[82%] w-full overflow-hidden">
+            <Image
+              src={photo.src}
+              alt={photo.alt}
+              fill
+              sizes="(min-width: 1024px) 28vw, 45vw"
+              priority={photo.priority}
+              className="object-cover"
+            />
+          </div>
+          <p className="font-serif-editorial truncate px-2 py-1.5 text-[11px] italic text-ink/70">{photo.caption}</p>
+        </div>
+      ))}
+      {/* A torn strip of "washi tape" pinning the front photo down. */}
+      <div className="absolute left-[44%] top-[-1.5%] z-30 h-5 w-16 -rotate-6 bg-marigold-400/60" aria-hidden />
+    </div>
+  );
+}
+
 /** Replaces the old 4-box quick-link grid — a continuous, doubled strip
  * so the loop has no visible seam, large serif type instead of pill
  * buttons + emoji. Motion pauses on hover/focus so a reader can actually
@@ -328,7 +388,24 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
               <p className="font-mono-data text-[11px] text-ink/35">0.3476°N 32.5825°E</p>
             </div>
             <h1 className="font-serif-editorial mt-5 text-5xl leading-[0.94] text-ink sm:text-6xl lg:text-[3.7rem] xl:text-7xl">
-              What do you want to do in Uganda?
+              What do you want to do in{" "}
+              <span className="relative inline-block">
+                Uganda?
+                <svg
+                  viewBox="0 0 220 18"
+                  preserveAspectRatio="none"
+                  aria-hidden
+                  className="pointer-events-none absolute inset-x-0 -bottom-1.5 h-2.5 w-full text-ember sm:-bottom-2 sm:h-3"
+                >
+                  <path
+                    d="M3 11 C 40 4, 80 16, 120 8 C 150 2, 180 14, 217 6"
+                    stroke="currentColor"
+                    strokeWidth="3.5"
+                    fill="none"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </span>
             </h1>
             <p className="mt-6 max-w-sm text-lg text-ink/60">
               Find places. Discover experiences. Meet people. Build your trip.
@@ -344,20 +421,9 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
           </div>
 
           <div className="relative order-1 aspect-[5/4] lg:order-2 lg:col-span-6 lg:aspect-auto lg:min-h-[520px] xl:col-span-7">
-            <div className="absolute inset-4 overflow-hidden lg:inset-8">
-              <Image
-                src="/images/kampala-golden-hour.jpg"
-                alt="Kampala skyline at golden hour"
-                fill
-                sizes="(min-width: 1024px) 60vw, 100vw"
-                priority
-                className="object-cover"
-              />
+            <div className="absolute inset-4 lg:inset-8">
+              <HeroPhotoStack />
             </div>
-            <div className="pointer-events-none absolute inset-4 lg:inset-8">
-              <CornerMarks className="text-white/70" />
-            </div>
-            <div className="pointer-events-none absolute inset-0 border border-ink/10" />
           </div>
         </div>
 
