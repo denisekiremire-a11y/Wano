@@ -91,15 +91,18 @@ async function resolveReward(
  * required for some types, a date for most), then redirects to a review
  * screen with the draft encoded in the URL — nothing is written to the
  * database yet, so an abandoned draft never shows up as a fake pending
- * booking anywhere bookings are queried. */
-export async function previewBookingAction(formData: FormData) {
+ * booking anywhere bookings are queried. Returns ActionState (rather than
+ * throwing) so a validation failure shows as an inline message instead of
+ * crashing the whole page — see requireVerifiedTraveller's doc comment. */
+export async function previewBookingAction(_prev: ActionState | undefined, formData: FormData): Promise<ActionState> {
   const listingId = formData.get("listingId");
-  if (typeof listingId !== "string" || !listingId) throw new Error("Missing listing.");
+  if (typeof listingId !== "string" || !listingId) return { error: "Missing listing." };
 
-  await requireVerifiedTraveller();
+  const verified = await requireVerifiedTraveller();
+  if ("error" in verified) return { error: verified.error };
 
   const [listing] = await db.select().from(listings).where(eq(listings.id, listingId)).limit(1);
-  if (!listing || !listing.active) throw new Error("This listing is not available.");
+  if (!listing || !listing.active) return { error: "This listing is not available." };
   const type = listing.type as ListingType;
 
   const [items, [restaurantRow]] = await Promise.all([
@@ -110,9 +113,9 @@ export async function previewBookingAction(formData: FormData) {
   ]);
 
   const parsed = parseBookingDraft(formData, type, items, restaurantRow?.allowsPreorder ?? false);
-  if ("error" in parsed) throw new Error(parsed.error);
+  if ("error" in parsed) return { error: parsed.error };
   if (listing.bookingMode === "instant" && !parsed.data.slotId) {
-    throw new Error("Pick a time slot before continuing.");
+    return { error: "Pick a time slot before continuing." };
   }
 
   redirect(`/explore/${listingId}?${encodeBookingDraft(parsed.data).toString()}`);
@@ -133,18 +136,20 @@ async function attachGroupIfAny(booking: {
   if (planId) await attachPlanGuests(planId, booking);
 }
 
-export async function bookListingFormAction(formData: FormData) {
+export async function bookListingFormAction(_prev: ActionState | undefined, formData: FormData): Promise<ActionState> {
   const listingId = formData.get("listingId");
-  if (typeof listingId !== "string" || !listingId) throw new Error("Missing listing.");
+  if (typeof listingId !== "string" || !listingId) return { error: "Missing listing." };
 
-  const session = await requireVerifiedTraveller();
+  const verified = await requireVerifiedTraveller();
+  if ("error" in verified) return { error: verified.error };
+  const session = verified.session;
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
-  if (!travellerProfile) throw new Error("Traveller profile not found.");
+  if (!travellerProfile) return { error: "Traveller profile not found." };
 
   await logEvent("booking_started", { userId: session.userId, role: session.role, metadata: { listingId } });
 
   const [listing] = await db.select().from(listings).where(eq(listings.id, listingId)).limit(1);
-  if (!listing || !listing.active) throw new Error("This listing is not available.");
+  if (!listing || !listing.active) return { error: "This listing is not available." };
 
   const draft = decodeBookingDraft(formDataToRecord(formData));
   const [journeyId, rewardRow, listingItemRows] = await Promise.all([
@@ -161,12 +166,12 @@ export async function bookListingFormAction(formData: FormData) {
   );
 
   if (listing.bookingMode === "instant") {
-    if (!draft.slotId) throw new Error("Pick a time slot before continuing.");
+    if (!draft.slotId) return { error: "Pick a time slot before continuing." };
 
     const missingPaymentEnv = missingFlutterwaveEnv();
     if (subtotalMinor > 0 && missingPaymentEnv.length > 0 && process.env.NODE_ENV !== "development") {
       console.error(`Refusing paid instant booking for listing ${listing.id} — missing ${missingPaymentEnv.join(", ")}.`);
-      throw new Error("Paid bookings aren't available right now — please try again later.");
+      return { error: "Paid bookings aren't available right now — please try again later." };
     }
 
     const [vendor] = await db
@@ -196,7 +201,7 @@ export async function bookListingFormAction(formData: FormData) {
         quantity: li.quantity,
       })),
     });
-    if ("error" in result) throw new Error(result.error);
+    if ("error" in result) return { error: result.error };
     const { booking } = result;
     await attachGroupIfAny(booking);
 
@@ -233,7 +238,7 @@ export async function bookListingFormAction(formData: FormData) {
     } catch (err) {
       console.error("Failed to create Flutterwave payment for booking", booking.id, err);
       await releaseHeldBooking(booking.id);
-      throw new Error("Couldn't start payment — try again.");
+      return { error: "Couldn't start payment — try again." };
     }
     redirect(checkoutLink);
   }
@@ -309,34 +314,37 @@ export async function bookListingFormAction(formData: FormData) {
  * with a ticket-tier selection as an optional add-on when the organizer has
  * configured one — looser than the "event" listing type, which requires a
  * tier. computeBookingTotals is still reused as-is. */
-export async function previewEventTicketAction(formData: FormData) {
+export async function previewEventTicketAction(_prev: ActionState | undefined, formData: FormData): Promise<ActionState> {
   const eventId = formData.get("eventId");
-  if (typeof eventId !== "string" || !eventId) throw new Error("Missing event.");
+  if (typeof eventId !== "string" || !eventId) return { error: "Missing event." };
 
-  await requireVerifiedTraveller();
+  const verified = await requireVerifiedTraveller();
+  if ("error" in verified) return { error: verified.error };
 
   const [event] = await db.select().from(events).where(eq(events.id, eventId)).limit(1);
-  if (!event || !event.active) throw new Error("This event is not available.");
+  if (!event || !event.active) return { error: "This event is not available." };
 
   const items = await db.select().from(listingItems).where(eq(listingItems.eventId, eventId));
   const parsed = parseEventBookingDraft(formData, items);
-  if ("error" in parsed) throw new Error(parsed.error);
+  if ("error" in parsed) return { error: parsed.error };
 
   redirect(`/events/${eventId}?${encodeBookingDraft(parsed.data).toString()}`);
 }
 
-export async function buyEventTicketsAction(formData: FormData) {
+export async function buyEventTicketsAction(_prev: ActionState | undefined, formData: FormData): Promise<ActionState> {
   const eventId = formData.get("eventId");
-  if (typeof eventId !== "string" || !eventId) throw new Error("Missing event.");
+  if (typeof eventId !== "string" || !eventId) return { error: "Missing event." };
 
-  const session = await requireVerifiedTraveller();
+  const verified = await requireVerifiedTraveller();
+  if ("error" in verified) return { error: verified.error };
+  const session = verified.session;
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
-  if (!travellerProfile) throw new Error("Traveller profile not found.");
+  if (!travellerProfile) return { error: "Traveller profile not found." };
 
   await logEvent("booking_started", { userId: session.userId, role: session.role, metadata: { eventId } });
 
   const [event] = await db.select().from(events).where(eq(events.id, eventId)).limit(1);
-  if (!event || !event.active) throw new Error("This event is not available.");
+  if (!event || !event.active) return { error: "This event is not available." };
 
   const draft = decodeBookingDraft(formDataToRecord(formData));
   const [rewardRow, eventItemRows] = await Promise.all([

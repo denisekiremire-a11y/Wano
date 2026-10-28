@@ -1,3 +1,6 @@
+"use client";
+
+import { useActionState } from "react";
 import { RewardSelect } from "@/components/booking/booking-form-shell";
 import { Field, TextInput, TextareaInput } from "@/components/booking/fields";
 import { SingleItemPicker } from "@/components/booking/item-picker";
@@ -25,8 +28,9 @@ export function EventTicketForm({
   travellerDisplayName: string;
   myClaimedRewards: ClaimedRewardRow[];
 }) {
+  const [state, formAction, pending] = useActionState(previewEventTicketAction, undefined);
   return (
-    <form action={previewEventTicketAction} className="max-w-md space-y-3 rounded-2xl border border-forest-900/10 bg-white p-4">
+    <form action={formAction} className="max-w-md space-y-3 rounded-2xl border border-forest-900/10 bg-white p-4">
       <input type="hidden" name="eventId" value={eventId} />
 
       <Field label="Name for the booking" htmlFor="bookingName" className="block">
@@ -60,11 +64,13 @@ export function EventTicketForm({
       </Field>
 
       <RewardSelect myClaimedRewards={myClaimedRewards} />
+      {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
       <button
         type="submit"
-        className="rounded-full bg-forest-800 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-forest-700"
+        disabled={pending}
+        className="rounded-full bg-forest-800 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-forest-700 disabled:opacity-60"
       >
-        Book →
+        {pending ? "Continuing…" : "Book →"}
       </button>
     </form>
   );

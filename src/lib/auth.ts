@@ -33,20 +33,24 @@ export async function requireRole(
 }
 
 /** Traveller + verified-email gate for the booking-request entry points —
- * layered under requireRole("traveller"). Re-reads emailVerifiedAt fresh
+ * layered under requireRole("traveller") (which still redirects on a
+ * wrong/missing role, untouched below). Re-reads emailVerifiedAt fresh
  * from the database on every call, same "never trust the session cookie"
  * reasoning as requireAdminLevel (a user who just verified shouldn't have
- * to log out and back in for it to take effect). Throws rather than
- * redirecting, matching the existing validation-error style in
- * booking-actions.ts (previewBookingAction etc. already throw plain
- * Errors for "this listing isn't available" and similar). */
-export async function requireVerifiedTraveller(): Promise<SessionPayload> {
+ * to log out and back in for it to take effect). Returns a result rather
+ * than throwing — the booking actions that call this are plain <form
+ * action={...}> Server Actions with no error boundary of their own, so an
+ * uncaught throw here used to crash the whole page to the generic "Something
+ * went wrong" screen instead of showing the traveller an inline message. */
+export async function requireVerifiedTraveller(): Promise<
+  { session: SessionPayload; error?: undefined } | { session?: undefined; error: string }
+> {
   const session = await requireRole("traveller");
   const [row] = await db.select({ emailVerifiedAt: users.emailVerifiedAt }).from(users).where(eq(users.id, session.userId)).limit(1);
   if (!row?.emailVerifiedAt) {
-    throw new Error("Verify your email before sending a booking request — check your inbox for the link, or resend it from your account.");
+    return { error: "Verify your email before sending a booking request — check your inbox for the link, or resend it from your account." };
   }
-  return session;
+  return { session };
 }
 
 /** Admin sub-role gate, layered under requireRole("admin"). Reads

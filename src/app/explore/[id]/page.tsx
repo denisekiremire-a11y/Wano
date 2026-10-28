@@ -25,6 +25,7 @@ import { getListingSlots } from "@/lib/data/slots";
 import { getRatingSummary, getReviewsForListing } from "@/lib/data/reviews";
 import { withRlsContext } from "@/lib/db-context";
 import { getClaimableRewardsForTarget, getMyClaimedRewardsForTarget } from "@/lib/data/rewards";
+import { BookingConfirmForm } from "@/components/booking/booking-confirm-form";
 import { BookingForm } from "@/components/booking/booking-form";
 import { SlotPicker } from "@/components/booking/slot-picker";
 import { bookingActionLabel, computeBookingTotals, decodeBookingDraft } from "@/lib/booking-shared";
@@ -326,7 +327,7 @@ export default async function ListingDetailPage({
               </div>
             )}
 
-            <form action={bookListingFormAction} className="mt-4">
+            <BookingConfirmForm action={bookListingFormAction} submitLabel={bookingActionLabel[type]}>
               <input type="hidden" name="listingId" value={listing.id} />
               <input type="hidden" name="bookingName" value={reviewDraft.bookingName ?? travellerDisplayName} />
               {reviewDraft.visitDate && <input type="hidden" name="visitDate" value={reviewDraft.visitDate} />}
@@ -352,13 +353,7 @@ export default async function ListingDetailPage({
                   value={reviewDraft.items.map((i) => `${i.itemId}:${i.quantity}`).join(",")}
                 />
               )}
-              <button
-                type="submit"
-                className="w-full rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-ink/85"
-              >
-                {bookingActionLabel[type]} →
-              </button>
-            </form>
+            </BookingConfirmForm>
           </div>
         ) : (
           <>
