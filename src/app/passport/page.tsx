@@ -10,6 +10,7 @@ import { LiteModeToggle } from "@/components/lite-mode-toggle";
 import { LogoutButton } from "@/components/logout-button";
 import { PassportGrid } from "@/components/passport-grid";
 import { PassportTabs } from "@/components/passport-tabs";
+import { ProfileEditor } from "@/components/profile-editor";
 import { PastVouchersSection } from "@/components/past-vouchers-section";
 import { RedeemPointsRewardButton } from "@/components/redeem-points-reward-button";
 import { ResendVerificationButton } from "@/components/resend-verification-button";
@@ -282,6 +283,10 @@ export default async function PassportPage({
         )}
         {activeTab === "account" && (
           <AccountTab
+            name={user?.name ?? travellerProfile.displayName}
+            email={user?.email ?? ""}
+            phone={travellerProfile.phone}
+            phoneVerified={Boolean(travellerProfile.phoneVerifiedAt)}
             dateOfBirth={travellerProfile.dateOfBirth}
             showActivityInFeed={travellerProfile.showActivityInFeed}
             blockedList={blockedList}
@@ -787,11 +792,19 @@ function RewardsTab({
 }
 
 function AccountTab({
+  name,
+  email,
+  phone,
+  phoneVerified,
   dateOfBirth,
   showActivityInFeed,
   blockedList,
   emailVerified,
 }: {
+  name: string;
+  email: string;
+  phone: string | null;
+  phoneVerified: boolean;
   dateOfBirth: string | null;
   showActivityInFeed: boolean;
   blockedList: Awaited<ReturnType<typeof getMyBlockedList>>;
@@ -817,7 +830,10 @@ function AccountTab({
 
       <section className="space-y-4 border border-ink/10 bg-white p-5">
         <h3 className="font-serif-editorial text-lg text-ink">Profile</h3>
-        <BirthdayEditor dateOfBirth={dateOfBirth} />
+        <ProfileEditor name={name} email={email} phone={phone} phoneVerified={phoneVerified} />
+        <div className="border-t border-ink/10 pt-4">
+          <BirthdayEditor dateOfBirth={dateOfBirth} />
+        </div>
       </section>
 
       <section className="space-y-4 border border-ink/10 bg-white p-5">
