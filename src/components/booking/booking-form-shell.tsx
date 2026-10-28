@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useActionState } from "react";
 import { previewBookingAction } from "@/lib/actions/booking-actions";
 import { formatRewardDiscount } from "@/lib/reward-format";
 
@@ -13,16 +16,19 @@ export function BookingFormShell({
   submitLabel: string;
   children: React.ReactNode;
 }) {
+  const [state, formAction, pending] = useActionState(previewBookingAction, undefined);
   return (
-    <form action={previewBookingAction} className="max-w-md space-y-3 rounded-2xl border border-forest-900/10 bg-white p-4">
+    <form action={formAction} className="max-w-md space-y-3 rounded-2xl border border-forest-900/10 bg-white p-4">
       <input type="hidden" name="listingId" value={listingId} />
       {journeyId && <input type="hidden" name="journeyId" value={journeyId} />}
       {children}
+      {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
       <button
         type="submit"
-        className="rounded-full bg-forest-800 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-forest-700"
+        disabled={pending}
+        className="rounded-full bg-forest-800 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-forest-700 disabled:opacity-60"
       >
-        {submitLabel} →
+        {pending ? "Continuing…" : `${submitLabel} →`}
       </button>
     </form>
   );

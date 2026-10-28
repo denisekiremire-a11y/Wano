@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ListingItemCard } from "@/components/listing-item-card";
+import { BookingConfirmForm } from "@/components/booking/booking-confirm-form";
 import { EventTicketForm } from "@/components/booking/event-ticket-form";
 import { GroupBookingBanner } from "@/components/plans/group-booking-banner";
 import { PostComposer } from "@/components/post-composer";
@@ -210,7 +211,7 @@ export default async function EventDetailPage({
               <p>The organizer replies within {REQUEST_EXPIRY_HOURS} hours, or your request expires.</p>
             </div>
 
-            <form action={buyEventTicketsAction} className="mt-4">
+            <BookingConfirmForm action={buyEventTicketsAction} submitLabel="Book">
               <input type="hidden" name="eventId" value={event.id} />
               <input type="hidden" name="bookingName" value={reviewDraft.bookingName ?? travellerDisplayName} />
               {reviewDraft.partySize != null && <input type="hidden" name="partySize" value={reviewDraft.partySize} />}
@@ -226,13 +227,7 @@ export default async function EventDetailPage({
                   value={reviewDraft.items.map((i) => `${i.itemId}:${i.quantity}`).join(",")}
                 />
               )}
-              <button
-                type="submit"
-                className="w-full rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-ink/85"
-              >
-                Book →
-              </button>
-            </form>
+            </BookingConfirmForm>
           </div>
         ) : (
           <>

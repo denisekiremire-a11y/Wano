@@ -33,7 +33,9 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/group-plan-cookie", () => ({ takeGroupPlanId: vi.fn(async () => null) }));
 vi.mock("@/lib/auth", () => ({
   requireRole: vi.fn(async () => ({ userId: "user-1", role: "traveller", email: "amina@example.com" })),
-  requireVerifiedTraveller: vi.fn(async () => ({ userId: "user-1", role: "traveller", email: "amina@example.com" })),
+  requireVerifiedTraveller: vi.fn(async () => ({
+    session: { userId: "user-1", role: "traveller", email: "amina@example.com" },
+  })),
 }));
 vi.mock("@/lib/analytics", () => ({ logEvent: vi.fn() }));
 vi.mock("@/lib/booking-notifications", () => ({
@@ -83,7 +85,10 @@ describe("bookListingFormAction (request-to-book)", () => {
     fake.current.queue("select", []); // listing items
 
     const url = await redirectOf(
-      bookListingFormAction(form({ listingId: "listing-1", visitDate: "2027-01-10", partySize: "4", notes: "Window seat" })),
+      bookListingFormAction(
+        undefined,
+        form({ listingId: "listing-1", visitDate: "2027-01-10", partySize: "4", notes: "Window seat" }),
+      ),
     );
 
     expect(fake.current.inserted).toHaveLength(1);
@@ -106,7 +111,9 @@ describe("bookListingFormAction (request-to-book)", () => {
 
   it("refuses to book an inactive listing", async () => {
     fake.current.queue("select", [{ ...listing, active: false }]);
-    await expect(bookListingFormAction(form({ listingId: "listing-1" }))).rejects.toThrow("This listing is not available.");
+    await expect(bookListingFormAction(undefined, form({ listingId: "listing-1" }))).resolves.toEqual({
+      error: "This listing is not available.",
+    });
     expect(fake.current.inserted).toHaveLength(0);
     expect(notify.vendor).not.toHaveBeenCalled();
   });
@@ -137,9 +144,9 @@ describe("bookListingFormAction (instant mode, paid)", () => {
     fake.current.queue("select", [instantListing]); // listing lookup
     fake.current.queue("select", []); // listing items
 
-    await expect(bookListingFormAction(instantForm())).rejects.toThrow(
-      "Paid bookings aren't available right now — please try again later.",
-    );
+    await expect(bookListingFormAction(undefined, instantForm())).resolves.toEqual({
+      error: "Paid bookings aren't available right now — please try again later.",
+    });
     expect(slotBooking.reserveSlotHold).not.toHaveBeenCalled();
   });
 
@@ -152,7 +159,7 @@ describe("bookListingFormAction (instant mode, paid)", () => {
       booking: { id: "booking-1", bookingRef: "PAM-ABC123", totalMinor: 30_000 },
     });
 
-    const url = await redirectOf(bookListingFormAction(instantForm()));
+    const url = await redirectOf(bookListingFormAction(undefined, instantForm()));
 
     expect(url).toBe("/bookings/PAM-ABC123");
     expect(slotBooking.confirmHeldBookingWithoutPayment).toHaveBeenCalledWith("booking-1");
@@ -171,7 +178,7 @@ describe("bookListingFormAction (instant mode, paid)", () => {
     });
     flutterwave.createFlutterwavePayment.mockResolvedValue("https://checkout.flutterwave.test/pay/xyz");
 
-    const err = await bookListingFormAction(instantForm()).catch((e: unknown) => e);
+    const err = await bookListingFormAction(undefined, instantForm()).catch((e: unknown) => e);
 
     expect(err).toBeInstanceOf(RedirectError);
     expect((err as RedirectError).url).toBe("https://checkout.flutterwave.test/pay/xyz");
