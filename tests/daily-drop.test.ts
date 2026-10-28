@@ -15,6 +15,19 @@ vi.mock("@/lib/auth", () => ({
   requireAdminPage: vi.fn(async () => ({ ...session.current, adminLevel: "super" })),
   requireAdminLevel: vi.fn(async () => ({ ...session.current, adminLevel: "super" })),
 }));
+// markRewardRedeemedAction (used below to redeem a Drop voucher) resolves
+// the vendor via requireVendorAccess now, not requireRole directly — see
+// the matching comment in tests/reward-redemption.test.ts.
+vi.mock("@/lib/vendor-access", async () => {
+  const { getVendorProfileByUserId } = await import("@/lib/data/vendor");
+  return {
+    requireVendorAccess: vi.fn(async () => {
+      const vendorProfile = await getVendorProfileByUserId(session.current.userId);
+      if (!vendorProfile) return null;
+      return { vendorProfile, userId: session.current.userId, via: "login" as const };
+    }),
+  };
+});
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/notify", () => ({ notifyUser: vi.fn(), notifyAdmin: vi.fn() }));
 vi.mock("@/lib/reward-notifications", () => ({ notifyRewardClaimed: vi.fn(), notifyRewardRedeemed: vi.fn() }));

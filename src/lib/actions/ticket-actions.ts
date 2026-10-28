@@ -9,7 +9,7 @@ import { requireRole } from "@/lib/auth";
 import type { DbOrTx } from "@/lib/db-context";
 import { withRlsContext } from "@/lib/db-context";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
-import { getVendorProfileByUserId } from "@/lib/data/vendor";
+import { requireVendorAccess } from "@/lib/vendor-access";
 import { signTicketToken, verifyTicketToken } from "@/lib/ticket-token";
 import type { ActionState } from "@/lib/validation";
 
@@ -87,34 +87,40 @@ export async function generateTicketQrAction(bookingId: string) {
   if (!row || row.booking.travellerId !== travellerProfile.id) throw new Error("Booking not found.");
 
   const token = await signTicketToken(bookingId);
-  const verifyUrl = `${APP_URL}/vendor/dashboard/redeem/tickets/token/${token}`;
+  const verifyUrl = `${APP_URL}/scan/tickets/${token}`;
   const qrDataUrl = await QRCode.toDataURL(verifyUrl, { margin: 1, width: 240 });
 
   return { qrDataUrl, expiresInSeconds: 120 };
 }
 
-/** Server-side check for the /vendor/dashboard/redeem/tickets/token/[token]
- * page — validates the QR token's own signature/expiry before ever
- * looking at the booking. */
-export async function verifyTicketTokenForVendor(token: string): Promise<TicketCheck & { bookingId?: string }> {
-  const session = await requireRole("vendor");
-  const vendorProfile = await getVendorProfileByUserId(session.userId);
-  if (!vendorProfile) return { ok: false, reason: "invalid" };
+/** Server-side check for the /scan/tickets/[token] page — validates the
+ * QR token's own signature/expiry before ever looking at the booking.
+ * Reachable by a logged-in vendor or an unlocked staff-link session
+ * (requireVendorAccess) — this is one of the two pages a traveller's
+ * camera opens directly, so it can't sit behind the vendor-only
+ * dashboard layout. */
+export async function verifyTicketTokenForVendor(
+  token: string,
+): Promise<TicketCheck & { bookingId?: string; backHref: string }> {
+  const access = await requireVendorAccess();
+  if (!access) return { ok: false, reason: "invalid", backHref: "/vendor/dashboard/redeem/tickets" };
+  const { vendorProfile, userId, via } = access;
+  const backHref = via === "staff" ? `/staff/${vendorProfile.staffAccessToken}` : "/vendor/dashboard/redeem/tickets";
 
   const decoded = await verifyTicketToken(token);
-  if (!decoded) return { ok: false, reason: "invalid" };
+  if (!decoded) return { ok: false, reason: "invalid", backHref };
 
   const result = await withRlsContext(
-    { userId: session.userId, role: "vendor", vendorProfileId: vendorProfile.id },
+    { userId, role: "vendor", vendorProfileId: vendorProfile.id },
     (tx) => checkTicketRedeemable(decoded.bookingId, vendorProfile.id, tx),
   );
-  return { ...result, bookingId: decoded.bookingId };
+  return { ...result, bookingId: decoded.bookingId, backHref };
 }
 
 export async function lookupTicketByRefForVendor(bookingRef: string): Promise<TicketCheck & { bookingId?: string }> {
-  const session = await requireRole("vendor");
-  const vendorProfile = await getVendorProfileByUserId(session.userId);
-  if (!vendorProfile) return { ok: false, reason: "invalid" };
+  const access = await requireVendorAccess();
+  if (!access) return { ok: false, reason: "invalid" };
+  const { vendorProfile, userId } = access;
 
   // Resolved under an admin-equivalent context, not this vendor's own —
   // otherwise a ticket for someone else's venue would be invisible to this
@@ -132,7 +138,7 @@ export async function lookupTicketByRefForVendor(bookingRef: string): Promise<Ti
   if (!row) return { ok: false, reason: "invalid" };
 
   const result = await withRlsContext(
-    { userId: session.userId, role: "vendor", vendorProfileId: vendorProfile.id },
+    { userId, role: "vendor", vendorProfileId: vendorProfile.id },
     (tx) => checkTicketRedeemable(row.id, vendorProfile.id, tx),
   );
   return { ...result, bookingId: row.id };
@@ -142,12 +148,12 @@ export async function checkInTicketAction(_prev: ActionState, formData: FormData
   const bookingId = formData.get("bookingId");
   if (typeof bookingId !== "string" || !bookingId) return { error: "Missing ticket." };
 
-  const session = await requireRole("vendor");
-  const vendorProfile = await getVendorProfileByUserId(session.userId);
-  if (!vendorProfile) return { error: "Vendor profile not found." };
+  const access = await requireVendorAccess();
+  if (!access) return { error: "Vendor profile not found." };
+  const { vendorProfile, userId } = access;
 
   const result = await withRlsContext(
-    { userId: session.userId, role: "vendor", vendorProfileId: vendorProfile.id },
+    { userId, role: "vendor", vendorProfileId: vendorProfile.id },
     async (tx) => {
       const check = await checkTicketRedeemable(bookingId, vendorProfile.id, tx);
       if (!check.ok) return check;

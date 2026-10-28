@@ -23,6 +23,7 @@ import { notifyRewardClaimed, notifyRewardRedeemed } from "@/lib/reward-notifica
 import { signRewardToken, verifyRewardToken } from "@/lib/reward-token";
 import { signVisitorToken, verifyVisitorToken } from "@/lib/visitor-token";
 import { formatKampalaDateTime } from "@/lib/kampala-time";
+import { requireVendorAccess } from "@/lib/vendor-access";
 import type { ActionState } from "@/lib/validation";
 
 // UGX has no subdivision, but every "minor unit" integer in this codebase
@@ -274,7 +275,7 @@ export async function generateRewardQrAction(userRewardId: string) {
   }
 
   const token = await signRewardToken(userRewardId);
-  const verifyUrl = `${APP_URL}/vendor/dashboard/redeem/token/${token}`;
+  const verifyUrl = `${APP_URL}/scan/voucher/${token}`;
   const qrDataUrl = await QRCode.toDataURL(verifyUrl, { margin: 1, width: 240 });
 
   return { qrDataUrl, expiresInSeconds: 120 };
@@ -391,22 +392,28 @@ async function checkRedeemable(userRewardId: string, vendorProfileId: string, cl
   };
 }
 
-/** Server-side check for the /vendor/redeem/token/[token] page — validates
+/** Server-side check for the /scan/voucher/[token] page — validates
  * signature + expiry (of the QR token itself, separate from the voucher's
- * own expiresAt) before ever looking at the voucher. */
-export async function verifyRewardTokenForVendor(token: string): Promise<RedeemCheck & { userRewardId?: string }> {
-  const session = await requireRole("vendor");
-  const vendorProfile = await getVendorProfileByUserId(session.userId);
-  if (!vendorProfile) return { ok: false, reason: "invalid" };
+ * own expiresAt) before ever looking at the voucher. Reachable by a
+ * logged-in vendor or an unlocked staff-link session (requireVendorAccess)
+ * — this is one of the two pages a traveller's camera opens directly, so
+ * it can't sit behind the vendor-only dashboard layout. */
+export async function verifyRewardTokenForVendor(
+  token: string,
+): Promise<RedeemCheck & { userRewardId?: string; backHref: string }> {
+  const access = await requireVendorAccess();
+  if (!access) return { ok: false, reason: "invalid", backHref: "/vendor/dashboard/redeem" };
+  const { vendorProfile, userId, via } = access;
+  const backHref = via === "staff" ? `/staff/${vendorProfile.staffAccessToken}` : "/vendor/dashboard/redeem";
 
   const decoded = await verifyRewardToken(token);
-  if (!decoded) return { ok: false, reason: "invalid" };
+  if (!decoded) return { ok: false, reason: "invalid", backHref };
 
   const result = await withRlsContext(
-    { userId: session.userId, role: "vendor", vendorProfileId: vendorProfile.id },
+    { userId, role: "vendor", vendorProfileId: vendorProfile.id },
     (tx) => checkRedeemable(decoded.userRewardId, vendorProfile.id, tx),
   );
-  return { ...result, userRewardId: decoded.userRewardId };
+  return { ...result, userRewardId: decoded.userRewardId, backHref };
 }
 
 /** Reward codes are shown as WANO-XXXX, but staff may type them without the
@@ -421,15 +428,15 @@ function normalizeRedemptionCode(input: string) {
 }
 
 export async function lookupRewardByCodeForVendor(code: string): Promise<RedeemCheck & { userRewardId?: string }> {
-  const session = await requireRole("vendor");
-  const vendorProfile = await getVendorProfileByUserId(session.userId);
-  if (!vendorProfile) return { ok: false, reason: "invalid" };
+  const access = await requireVendorAccess();
+  if (!access) return { ok: false, reason: "invalid" };
+  const { vendorProfile, userId } = access;
 
   // Resolved under an admin-equivalent context, not this vendor's own —
   // otherwise a code for someone else's venue would be invisible to this
-  // lookup entirely (RLS-filtered out) rather than found and correctly
-  // rejected as "wrong_venue" by checkRedeemable just below, same
-  // distinction the UI already relies on.
+  // lookup entirely (RLS-filtered out) rather than correctly rejected as
+  // "wrong_venue" by checkRedeemable just below, same distinction the UI
+  // already relies on.
   const row = await withRlsContext({ role: "admin" }, (tx) =>
     tx
       .select({ id: userRewards.id })
@@ -441,7 +448,7 @@ export async function lookupRewardByCodeForVendor(code: string): Promise<RedeemC
   if (!row) return { ok: false, reason: "invalid" };
 
   const result = await withRlsContext(
-    { userId: session.userId, role: "vendor", vendorProfileId: vendorProfile.id },
+    { userId, role: "vendor", vendorProfileId: vendorProfile.id },
     (tx) => checkRedeemable(row.id, vendorProfile.id, tx),
   );
   return { ...result, userRewardId: row.id };
@@ -491,16 +498,16 @@ export async function markRewardRedeemedAction(
   if (typeof userRewardId !== "string" || !userRewardId) return { error: "Missing voucher." };
   if (typeof pin !== "string" || !pin) return { error: "Enter the venue PIN." };
 
-  const session = await requireRole("vendor");
-  const vendorProfile = await getVendorProfileByUserId(session.userId);
-  if (!vendorProfile) return { error: "Vendor profile not found." };
+  const access = await requireVendorAccess();
+  if (!access) return { error: "Vendor profile not found." };
+  const { vendorProfile, userId } = access;
   if (!vendorProfile.staffPinHash) return { error: "Set a venue PIN first, in Redeem settings." };
 
   const pinValid = await bcrypt.compare(pin, vendorProfile.staffPinHash);
   if (!pinValid) return { error: "Incorrect PIN." };
 
   const result = await withRlsContext(
-    { userId: session.userId, role: "vendor", vendorProfileId: vendorProfile.id },
+    { userId, role: "vendor", vendorProfileId: vendorProfile.id },
     async (tx): Promise<{ error: string } | { travellerId: string; pointsGranted: number | null }> => {
       // Advisory lock scoped to this one voucher — the same pattern
       // redeemPointsRewardAction already uses for its per-traveller spend
@@ -567,7 +574,7 @@ export async function markRewardRedeemedAction(
   if ("error" in result) return { error: result.error };
 
   await notifyRewardRedeemed(userRewardId);
-  await enforceBudgetCapIfNeeded(session.userId);
+  await enforceBudgetCapIfNeeded(userId);
 
   revalidateRewardPaths();
   revalidatePath("/passport");
