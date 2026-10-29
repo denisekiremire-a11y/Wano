@@ -50,6 +50,18 @@ export function ListingForm({
       allowsPreorder: boolean;
     } | null;
     experience?: { durationText: string | null; groupSizeText: string | null; whatsIncluded: string | null } | null;
+    charity?: {
+      legalName: string;
+      orgType: string;
+      registrationNumber: string;
+      contactPersonName: string;
+      contactPersonRole: string;
+      contactPersonPhone: string;
+      missionStatement: string;
+      focusArea: string;
+      payoutAccountDetail: string;
+      agreementAcceptedAt: Date;
+    } | null;
   };
 }) {
   const [state, formAction, pending] = useActionState(upsertVendorListingAction, initialState);
@@ -102,6 +114,7 @@ export function ListingForm({
         />
       </div>
 
+      {type !== "charity" && (
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div>
           <label className="text-sm font-medium text-ink">Price label</label>
@@ -143,6 +156,7 @@ export function ListingForm({
           />
         </div>
       </div>
+      )}
 
       <div>
         <label className="text-sm font-medium text-ink">External booking URL (optional)</label>
@@ -335,6 +349,108 @@ export function ListingForm({
         </div>
       )}
 
+      {type === "charity" && (
+        <div className="space-y-3 bg-ink/5 p-4">
+          <p className="eyebrow text-ink/40">Charity details</p>
+          <div className="grid grid-cols-2 gap-3">
+            <input
+              name="charityLegalName"
+              placeholder="Legal name"
+              required
+              defaultValue={existing?.charity?.legalName ?? ""}
+              className="rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
+            />
+            <select
+              name="charityOrgType"
+              required
+              defaultValue={existing?.charity?.orgType ?? ""}
+              className="rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm outline-none focus:border-ember"
+            >
+              <option value="" disabled>
+                Organisation type
+              </option>
+              <option value="ngo">NGO</option>
+              <option value="cbo">CBO</option>
+              <option value="social_enterprise">Social enterprise</option>
+            </select>
+          </div>
+          <input
+            name="charityRegistrationNumber"
+            placeholder="Registration number (NGO Bureau or district)"
+            required
+            defaultValue={existing?.charity?.registrationNumber ?? ""}
+            className="w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
+          />
+          <div className="grid grid-cols-3 gap-3">
+            <input
+              name="charityContactName"
+              placeholder="Contact person — name"
+              required
+              defaultValue={existing?.charity?.contactPersonName ?? ""}
+              className="rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
+            />
+            <input
+              name="charityContactRole"
+              placeholder="Contact person — role"
+              required
+              defaultValue={existing?.charity?.contactPersonRole ?? ""}
+              className="rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
+            />
+            <input
+              name="charityContactPhone"
+              type="tel"
+              placeholder="Contact person — phone"
+              required
+              defaultValue={existing?.charity?.contactPersonPhone ?? ""}
+              className="rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
+            />
+          </div>
+          <textarea
+            name="charityMissionStatement"
+            placeholder="Mission statement"
+            required
+            rows={2}
+            defaultValue={existing?.charity?.missionStatement ?? ""}
+            className="w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
+          />
+          <select
+            name="charityFocusArea"
+            required
+            defaultValue={existing?.charity?.focusArea ?? ""}
+            className="w-full rounded-lg border border-ink/15 bg-white px-3 py-2 text-sm outline-none focus:border-ember"
+          >
+            <option value="" disabled>
+              Focus area
+            </option>
+            <option value="education">Education</option>
+            <option value="environment">Environment</option>
+            <option value="health">Health</option>
+            <option value="youth">Youth</option>
+            <option value="other">Other</option>
+          </select>
+          <input
+            name="charityPayoutAccountDetail"
+            required
+            placeholder="Mobile money number or merchant code"
+            defaultValue={existing?.charity?.payoutAccountDetail ?? ""}
+            className="w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
+          />
+          {existing?.charity ? (
+            <>
+              <input type="hidden" name="charityAgreementAccepted" value="on" />
+              <p className="text-xs text-ink/50">
+                Charity vendor agreement accepted {existing.charity.agreementAcceptedAt.toLocaleDateString()}.
+              </p>
+            </>
+          ) : (
+            <label className="flex items-start gap-2 text-sm text-ink">
+              <input type="checkbox" name="charityAgreementAccepted" required className="mt-0.5 h-4 w-4 rounded border-ink/30" />
+              <span>Charity vendor agreement accepted on behalf of this organisation.</span>
+            </label>
+          )}
+        </div>
+      )}
+
       <div className="space-y-3 bg-ink/5 p-4">
         <p className="eyebrow text-ink/40">
           Business socials (shown on their partner profile)
@@ -385,6 +501,7 @@ export function ListingForm({
         </p>
       </div>
 
+      {type !== "charity" && (
       <div className="space-y-3 bg-ember/5 p-4">
         <p className="eyebrow text-ember">Member offer</p>
         <input
@@ -401,6 +518,7 @@ export function ListingForm({
           className="w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
         />
       </div>
+      )}
 
       {state.error && <p className="text-sm text-red-700">{state.error}</p>}
 

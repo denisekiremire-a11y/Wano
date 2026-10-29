@@ -4,6 +4,7 @@ import type { DbOrTx } from "@/lib/db-context";
 import { withRlsContext } from "@/lib/db-context";
 import {
   bookings,
+  charityDetails,
   events,
   experienceDetails,
   hotelDetails,
@@ -50,7 +51,7 @@ export async function getVendorListingFull(vendorProfileId: string) {
   const row = await getVendorListingWithOffer(vendorProfileId);
   if (!row) return null;
 
-  const [journeyTags, [hotel], [restaurant], [experience]] = await Promise.all([
+  const [journeyTags, [hotel], [restaurant], [experience], [charity]] = await Promise.all([
     getJourneyTagsForListing(row.listing.id),
     db.select().from(hotelDetails).where(eq(hotelDetails.listingId, row.listing.id)).limit(1),
     db
@@ -63,9 +64,17 @@ export async function getVendorListingFull(vendorProfileId: string) {
       .from(experienceDetails)
       .where(eq(experienceDetails.listingId, row.listing.id))
       .limit(1),
+    db.select().from(charityDetails).where(eq(charityDetails.listingId, row.listing.id)).limit(1),
   ]);
 
-  return { ...row, journeyTags, hotel: hotel ?? null, restaurant: restaurant ?? null, experience: experience ?? null };
+  return {
+    ...row,
+    journeyTags,
+    hotel: hotel ?? null,
+    restaurant: restaurant ?? null,
+    experience: experience ?? null,
+    charity: charity ?? null,
+  };
 }
 
 /** Every listing this vendor owns, newest first — the vendor dashboard's
@@ -91,14 +100,22 @@ export async function getVendorOwnListingFull(vendorProfileId: string, listingId
     .limit(1);
   if (!row) return null;
 
-  const [journeyTags, [hotel], [restaurant], [experience]] = await Promise.all([
+  const [journeyTags, [hotel], [restaurant], [experience], [charity]] = await Promise.all([
     getJourneyTagsForListing(row.listing.id),
     db.select().from(hotelDetails).where(eq(hotelDetails.listingId, row.listing.id)).limit(1),
     db.select().from(restaurantDetails).where(eq(restaurantDetails.listingId, row.listing.id)).limit(1),
     db.select().from(experienceDetails).where(eq(experienceDetails.listingId, row.listing.id)).limit(1),
+    db.select().from(charityDetails).where(eq(charityDetails.listingId, row.listing.id)).limit(1),
   ]);
 
-  return { ...row, journeyTags, hotel: hotel ?? null, restaurant: restaurant ?? null, experience: experience ?? null };
+  return {
+    ...row,
+    journeyTags,
+    hotel: hotel ?? null,
+    restaurant: restaurant ?? null,
+    experience: experience ?? null,
+    charity: charity ?? null,
+  };
 }
 
 // Columns for list/review views — excludes fileData (bytea) so rendering a

@@ -150,7 +150,7 @@ export async function upsertVendorListingAction(
     latitude: formData.get("latitude") ?? "",
     longitude: formData.get("longitude") ?? "",
     journeyIds: formData.getAll("journeyIds"),
-    discountText: formData.get("discountText"),
+    discountText: formData.get("discountText") ?? "",
     freebieText: formData.get("freebieText") ?? "",
     hotelRoomTypes: formData.get("hotelRoomTypes") ?? "",
     hotelAmenities: formData.get("hotelAmenities") ?? "",
@@ -167,6 +167,16 @@ export async function upsertVendorListingAction(
     facebookUrl: formData.get("facebookUrl") ?? "",
     tiktokUrl: formData.get("tiktokUrl") ?? "",
     websiteUrl: formData.get("websiteUrl") ?? "",
+    charityLegalName: formData.get("charityLegalName") ?? "",
+    charityOrgType: formData.get("charityOrgType") ?? "",
+    charityRegistrationNumber: formData.get("charityRegistrationNumber") ?? "",
+    charityContactName: formData.get("charityContactName") ?? "",
+    charityContactRole: formData.get("charityContactRole") ?? "",
+    charityContactPhone: formData.get("charityContactPhone") ?? "",
+    charityMissionStatement: formData.get("charityMissionStatement") ?? "",
+    charityFocusArea: formData.get("charityFocusArea") ?? "",
+    charityPayoutAccountDetail: formData.get("charityPayoutAccountDetail") ?? "",
+    charityAgreementAccepted: formData.get("charityAgreementAccepted") === "on",
   });
 
   if (!parsed.success) {

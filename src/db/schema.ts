@@ -62,12 +62,18 @@ export const listingTypeEnum = pgEnum("listing_type", [
   "attraction",
   "event",
   "rental",
+  // A charity/community organisation's profile page — see charityDetails.
+  // Doesn't book the normal way (no BookingForm case): events, volunteer
+  // opportunities and donations are how a traveller interacts with one.
+  "charity",
 ]);
 export const vendorDocTypeEnum = pgEnum("vendor_doc_type", [
   "business_registration",
   "owner_id",
   "tax_certificate",
   "other",
+  "charity_registration_certificate",
+  "charity_annual_report",
 ]);
 export const documentStatusEnum = pgEnum("document_status", [
   "pending",
@@ -573,6 +579,43 @@ export const restaurantDetails = pgTable("restaurant_details", {
   // some restaurants want the menu (listingItems) shown as informational
   // only, not something bookable ahead of the visit.
   allowsPreorder: boolean("allows_preorder").notNull().default(false),
+});
+
+// Everything specific to a charity/community organisation's registration
+// — listing_type "charity" shares the listings table's generic fields
+// (title, description, photos via listingImages, location) the same way
+// every other type does; this is just what's extra. org_type and
+// focus_area are free text, not their own Postgres enums, same reasoning
+// as events.category ("not worth a DB enum") — a short, app-validated
+// closed-ish list that might still need a new value without a migration.
+export const charityDetails = pgTable("charity_details", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  listingId: uuid("listing_id")
+    .notNull()
+    .unique()
+    .references(() => listings.id, { onDelete: "cascade" }),
+  legalName: text("legal_name").notNull(),
+  orgType: text("org_type").notNull(), // "ngo" | "cbo" | "social_enterprise"
+  registrationNumber: text("registration_number").notNull(),
+  contactPersonName: text("contact_person_name").notNull(),
+  contactPersonRole: text("contact_person_role").notNull(),
+  contactPersonPhone: text("contact_person_phone").notNull(),
+  missionStatement: text("mission_statement").notNull(),
+  focusArea: text("focus_area").notNull(), // "education" | "environment" | "health" | "youth" | "other"
+  // How a donor actually sends money today (no payment gateway yet — see
+  // donations below): a mobile money number or merchant code, shown
+  // directly on the Donate flow. payoutMethod is a free-text label kept
+  // deliberately open ("mobile_money" now, "pesapal" expected once that
+  // integration lands) rather than an enum, so adding a method later is
+  // an app-layer change, not a migration.
+  payoutMethod: text("payout_method").notNull().default("mobile_money"),
+  payoutAccountDetail: text("payout_account_detail").notNull(),
+  // Charity vendor agreement acceptance — checkbox + stored timestamp and
+  // version at sign-up, same reasoning as any other dated consent record
+  // in this codebase (e.g. accreditationReviews below).
+  agreementAcceptedAt: timestamp("agreement_accepted_at", { withTimezone: true }).notNull(),
+  agreementVersion: text("agreement_version").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const experienceDetails = pgTable("experience_details", {
@@ -2102,6 +2145,10 @@ export const restaurantDetailsRelations = relations(restaurantDetails, ({ one })
 
 export const experienceDetailsRelations = relations(experienceDetails, ({ one }) => ({
   listing: one(listings, { fields: [experienceDetails.listingId], references: [listings.id] }),
+}));
+
+export const charityDetailsRelations = relations(charityDetails, ({ one }) => ({
+  listing: one(listings, { fields: [charityDetails.listingId], references: [listings.id] }),
 }));
 
 export const offersRelations = relations(offers, ({ one }) => ({

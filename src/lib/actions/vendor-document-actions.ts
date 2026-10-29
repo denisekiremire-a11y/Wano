@@ -13,7 +13,14 @@ const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_MIME_TYPES = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp"]);
 
 const submitDocSchema = z.object({
-  docType: z.enum(["business_registration", "owner_id", "tax_certificate", "other"]),
+  docType: z.enum([
+    "business_registration",
+    "owner_id",
+    "tax_certificate",
+    "other",
+    "charity_registration_certificate",
+    "charity_annual_report",
+  ]),
 });
 
 export async function submitVendorDocumentAction(
