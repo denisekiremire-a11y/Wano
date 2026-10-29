@@ -1,4 +1,4 @@
-import { BedIcon, CarIcon, CompassIcon, PinIcon, SpaIcon, TicketIcon, UtensilsIcon, VanIcon } from "@/components/icons";
+import { BedIcon, CarIcon, CompassIcon, HeartIcon, PinIcon, SpaIcon, TicketIcon, UtensilsIcon, VanIcon } from "@/components/icons";
 import type { ListingType } from "@/lib/listing-type";
 
 const map: Record<ListingType, (props: { className?: string }) => React.JSX.Element> = {
@@ -10,6 +10,7 @@ const map: Record<ListingType, (props: { className?: string }) => React.JSX.Elem
   attraction: PinIcon,
   event: TicketIcon,
   rental: CarIcon,
+  charity: HeartIcon,
 };
 
 export function ListingTypeIcon({ type, className }: { type: ListingType; className?: string }) {

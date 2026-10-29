@@ -95,6 +95,7 @@ export default async function AdminVendorDetailPage({
                 hotel: listingRow.hotel,
                 restaurant: listingRow.restaurant,
                 experience: listingRow.experience,
+                charity: listingRow.charity,
               }
             : undefined
         }

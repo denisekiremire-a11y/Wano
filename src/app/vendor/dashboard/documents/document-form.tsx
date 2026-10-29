@@ -10,6 +10,8 @@ const docTypeOptions = [
   { value: "business_registration", label: "Business registration certificate" },
   { value: "owner_id", label: "Owner/manager ID" },
   { value: "tax_certificate", label: "Tax certificate" },
+  { value: "charity_registration_certificate", label: "Charity registration certificate" },
+  { value: "charity_annual_report", label: "Charity annual report" },
   { value: "other", label: "Other" },
 ];
 
