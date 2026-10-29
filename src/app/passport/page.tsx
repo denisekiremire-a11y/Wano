@@ -52,6 +52,7 @@ import {
 } from "@/lib/data/traveller";
 import { getMyBlockedList } from "@/lib/data/moderation";
 import { BlockedAccountsList } from "@/components/blocked-accounts-list";
+import { DeleteAccountForm } from "@/components/delete-account-form";
 import { PartnerCard } from "@/components/partner-card";
 import { getBirthdayPerksForListings } from "@/lib/data/birthday";
 import { getJourneyTagsForListings, getListingById } from "@/lib/data/journeys";
@@ -845,6 +846,11 @@ function AccountTab({
       <section className="space-y-4 border border-ink/10 bg-white p-5">
         <h3 className="font-serif-editorial text-lg text-ink">Blocked accounts</h3>
         <BlockedAccountsList blockedList={blockedList} />
+      </section>
+
+      <section className="space-y-3 border border-red-700/20 bg-white p-5">
+        <h3 className="font-serif-editorial text-lg text-ink">Delete account</h3>
+        <DeleteAccountForm />
       </section>
 
       <div className="border border-ink/10 bg-white p-4 text-sm text-ink/70">
