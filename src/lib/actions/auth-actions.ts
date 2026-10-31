@@ -88,6 +88,10 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
   await recordLoginAttempt(parsed.data.email, Boolean(user) && valid);
   if (!user || !valid) return { error: "Incorrect email or password." };
 
+  if (user.suspendedAt) {
+    return { error: "This account has been suspended. Contact support if you think this is a mistake." };
+  }
+
   await createSessionCookie({
     userId: user.id,
     role: user.role,
