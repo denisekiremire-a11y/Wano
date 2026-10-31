@@ -3,17 +3,16 @@ import { EventBookingForm } from "@/components/booking/event-booking-form";
 import { ExperienceBookingForm } from "@/components/booking/experience-booking-form";
 import { HotelBookingForm } from "@/components/booking/hotel-booking-form";
 import { RentalBookingForm } from "@/components/booking/rental-booking-form";
-import { RestaurantBookingForm } from "@/components/booking/restaurant-booking-form";
 import { SpaSalonBookingForm } from "@/components/booking/spa-salon-booking-form";
 import { TransportBookingForm } from "@/components/booking/transport-booking-form";
 import type { BookingFormProps } from "@/components/booking/types";
 
 /** The booking screen changes shape per listing type — this just dispatches
- * to whichever type-specific form actually matches what's being booked. */
+ * to whichever type-specific form actually matches what's being booked.
+ * Restaurants/bars/eateries stay information-only (no case here at all —
+ * see bookListingFormAction's own server-side refusal, the real gate). */
 export function BookingForm(props: BookingFormProps) {
   switch (props.listingType) {
-    case "restaurant":
-      return <RestaurantBookingForm {...props} />;
     case "hotel":
       return <HotelBookingForm {...props} />;
     case "experience":

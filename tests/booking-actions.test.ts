@@ -56,7 +56,7 @@ vi.mock("@/lib/flutterwave", async (importOriginal) => ({
 
 import { bookListingFormAction } from "@/lib/actions/booking-actions";
 
-const listing = { id: "listing-1", active: true, type: "restaurant", priceMinor: 30_000 };
+const listing = { id: "listing-1", active: true, type: "hotel", priceMinor: 30_000 };
 
 function form(fields: Record<string, string>) {
   const fd = new FormData();
@@ -117,9 +117,18 @@ describe("bookListingFormAction (request-to-book)", () => {
     expect(fake.current.inserted).toHaveLength(0);
     expect(notify.vendor).not.toHaveBeenCalled();
   });
+
+  it("refuses to book a restaurant — information-only, never bookable", async () => {
+    fake.current.queue("select", [{ ...listing, type: "restaurant" }]);
+    await expect(bookListingFormAction(undefined, form({ listingId: "listing-1" }))).resolves.toEqual({
+      error: "This listing is for browsing only — it can't be booked.",
+    });
+    expect(fake.current.inserted).toHaveLength(0);
+    expect(notify.vendor).not.toHaveBeenCalled();
+  });
 });
 
-const instantListing = { id: "listing-2", active: true, type: "restaurant", priceMinor: 30_000, bookingMode: "instant" };
+const instantListing = { id: "listing-2", active: true, type: "hotel", priceMinor: 30_000, bookingMode: "instant" };
 
 function instantForm() {
   return form({ listingId: "listing-2", slotId: "slot-1", partySize: "2" });

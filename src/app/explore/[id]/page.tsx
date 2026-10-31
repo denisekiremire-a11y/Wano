@@ -465,40 +465,42 @@ export default async function ListingDetailPage({
               </div>
             )}
 
-            <div id="book" className="mt-6 scroll-mt-20">
-              {listing.externalBookingUrl ? (
-                <a
-                  href={listing.externalBookingUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-ink/85"
-                >
-                  Book on {vendor.businessName} →
-                </a>
-              ) : session?.role === "traveller" ? (
-                <BookingForm
-                  listingId={listing.id}
-                  journeyId={bookingJourneyId}
-                  items={items}
-                  itemImageIds={itemImageIdsMap}
-                  listingType={type}
-                  preselectedItemId={itemParam}
-                  travellerDisplayName={travellerDisplayName}
-                  myClaimedRewards={myClaimedRewards}
-                  birthdayPerks={birthdayPerks}
-                  hasBirthdaySet={hasBirthdaySet}
-                  allowsPreorder={typeDetails.restaurant?.allowsPreorder ?? false}
-                  slotPicker={slotPickerElement}
-                />
-              ) : (
-                <Link
-                  href={`/login?next=/explore/${listing.id}`}
-                  className="inline-flex rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white"
-                >
-                  Log in to book
-                </Link>
-              )}
-            </div>
+            {type !== "restaurant" && (
+              <div id="book" className="mt-6 scroll-mt-20">
+                {listing.externalBookingUrl ? (
+                  <a
+                    href={listing.externalBookingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-ink/85"
+                  >
+                    Book on {vendor.businessName} →
+                  </a>
+                ) : session?.role === "traveller" ? (
+                  <BookingForm
+                    listingId={listing.id}
+                    journeyId={bookingJourneyId}
+                    items={items}
+                    itemImageIds={itemImageIdsMap}
+                    listingType={type}
+                    preselectedItemId={itemParam}
+                    travellerDisplayName={travellerDisplayName}
+                    myClaimedRewards={myClaimedRewards}
+                    birthdayPerks={birthdayPerks}
+                    hasBirthdaySet={hasBirthdaySet}
+                    allowsPreorder={typeDetails.restaurant?.allowsPreorder ?? false}
+                    slotPicker={slotPickerElement}
+                  />
+                ) : (
+                  <Link
+                    href={`/login?next=/explore/${listing.id}`}
+                    className="inline-flex rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white"
+                  >
+                    Log in to book
+                  </Link>
+                )}
+              </div>
+            )}
 
             {(myBookings.length > 0 ||
               claimableRewards.length > 0 ||

@@ -150,6 +150,11 @@ export async function bookListingFormAction(_prev: ActionState | undefined, form
 
   const [listing] = await db.select().from(listings).where(eq(listings.id, listingId)).limit(1);
   if (!listing || !listing.active) return { error: "This listing is not available." };
+  // Restaurants/bars/eateries stay information-only — never bookable, no
+  // matter what a client sends. The UI never renders a booking form for
+  // one (see BookingForm's dispatch and explore/[id]/page.tsx), so this
+  // is the server-side backstop, not the primary gate.
+  if (listing.type === "restaurant") return { error: "This listing is for browsing only — it can't be booked." };
 
   const draft = decodeBookingDraft(formDataToRecord(formData));
   const [journeyId, rewardRow, listingItemRows] = await Promise.all([
