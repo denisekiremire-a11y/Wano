@@ -1,18 +1,50 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ClubButton } from "@/components/club-button";
 import { CornerMarks } from "@/components/corner-marks";
 import { EventCard } from "@/components/event-card";
 import { PostComposer } from "@/components/post-composer";
-import { requireRole } from "@/lib/auth";
 import { getAttendanceCounts } from "@/lib/data/events";
 import { getClubById, getClubMeetups, getClubMembers, getMediaPostsFor, isClubMember } from "@/lib/data/social";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
+import { getSession } from "@/lib/session";
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const row = await getClubById(id);
+  if (!row) return {};
+  const { club } = row;
+  const title = club.name;
+  const description = club.description;
+  const image = club.coverImage || undefined;
+  const url = `${APP_URL}/social/clubs/${club.id}`;
+
+  return {
+    title: `${title} | Wano Clubs`,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      url,
+      images: image ? [{ url: image }] : undefined,
+    },
+    twitter: {
+      card: image ? "summary_large_image" : "summary",
+      title,
+      description,
+      images: image ? [image] : undefined,
+    },
+  };
+}
 
 export default async function ClubDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const session = await requireRole("traveller");
-  const travellerProfile = await getTravellerProfileByUserId(session.userId);
-  if (!travellerProfile) return null;
+  const session = await getSession();
+  const travellerProfile = session?.role === "traveller" ? await getTravellerProfileByUserId(session.userId) : null;
 
   const { id } = await params;
   const row = await getClubById(id);
@@ -21,7 +53,7 @@ export default async function ClubDetailPage({ params }: { params: Promise<{ id:
 
   const [members, joined, media, meetups] = await Promise.all([
     getClubMembers(club.id),
-    isClubMember(travellerProfile.id, club.id),
+    travellerProfile ? isClubMember(travellerProfile.id, club.id) : Promise.resolve(false),
     getMediaPostsFor({ clubId: club.id }),
     getClubMeetups(club.id),
   ]);
@@ -56,7 +88,16 @@ export default async function ClubDetailPage({ params }: { params: Promise<{ id:
               .join(" · ")}
           </p>
         </div>
-        <ClubButton clubId={club.id} initialJoined={joined} />
+        {travellerProfile ? (
+          <ClubButton clubId={club.id} initialJoined={joined} />
+        ) : (
+          <Link
+            href={`/login?next=/social/clubs/${club.id}`}
+            className="flex-none rounded-full bg-forest-800 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-forest-700"
+          >
+            Log in to join
+          </Link>
+        )}
       </div>
 
       {host && (

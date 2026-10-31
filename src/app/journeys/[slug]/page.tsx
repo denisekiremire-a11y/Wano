@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -16,6 +17,42 @@ const STOP_TYPE_LABEL: Record<string, string> = {
   move: "Move",
   rest: "Rest",
 };
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const journey = await getJourneyBySlug(slug);
+  if (!journey) return {};
+  const title = journey.name;
+  const description = journey.tagline || journey.description;
+  // heroImage on the row is a lookup key (e.g. "big-five-safari"), not a
+  // path — journeyTheme is where the actual photo (if any) lives. Journeys
+  // without a real photo yet fall through to the dynamic opengraph-image
+  // route instead (next/og ImageResponse), same as events.
+  const themeImage = journeyTheme(journey.slug).image;
+  const image = themeImage ? `${APP_URL}${themeImage}` : undefined;
+  const url = `${APP_URL}/journeys/${journey.slug}`;
+
+  return {
+    title: `${title} | Wano Journeys`,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      url,
+      images: image ? [{ url: image }] : undefined,
+    },
+    twitter: {
+      card: image ? "summary_large_image" : "summary",
+      title,
+      description,
+      images: image ? [image] : undefined,
+    },
+  };
+}
 
 export default async function JourneyDetailPage({
   params,

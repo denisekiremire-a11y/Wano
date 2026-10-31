@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ListingItemCard } from "@/components/listing-item-card";
@@ -40,6 +41,26 @@ function formatEventWhen(startAt: Date, endAt: Date | null) {
   if (!endAt) return start;
   const end = new Intl.DateTimeFormat("en-GB", { hour: "numeric", minute: "2-digit" }).format(endAt);
   return `${start} – ${end}`;
+}
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const row = await getEventById(id);
+  if (!row) return {};
+  const { event } = row;
+  const title = event.title;
+  const description = `${formatEventWhen(event.startAt, event.endAt)} · ${event.location}. ${event.description}`;
+  const url = `${APP_URL}/events/${event.id}`;
+
+  return {
+    title: `${title} | Wano`,
+    description,
+    alternates: { canonical: url },
+    openGraph: { title, description, type: "website", url },
+    twitter: { card: "summary_large_image", title, description },
+  };
 }
 
 export default async function EventDetailPage({

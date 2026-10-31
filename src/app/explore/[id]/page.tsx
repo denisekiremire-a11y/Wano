@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ListingItemCard } from "@/components/listing-item-card";
@@ -59,6 +60,40 @@ const socialLinks = [
 
 const DETAIL_TABS = ["overview", "items", "photos", "reviews"] as const;
 type DetailTab = (typeof DETAIL_TABS)[number];
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const row = await getListingById(id);
+  if (!row) return {};
+  const { listing, vendor } = row;
+  const title = `${listing.title} — ${vendor.location}`;
+  const description = listing.description;
+  const price = formatListingPrice(listing);
+  const imageIds = await getListingImageIdsFor(listing.id);
+  const image = imageIds[0] ? `${APP_URL}/api/listing-images/${imageIds[0]}` : undefined;
+  const url = `${APP_URL}/explore/${listing.id}`;
+
+  return {
+    title: `${title} | Wano`,
+    description: price ? `${description} ${price}` : description,
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      url,
+      images: image ? [{ url: image }] : undefined,
+    },
+    twitter: {
+      card: image ? "summary_large_image" : "summary",
+      title,
+      description,
+      images: image ? [image] : undefined,
+    },
+  };
+}
 
 export default async function ListingDetailPage({
   params,
