@@ -5,6 +5,7 @@ import { ListingItemCard } from "@/components/listing-item-card";
 import { BookingConfirmForm } from "@/components/booking/booking-confirm-form";
 import { EventTicketForm } from "@/components/booking/event-ticket-form";
 import { GroupBookingBanner } from "@/components/plans/group-booking-banner";
+import { InlineAuthGate } from "@/components/inline-auth-gate";
 import { PostComposer } from "@/components/post-composer";
 import { ShareButton } from "@/components/share-button";
 import {
@@ -340,12 +341,18 @@ export default async function EventDetailPage({
                     <p className="font-mono-data text-sm text-ink/60">
                       {seatsRemaining} seat{seatsRemaining === 1 ? "" : "s"} left · {event.priceHint}
                     </p>
-                    <Link
-                      href={`/login?next=/events/${event.id}`}
-                      className="mt-3 inline-flex rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white"
-                    >
-                      Log in to book
-                    </Link>
+                    <div className="mt-3">
+                      {session ? (
+                        <Link
+                          href="/"
+                          className="inline-flex rounded-full border border-ink/20 px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-ink/5"
+                        >
+                          Vendors browse, not book
+                        </Link>
+                      ) : (
+                        <InlineAuthGate ctaLabel="Book" />
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -371,13 +378,15 @@ export default async function EventDetailPage({
                       myClaimedRewards={myClaimedRewards}
                     />
                   )
-                ) : (
+                ) : session ? (
                   <Link
-                    href={`/login?next=/events/${event.id}`}
-                    className="inline-flex rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white"
+                    href="/"
+                    className="inline-flex rounded-full border border-ink/20 px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-ink/5"
                   >
-                    Log in to book
+                    Vendors browse, not book
                   </Link>
+                ) : (
+                  <InlineAuthGate ctaLabel="Get ticket" />
                 )}
               </div>
             )}

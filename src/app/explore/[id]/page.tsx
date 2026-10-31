@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ListingItemCard } from "@/components/listing-item-card";
 import { ImageLightbox } from "@/components/image-lightbox";
+import { InlineAuthGate } from "@/components/inline-auth-gate";
 import { PostComposer } from "@/components/post-composer";
 import { RatingBadge } from "@/components/rating-badge";
 import { SaveButton } from "@/components/save-button";
@@ -537,13 +538,15 @@ export default async function ListingDetailPage({
                     allowsPreorder={typeDetails.restaurant?.allowsPreorder ?? false}
                     slotPicker={slotPickerElement}
                   />
-                ) : (
+                ) : session ? (
                   <Link
-                    href={`/login?next=/explore/${listing.id}`}
-                    className="inline-flex rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white"
+                    href="/"
+                    className="inline-flex rounded-full border border-ink/20 px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-ink/5"
                   >
-                    Log in to book
+                    Vendors browse, not book
                   </Link>
+                ) : (
+                  <InlineAuthGate ctaLabel="Book" />
                 )}
               </div>
             )}

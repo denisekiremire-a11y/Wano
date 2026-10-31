@@ -28,6 +28,8 @@ const MAX_FAILED_ATTEMPTS = 5;
 const ATTEMPT_WINDOW_MINUTES = 15;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
+export type InlineAuthState = { error?: string; success?: boolean };
+
 async function recordLoginAttempt(email: string, success: boolean) {
   await db.insert(loginAttempts).values({ email: email.toLowerCase(), success });
 }
@@ -60,26 +62,28 @@ async function uniqueReferralCode() {
   throw new Error("Could not generate a unique referral code.");
 }
 
-export async function loginAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+async function performLogin(
+  formData: FormData,
+): Promise<{ ok: false; error: string } | { ok: true; user: typeof users.$inferSelect }> {
   const parsed = loginSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
   });
-  if (!parsed.success) return { error: "Enter a valid email and password." };
+  if (!parsed.success) return { ok: false, error: "Enter a valid email and password." };
 
   if (await isRateLimited(parsed.data.email)) {
-    return { error: "Too many failed attempts. Try again in 15 minutes." };
+    return { ok: false, error: "Too many failed attempts. Try again in 15 minutes." };
   }
 
   const [user] = await db.select().from(users).where(eq(users.email, parsed.data.email)).limit(1);
   if (!user) {
     await recordLoginAttempt(parsed.data.email, false);
-    return { error: "No account found with that email." };
+    return { ok: false, error: "No account found with that email." };
   }
 
   const valid = await verifyPassword(parsed.data.password, user.passwordHash);
   await recordLoginAttempt(parsed.data.email, valid);
-  if (!valid) return { error: "Incorrect password." };
+  if (!valid) return { ok: false, error: "Incorrect password." };
 
   await createSessionCookie({
     userId: user.id,
@@ -95,6 +99,14 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
     await notifyAdmin("User login", [`<strong>${user.name}</strong> (${user.email}) logged in — ${user.role}.`]);
   }
 
+  return { ok: true, user };
+}
+
+export async function loginAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const result = await performLogin(formData);
+  if (!result.ok) return { error: result.error };
+  const { user } = result;
+
   const next = formData.get("next");
   if (typeof next === "string" && next.startsWith("/") && !next.startsWith("//")) {
     redirect(next);
@@ -105,7 +117,20 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
   redirect("/explore");
 }
 
-export async function signupAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+// Used by InlineAuthGate (booking CTAs on public pages): same auth logic as
+// loginAction, but returns instead of redirecting, so the caller stays put
+// and the booking form appears once the page refreshes with the new
+// session — no round trip through /login and back. `success` (rather than
+// just the absence of `error`) lets the gate tell "submitted successfully"
+// apart from "hasn't submitted yet", since both start as an empty state.
+export async function inlineLoginAction(_prev: InlineAuthState, formData: FormData): Promise<InlineAuthState> {
+  const result = await performLogin(formData);
+  return result.ok ? { success: true } : { error: result.error };
+}
+
+async function performSignup(
+  formData: FormData,
+): Promise<{ ok: false; error: string } | { ok: true; role: "traveller" | "vendor" }> {
   const role = formData.get("role");
   const referredByCode = formData.get("ref");
   const claimCode = formData.get("claim");
@@ -130,7 +155,7 @@ export async function signupAction(_prev: ActionState, formData: FormData): Prom
 
   const parsed = signupSchema.safeParse(raw);
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Please check your details and try again." };
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Please check your details and try again." };
   }
 
   const [existing] = await db
@@ -138,7 +163,7 @@ export async function signupAction(_prev: ActionState, formData: FormData): Prom
     .from(users)
     .where(eq(users.email, parsed.data.email))
     .limit(1);
-  if (existing) return { error: "An account with that email already exists." };
+  if (existing) return { ok: false, error: "An account with that email already exists." };
 
   const passwordHash = await hashPassword(parsed.data.password);
 
@@ -265,7 +290,23 @@ export async function signupAction(_prev: ActionState, formData: FormData): Prom
     adminLevel: null,
   });
 
-  redirect(parsed.data.role === "vendor" ? "/vendor/dashboard" : "/onboarding");
+  return { ok: true, role: parsed.data.role };
+}
+
+export async function signupAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const result = await performSignup(formData);
+  if (!result.ok) return { error: result.error };
+  redirect(result.role === "vendor" ? "/vendor/dashboard" : "/onboarding");
+}
+
+// Used by InlineAuthGate (booking CTAs on public pages): same signup logic
+// as signupAction (including the verification email), but returns instead
+// of redirecting to /onboarding — the caller stays on the listing/event
+// page it was booking, now with a session, and the page refreshes to show
+// the real booking form in place of the CTA.
+export async function inlineSignupAction(_prev: InlineAuthState, formData: FormData): Promise<InlineAuthState> {
+  const result = await performSignup(formData);
+  return result.ok ? { success: true } : { error: result.error };
 }
 
 export async function logoutAction() {
