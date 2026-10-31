@@ -3,9 +3,9 @@ import { LoginForm } from "./login-form";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; reset?: string }>;
 }) {
-  const { next } = await searchParams;
+  const { next, reset } = await searchParams;
 
   return (
     <main className="font-editorial-body bg-paper flex min-h-[70vh] flex-col justify-center px-4 py-12 md:px-6">
@@ -15,6 +15,11 @@ export default async function LoginPage({
         <p className="mt-2 text-sm text-ink/60">
           Log in to see your deals, bookings and saved places.
         </p>
+        {reset === "1" && (
+          <p className="mt-4 rounded-lg border border-forest-200 bg-forest-50 px-3 py-2 text-sm text-forest-800">
+            Your password has been reset. Log in with your new password.
+          </p>
+        )}
         <div className="mt-8 border border-ink/10 bg-white p-6">
           <LoginForm next={next} />
         </div>
