@@ -188,6 +188,11 @@ export const travellerProfiles = pgTable(
     // affects bookings, redemptions, saves, or search — those are never
     // surfaced regardless of this setting.
     showActivityInFeed: boolean("show_activity_in_feed").notNull().default(true),
+    // Settings > "Hide me from attendee lists" — excludes this traveller
+    // from the avatar/name lists on events, journeys and club pages (see
+    // getEventBookers, getClubMembers callers). Never affects the numeric
+    // "N going" counts, which stay accurate regardless.
+    hideFromAttendeeLists: boolean("hide_from_attendee_lists").notNull().default(false),
     referralCode: text("referral_code").notNull().unique(),
     referredByTravellerId: uuid("referred_by_traveller_id").references(
       (): AnyPgColumn => travellerProfiles.id,
@@ -2195,6 +2200,7 @@ export const feedItemTypeEnum = pgEnum("feed_item_type", [
   "journal_published",
   "club_meetup",
   "user_post",
+  "going",
 ]);
 
 // The Social feed is generated, not authored — most rows here come from a

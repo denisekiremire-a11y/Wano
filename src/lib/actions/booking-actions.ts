@@ -32,6 +32,7 @@ import { createFlutterwavePayment, isFlutterwaveConfigured, missingFlutterwaveEn
 import type { ListingType } from "@/lib/listing-type";
 import { cancelBooking, confirmHeldBookingWithoutPayment, releaseHeldBooking, reserveSlotHold } from "@/lib/slot-booking";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
+import { generateGoingItem } from "@/lib/feed-generators";
 import type { ActionState } from "@/lib/validation";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
@@ -412,6 +413,7 @@ export async function buyEventTicketsAction(_prev: ActionState | undefined, form
   });
   await notifyVendorOfNewBooking(booking.id);
   await notifyTravellerOfNewBooking(booking.id);
+  await generateGoingItem(eventId, travellerProfile.id);
 
   revalidatePath("/passport");
   revalidatePath("/vendor/dashboard/bookings");

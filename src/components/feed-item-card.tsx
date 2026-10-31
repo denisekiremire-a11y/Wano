@@ -21,6 +21,7 @@ const STYLES: Record<string, { icon: typeof StampIcon; wrap: string; iconWrap: s
   perk_expiring: { icon: TagIcon, wrap: "border-red-200 bg-red-50", iconWrap: "bg-red-100 text-red-700" },
   journal_published: { icon: TagIcon, wrap: "border-forest-900/10 bg-white", iconWrap: "bg-forest-100 text-forest-700" },
   club_meetup: { icon: CalendarIcon, wrap: "border-forest-900/10 bg-white", iconWrap: "bg-forest-100 text-forest-700" },
+  going: { icon: CalendarIcon, wrap: "border-forest-900/10 bg-white", iconWrap: "bg-nile-100 text-nile-700" },
 };
 
 export function FeedItemCard({ entry, now }: { entry: GeneratedEntry; now: Date }) {
@@ -71,6 +72,11 @@ export function FeedItemCard({ entry, now }: { entry: GeneratedEntry; now: Date 
     case "club_meetup":
       title = `${p.clubName} meetup`;
       subtitle = `${p.location} · ${new Date(String(p.startAt)).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
+      href = String(p.href ?? href);
+      break;
+    case "going":
+      title = `${p.travellerName} is going to ${p.eventTitle}`;
+      subtitle = String(p.location ?? "");
       href = String(p.href ?? href);
       break;
   }

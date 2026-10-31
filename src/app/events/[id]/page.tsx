@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AttendeeAvatars } from "@/components/attendee-avatars";
 import { ListingItemCard } from "@/components/listing-item-card";
 import { BookingConfirmForm } from "@/components/booking/booking-confirm-form";
 import { EventTicketForm } from "@/components/booking/event-ticket-form";
@@ -89,6 +90,7 @@ export default async function EventDetailPage({
   let myEventBooking: Awaited<ReturnType<typeof getMyEventBooking>> = null;
   let travellerDisplayName = "";
   let viewerReferralCode: string | null = null;
+  let viewerTravellerId: string | null = null;
   let isOrganizer = false;
   const isMatchDay = event.category === MATCH_DAY_CATEGORY;
   let xpPaymentJustConfirmed = false;
@@ -124,6 +126,7 @@ export default async function EventDetailPage({
       myEventBooking = existingBooking;
       travellerDisplayName = travellerProfile.displayName;
       viewerReferralCode = travellerProfile.referralCode;
+      viewerTravellerId = travellerProfile.id;
     }
   } else if (session?.role === "vendor" && event.organizerVendorProfileId) {
     const vendorProfile = await getVendorProfileByUserId(session.userId);
@@ -152,7 +155,7 @@ export default async function EventDetailPage({
 
   const [bookingCounts, bookers, media] = await Promise.all([
     getEventBookingCounts([event.id]),
-    getEventBookers(event.id),
+    getEventBookers(event.id, viewerTravellerId),
     getMediaPostsFor({ eventId: event.id }),
   ]);
   const goingCount = bookingCounts.get(event.id) ?? 0;
@@ -409,11 +412,9 @@ export default async function EventDetailPage({
                   Make a plan with friends →
                 </Link>
               )}
-              {bookers.length > 0 && (
-                <p className="mt-3 text-sm text-ink/50">
-                  {bookers.slice(0, 20).map((a) => a.displayName).join(" · ")}
-                </p>
-              )}
+              <div className="mt-3">
+                <AttendeeAvatars attendees={bookers} totalCount={goingCount} />
+              </div>
             </div>
 
             <TargetRewardsSection claimable={claimableRewards} claimed={myClaimedRewards} />

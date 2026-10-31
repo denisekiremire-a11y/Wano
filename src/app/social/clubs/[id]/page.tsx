@@ -1,13 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AttendeeAvatars } from "@/components/attendee-avatars";
 import { ClubButton } from "@/components/club-button";
 import { CornerMarks } from "@/components/corner-marks";
 import { EventCard } from "@/components/event-card";
 import { PostComposer } from "@/components/post-composer";
 import { ShareButton } from "@/components/share-button";
 import { getAttendanceCounts } from "@/lib/data/events";
-import { getClubById, getClubMeetups, getClubMembers, getMediaPostsFor, isClubMember } from "@/lib/data/social";
+import {
+  getClubById,
+  getClubMeetups,
+  getClubMembers,
+  getMediaPostsFor,
+  getMutualFollowIds,
+  isClubMember,
+} from "@/lib/data/social";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { getSession } from "@/lib/session";
 
@@ -59,6 +67,16 @@ export default async function ClubDetailPage({ params }: { params: Promise<{ id:
     getClubMeetups(club.id),
   ]);
   const meetupCounts = await getAttendanceCounts([...meetups.upcoming, ...meetups.past].map((e) => e.id));
+
+  const visibleMembers = members.filter((m) => !m.traveller.hideFromAttendeeLists);
+  const mutualIds = travellerProfile ? await getMutualFollowIds(travellerProfile.id) : new Set<string>();
+  const memberAvatars = [...visibleMembers]
+    .sort((a, b) => {
+      const aMutual = mutualIds.has(a.traveller.id) ? 0 : 1;
+      const bMutual = mutualIds.has(b.traveller.id) ? 0 : 1;
+      return aMutual - bMutual;
+    })
+    .map((m) => ({ travellerId: m.traveller.id, displayName: m.traveller.displayName }));
 
   return (
     <main className="font-editorial-body mx-auto max-w-2xl bg-paper px-4 py-8 md:px-6">
@@ -161,16 +179,21 @@ export default async function ClubDetailPage({ params }: { params: Promise<{ id:
             No members yet — be the first to join.
           </p>
         ) : (
-          <div className="mt-4 border-t border-ink/10">
-            {members.map(({ traveller, user }) => (
-              <div key={traveller.id} className="flex items-center justify-between border-b border-ink/10 py-3">
-                <div>
-                  <p className="text-sm font-medium text-ink">{traveller.displayName}</p>
-                  <p className="text-xs text-ink/40">@{user.username}</p>
+          <>
+            <div className="mt-3">
+              <AttendeeAvatars attendees={memberAvatars} totalCount={members.length} label="members" />
+            </div>
+            <div className="mt-4 border-t border-ink/10">
+              {visibleMembers.map(({ traveller, user }) => (
+                <div key={traveller.id} className="flex items-center justify-between border-b border-ink/10 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-ink">{traveller.displayName}</p>
+                    <p className="text-xs text-ink/40">@{user.username}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </>
         )}
       </section>
 

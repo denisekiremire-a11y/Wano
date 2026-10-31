@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { withRlsContext } from "@/lib/db-context";
 import { kampalaDayBounds } from "@/lib/kampala-time";
 import { bookings, eventAttendance, events, follows, travellerProfiles, users, vendorProfiles } from "@/db/schema";
+import { getMutualFollowIds } from "@/lib/data/social";
 
 const ACTIVE_BOOKING_STATUSES = ["pending", "confirmed"] as const;
 
@@ -150,17 +151,46 @@ export async function getEventBookingCounts(eventIds: string[]): Promise<Map<str
   return map;
 }
 
-export async function getEventBookers(eventId: string) {
-  return db
+/** Distinct travellers with an active booking for this event, for the
+ * avatar/name "Who's going" list — not the raw per-booking rows (one
+ * traveller can hold more than one booking). Excludes anyone with the
+ * attendee-list privacy toggle on; the numeric "N going" count (see
+ * getEventBookingCounts) is unaffected by that toggle. With
+ * `viewerTravellerId`, mutual connections (see getMutualFollowIds) sort
+ * first. */
+export async function getEventBookers(eventId: string, viewerTravellerId?: string | null) {
+  const rows = await db
     .select({
+      travellerId: travellerProfiles.id,
       displayName: travellerProfiles.displayName,
       username: users.username,
-      partySize: bookings.partySize,
+      hideFromAttendeeLists: travellerProfiles.hideFromAttendeeLists,
     })
     .from(bookings)
     .innerJoin(travellerProfiles, eq(travellerProfiles.id, bookings.travellerId))
     .innerJoin(users, eq(users.id, travellerProfiles.userId))
     .where(and(eq(bookings.eventId, eventId), inArray(bookings.status, ACTIVE_BOOKING_STATUSES)));
+
+  const byTraveller = new Map<string, { travellerId: string; displayName: string; username: string | null }>();
+  for (const row of rows) {
+    if (row.hideFromAttendeeLists || byTraveller.has(row.travellerId)) continue;
+    byTraveller.set(row.travellerId, {
+      travellerId: row.travellerId,
+      displayName: row.displayName,
+      username: row.username,
+    });
+  }
+  const list = [...byTraveller.values()];
+  if (!viewerTravellerId || list.length === 0) return list;
+
+  const mutualIds = await getMutualFollowIds(viewerTravellerId);
+  // Array.prototype.sort is stable (ES2019+), so ties keep booking order
+  // without needing to track an explicit index.
+  return [...list].sort((a, b) => {
+    const aMutual = mutualIds.has(a.travellerId) ? 0 : 1;
+    const bMutual = mutualIds.has(b.travellerId) ? 0 : 1;
+    return aMutual - bMutual;
+  });
 }
 
 /** Names of people the given traveller follows who've booked this event —
