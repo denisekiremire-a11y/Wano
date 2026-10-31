@@ -3,9 +3,10 @@ import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { users } from "@/db/schema";
+import { travellerProfiles, users } from "@/db/schema";
 import { ADMIN_MIN_LEVEL, levelMeets, type AdminLevel, type AdminPermissionKey } from "@/lib/admin-permissions";
-import { getSession, type SessionPayload } from "./session";
+import { PAID_BOOKINGS_ENABLED } from "@/lib/feature-flags";
+import { clearSessionCookie, getSession, type SessionPayload } from "./session";
 
 export async function hashPassword(password: string) {
   return bcrypt.hash(password, 10);
@@ -15,9 +16,21 @@ export async function verifyPassword(password: string, hash: string) {
   return bcrypt.compare(password, hash);
 }
 
+/** The one gate every protected page/action funnels through. Re-reads
+ * suspendedAt fresh from the database on every call, same "never trust the
+ * session cookie" reasoning as requireAdminLevel below — a suspension
+ * takes effect on the suspended user's very next request, not just on
+ * their next login. Without this, suspendedAt only ever blocked new
+ * logins (loginAction) and any already-active session kept working for
+ * the rest of its 30-day lifetime regardless. */
 export async function requireSession(): Promise<SessionPayload> {
   const session = await getSession();
   if (!session) redirect("/login");
+  const [row] = await db.select({ suspendedAt: users.suspendedAt }).from(users).where(eq(users.id, session.userId)).limit(1);
+  if (row?.suspendedAt) {
+    await clearSessionCookie();
+    redirect("/login?suspended=1");
+  }
   return session;
 }
 
@@ -37,18 +50,37 @@ export async function requireRole(
  * wrong/missing role, untouched below). Re-reads emailVerifiedAt fresh
  * from the database on every call, same "never trust the session cookie"
  * reasoning as requireAdminLevel (a user who just verified shouldn't have
- * to log out and back in for it to take effect). Returns a result rather
- * than throwing — the booking actions that call this are plain <form
- * action={...}> Server Actions with no error boundary of their own, so an
- * uncaught throw here used to crash the whole page to the generic "Something
- * went wrong" screen instead of showing the traveller an inline message. */
+ * to log out and back in for it to take effect). Also requires a verified
+ * phone, but only while PAID_BOOKINGS_ENABLED is on — travellerProfiles
+ * .phoneVerifiedAt's own schema comment says that's what it was always
+ * scoped to (referral/welcome points become spendable once it's set, "per
+ * the plan" — the Part B pilot), and every booking today stays
+ * pay-at-venue/request-to-book regardless of this flag (see
+ * feature-flags.ts). Enforcing it unconditionally would newly block any
+ * current real traveller who's never verified their phone — nothing has
+ * ever required it — from booking anything at all; gating it the same
+ * way the rest of Part B is gated avoids that regression while still
+ * closing the real gap once paid bookings actually go live. Returns a
+ * result rather than throwing — the booking actions that call this are
+ * plain <form action={...}> Server Actions with no error boundary of
+ * their own, so an uncaught throw here used to crash the whole page to
+ * the generic "Something went wrong" screen instead of showing the
+ * traveller an inline message. */
 export async function requireVerifiedTraveller(): Promise<
   { session: SessionPayload; error?: undefined } | { session?: undefined; error: string }
 > {
   const session = await requireRole("traveller");
-  const [row] = await db.select({ emailVerifiedAt: users.emailVerifiedAt }).from(users).where(eq(users.id, session.userId)).limit(1);
+  const [row] = await db
+    .select({ emailVerifiedAt: users.emailVerifiedAt, phoneVerifiedAt: travellerProfiles.phoneVerifiedAt })
+    .from(users)
+    .leftJoin(travellerProfiles, eq(travellerProfiles.userId, users.id))
+    .where(eq(users.id, session.userId))
+    .limit(1);
   if (!row?.emailVerifiedAt) {
     return { error: "Verify your email before sending a booking request — check your inbox for the link, or resend it from your account." };
+  }
+  if (PAID_BOOKINGS_ENABLED && !row.phoneVerifiedAt) {
+    return { error: "Verify your phone number before sending a booking request — you can do this from your account." };
   }
   return { session };
 }
