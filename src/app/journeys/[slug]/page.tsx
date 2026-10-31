@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { JourneyArt } from "@/components/journey-art";
 import { OfferTeaser } from "@/components/offer-teaser";
+import { ShareButton } from "@/components/share-button";
 import { getJourneyBySlug, getJourneyStops, getPublicListingsForJourney, journeyHasCostRange } from "@/lib/data/journeys";
 import { getPassportProgress, getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { journeyTheme } from "@/lib/journey-theme";
@@ -78,11 +79,13 @@ export default async function JourneyDetailPage({
   const days = [...stopsByDay.keys()].sort((a, b) => a - b);
 
   let unlocked = false;
+  let viewerReferralCode: string | null = null;
   if (session?.role === "traveller") {
     const travellerProfile = await getTravellerProfileByUserId(session.userId);
     if (travellerProfile) {
       const { progress } = await getPassportProgress(travellerProfile.id);
       unlocked = progress.some((p) => p.journey.id === journey.id && p.earned);
+      viewerReferralCode = travellerProfile.referralCode;
     }
   }
 
@@ -129,7 +132,17 @@ export default async function JourneyDetailPage({
       </section>
 
       <section className="mx-auto max-w-4xl px-4 py-12 md:px-6">
-        <p className="max-w-2xl text-ink/60">{journey.description}</p>
+        <div className="flex items-start justify-between gap-4">
+          <p className="max-w-2xl text-ink/60">{journey.description}</p>
+          <div className="flex-none">
+            <ShareButton
+              title={journey.name}
+              path={`/journeys/${journey.slug}`}
+              text={journey.tagline || journey.name}
+              referralCode={viewerReferralCode}
+            />
+          </div>
+        </div>
 
         {days.length > 0 && (
           <div className="mt-8">

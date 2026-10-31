@@ -5,6 +5,7 @@ import { ClubButton } from "@/components/club-button";
 import { CornerMarks } from "@/components/corner-marks";
 import { EventCard } from "@/components/event-card";
 import { PostComposer } from "@/components/post-composer";
+import { ShareButton } from "@/components/share-button";
 import { getAttendanceCounts } from "@/lib/data/events";
 import { getClubById, getClubMeetups, getClubMembers, getMediaPostsFor, isClubMember } from "@/lib/data/social";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
@@ -88,16 +89,24 @@ export default async function ClubDetailPage({ params }: { params: Promise<{ id:
               .join(" · ")}
           </p>
         </div>
-        {travellerProfile ? (
-          <ClubButton clubId={club.id} initialJoined={joined} />
-        ) : (
-          <Link
-            href={`/login?next=/social/clubs/${club.id}`}
-            className="flex-none rounded-full bg-forest-800 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-forest-700"
-          >
-            Log in to join
-          </Link>
-        )}
+        <div className="flex flex-none flex-col items-end gap-2">
+          <ShareButton
+            title={club.name}
+            path={`/social/clubs/${club.id}`}
+            text={club.description}
+            referralCode={travellerProfile?.referralCode}
+          />
+          {travellerProfile ? (
+            <ClubButton clubId={club.id} initialJoined={joined} />
+          ) : (
+            <Link
+              href={`/login?next=/social/clubs/${club.id}`}
+              className="rounded-full bg-forest-800 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-forest-700"
+            >
+              Log in to join
+            </Link>
+          )}
+        </div>
       </div>
 
       {host && (

@@ -6,6 +6,7 @@ import { BookingConfirmForm } from "@/components/booking/booking-confirm-form";
 import { EventTicketForm } from "@/components/booking/event-ticket-form";
 import { GroupBookingBanner } from "@/components/plans/group-booking-banner";
 import { PostComposer } from "@/components/post-composer";
+import { ShareButton } from "@/components/share-button";
 import {
   getEventBookers,
   getEventBookingCounts,
@@ -86,6 +87,7 @@ export default async function EventDetailPage({
   let myXpBookings: Awaited<ReturnType<typeof getMyXpBookingsForMatch>> = [];
   let myEventBooking: Awaited<ReturnType<typeof getMyEventBooking>> = null;
   let travellerDisplayName = "";
+  let viewerReferralCode: string | null = null;
   let isOrganizer = false;
   const isMatchDay = event.category === MATCH_DAY_CATEGORY;
   let xpPaymentJustConfirmed = false;
@@ -120,6 +122,7 @@ export default async function EventDetailPage({
       myXpBookings = xpBookings;
       myEventBooking = existingBooking;
       travellerDisplayName = travellerProfile.displayName;
+      viewerReferralCode = travellerProfile.referralCode;
     }
   } else if (session?.role === "vendor" && event.organizerVendorProfileId) {
     const vendorProfile = await getVendorProfileByUserId(session.userId);
@@ -252,7 +255,17 @@ export default async function EventDetailPage({
           </div>
         ) : (
           <>
-            <p className="max-w-2xl text-ink/60">{event.description}</p>
+            <div className="flex items-start justify-between gap-4">
+              <p className="max-w-2xl text-ink/60">{event.description}</p>
+              <div className="flex-none">
+                <ShareButton
+                  title={event.title}
+                  path={`/events/${event.id}`}
+                  text={`${event.title} — ${event.location}`}
+                  referralCode={viewerReferralCode}
+                />
+              </div>
+            </div>
             {organizer && <p className="mt-2 text-sm text-ink/50">Hosted by {organizer.businessName}</p>}
             {!isMatchDay && <p className="font-mono-data mt-2 font-medium text-ember">{event.priceHint ?? "Free to attend"}</p>}
             {isOrganizer && (

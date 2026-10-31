@@ -6,6 +6,7 @@ import { ImageLightbox } from "@/components/image-lightbox";
 import { PostComposer } from "@/components/post-composer";
 import { RatingBadge } from "@/components/rating-badge";
 import { SaveButton } from "@/components/save-button";
+import { ShareButton } from "@/components/share-button";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { BestPriceBadge } from "@/components/best-price-badge";
 import { GettingThere, type TransportOption } from "@/components/afcon/getting-there";
@@ -133,6 +134,7 @@ export default async function ListingDetailPage({
   let hasBirthdaySet = false;
   let travellerDisplayName = "";
   let viewerTravellerId: string | null = null;
+  let viewerReferralCode: string | null = null;
   let myBookings: Awaited<ReturnType<typeof getMyBookingsForListing>> = [];
   let claimableRewards: Awaited<ReturnType<typeof getClaimableRewardsForTarget>> = [];
   let myClaimedRewards: Awaited<ReturnType<typeof getMyClaimedRewardsForTarget>> = [];
@@ -153,6 +155,7 @@ export default async function ListingDetailPage({
       hasBirthdaySet = travellerProfile.dateOfBirth != null;
       travellerDisplayName = travellerProfile.displayName;
       viewerTravellerId = travellerProfile.id;
+      viewerReferralCode = travellerProfile.referralCode;
       myBookings = myListingBookings;
       claimableRewards = claimable;
       myClaimedRewards = myClaimed;
@@ -396,7 +399,15 @@ export default async function ListingDetailPage({
           <>
             <div className="flex items-start justify-between gap-4">
               <p className="max-w-2xl text-ink/60">{listing.description}</p>
-              {session?.role === "traveller" && <SaveButton listingId={listing.id} initialSaved={saved} />}
+              <div className="flex flex-none items-center gap-2">
+                <ShareButton
+                  title={listing.title}
+                  path={`/explore/${listing.id}`}
+                  text={`${listing.title} — ${vendor.location}`}
+                  referralCode={viewerReferralCode}
+                />
+                {session?.role === "traveller" && <SaveButton listingId={listing.id} initialSaved={saved} />}
+              </div>
             </div>
             {session?.role === "traveller" && (
               <Link href={`/plans/new?listingId=${listing.id}`} className="mt-3 inline-block text-sm font-semibold text-ember hover:underline">
