@@ -6,7 +6,7 @@ import { db } from "@/db";
 import { travellerProfiles, users } from "@/db/schema";
 import { ADMIN_MIN_LEVEL, levelMeets, type AdminLevel, type AdminPermissionKey } from "@/lib/admin-permissions";
 import { PAID_BOOKINGS_ENABLED } from "@/lib/feature-flags";
-import { getSession, type SessionPayload } from "./session";
+import { clearSessionCookie, getSession, type SessionPayload } from "./session";
 
 export async function hashPassword(password: string) {
   return bcrypt.hash(password, 10);
@@ -16,9 +16,21 @@ export async function verifyPassword(password: string, hash: string) {
   return bcrypt.compare(password, hash);
 }
 
+/** The one gate every protected page/action funnels through. Re-reads
+ * suspendedAt fresh from the database on every call, same "never trust the
+ * session cookie" reasoning as requireAdminLevel below — a suspension
+ * takes effect on the suspended user's very next request, not just on
+ * their next login. Without this, suspendedAt only ever blocked new
+ * logins (loginAction) and any already-active session kept working for
+ * the rest of its 30-day lifetime regardless. */
 export async function requireSession(): Promise<SessionPayload> {
   const session = await getSession();
   if (!session) redirect("/login");
+  const [row] = await db.select({ suspendedAt: users.suspendedAt }).from(users).where(eq(users.id, session.userId)).limit(1);
+  if (row?.suspendedAt) {
+    await clearSessionCookie();
+    redirect("/login?suspended=1");
+  }
   return session;
 }
 
