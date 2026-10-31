@@ -1,8 +1,10 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { JourneyArt } from "@/components/journey-art";
 import { OfferTeaser } from "@/components/offer-teaser";
+import { ShareButton } from "@/components/share-button";
 import { getJourneyBySlug, getJourneyStops, getPublicListingsForJourney, journeyHasCostRange } from "@/lib/data/journeys";
 import { getPassportProgress, getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { journeyTheme } from "@/lib/journey-theme";
@@ -16,6 +18,42 @@ const STOP_TYPE_LABEL: Record<string, string> = {
   move: "Move",
   rest: "Rest",
 };
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const journey = await getJourneyBySlug(slug);
+  if (!journey) return {};
+  const title = journey.name;
+  const description = journey.tagline || journey.description;
+  // heroImage on the row is a lookup key (e.g. "big-five-safari"), not a
+  // path — journeyTheme is where the actual photo (if any) lives. Journeys
+  // without a real photo yet fall through to the dynamic opengraph-image
+  // route instead (next/og ImageResponse), same as events.
+  const themeImage = journeyTheme(journey.slug).image;
+  const image = themeImage ? `${APP_URL}${themeImage}` : undefined;
+  const url = `${APP_URL}/journeys/${journey.slug}`;
+
+  return {
+    title: `${title} | Wano Journeys`,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      url,
+      images: image ? [{ url: image }] : undefined,
+    },
+    twitter: {
+      card: image ? "summary_large_image" : "summary",
+      title,
+      description,
+      images: image ? [image] : undefined,
+    },
+  };
+}
 
 export default async function JourneyDetailPage({
   params,
@@ -41,11 +79,13 @@ export default async function JourneyDetailPage({
   const days = [...stopsByDay.keys()].sort((a, b) => a - b);
 
   let unlocked = false;
+  let viewerReferralCode: string | null = null;
   if (session?.role === "traveller") {
     const travellerProfile = await getTravellerProfileByUserId(session.userId);
     if (travellerProfile) {
       const { progress } = await getPassportProgress(travellerProfile.id);
       unlocked = progress.some((p) => p.journey.id === journey.id && p.earned);
+      viewerReferralCode = travellerProfile.referralCode;
     }
   }
 
@@ -92,7 +132,17 @@ export default async function JourneyDetailPage({
       </section>
 
       <section className="mx-auto max-w-4xl px-4 py-12 md:px-6">
-        <p className="max-w-2xl text-ink/60">{journey.description}</p>
+        <div className="flex items-start justify-between gap-4">
+          <p className="max-w-2xl text-ink/60">{journey.description}</p>
+          <div className="flex-none">
+            <ShareButton
+              title={journey.name}
+              path={`/journeys/${journey.slug}`}
+              text={journey.tagline || journey.name}
+              referralCode={viewerReferralCode}
+            />
+          </div>
+        </div>
 
         {days.length > 0 && (
           <div className="mt-8">

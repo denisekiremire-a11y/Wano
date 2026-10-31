@@ -1,18 +1,59 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AttendeeAvatars } from "@/components/attendee-avatars";
 import { ClubButton } from "@/components/club-button";
 import { CornerMarks } from "@/components/corner-marks";
 import { EventCard } from "@/components/event-card";
 import { PostComposer } from "@/components/post-composer";
-import { requireRole } from "@/lib/auth";
+import { ShareButton } from "@/components/share-button";
 import { getAttendanceCounts } from "@/lib/data/events";
-import { getClubById, getClubMeetups, getClubMembers, getMediaPostsFor, isClubMember } from "@/lib/data/social";
+import {
+  getClubById,
+  getClubMeetups,
+  getClubMembers,
+  getMediaPostsFor,
+  getMutualFollowIds,
+  isClubMember,
+} from "@/lib/data/social";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
+import { getSession } from "@/lib/session";
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const row = await getClubById(id);
+  if (!row) return {};
+  const { club } = row;
+  const title = club.name;
+  const description = club.description;
+  const image = club.coverImage || undefined;
+  const url = `${APP_URL}/social/clubs/${club.id}`;
+
+  return {
+    title: `${title} | Wano Clubs`,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      url,
+      images: image ? [{ url: image }] : undefined,
+    },
+    twitter: {
+      card: image ? "summary_large_image" : "summary",
+      title,
+      description,
+      images: image ? [image] : undefined,
+    },
+  };
+}
 
 export default async function ClubDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const session = await requireRole("traveller");
-  const travellerProfile = await getTravellerProfileByUserId(session.userId);
-  if (!travellerProfile) return null;
+  const session = await getSession();
+  const travellerProfile = session?.role === "traveller" ? await getTravellerProfileByUserId(session.userId) : null;
 
   const { id } = await params;
   const row = await getClubById(id);
@@ -21,11 +62,21 @@ export default async function ClubDetailPage({ params }: { params: Promise<{ id:
 
   const [members, joined, media, meetups] = await Promise.all([
     getClubMembers(club.id),
-    isClubMember(travellerProfile.id, club.id),
+    travellerProfile ? isClubMember(travellerProfile.id, club.id) : Promise.resolve(false),
     getMediaPostsFor({ clubId: club.id }),
     getClubMeetups(club.id),
   ]);
   const meetupCounts = await getAttendanceCounts([...meetups.upcoming, ...meetups.past].map((e) => e.id));
+
+  const visibleMembers = members.filter((m) => !m.traveller.hideFromAttendeeLists);
+  const mutualIds = travellerProfile ? await getMutualFollowIds(travellerProfile.id) : new Set<string>();
+  const memberAvatars = [...visibleMembers]
+    .sort((a, b) => {
+      const aMutual = mutualIds.has(a.traveller.id) ? 0 : 1;
+      const bMutual = mutualIds.has(b.traveller.id) ? 0 : 1;
+      return aMutual - bMutual;
+    })
+    .map((m) => ({ travellerId: m.traveller.id, displayName: m.traveller.displayName }));
 
   return (
     <main className="font-editorial-body mx-auto max-w-2xl bg-paper px-4 py-8 md:px-6">
@@ -56,7 +107,24 @@ export default async function ClubDetailPage({ params }: { params: Promise<{ id:
               .join(" · ")}
           </p>
         </div>
-        <ClubButton clubId={club.id} initialJoined={joined} />
+        <div className="flex flex-none flex-col items-end gap-2">
+          <ShareButton
+            title={club.name}
+            path={`/social/clubs/${club.id}`}
+            text={club.description}
+            referralCode={travellerProfile?.referralCode}
+          />
+          {travellerProfile ? (
+            <ClubButton clubId={club.id} initialJoined={joined} />
+          ) : (
+            <Link
+              href={`/login?next=/social/clubs/${club.id}`}
+              className="rounded-full bg-forest-800 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-forest-700"
+            >
+              Log in to join
+            </Link>
+          )}
+        </div>
       </div>
 
       {host && (
@@ -111,16 +179,21 @@ export default async function ClubDetailPage({ params }: { params: Promise<{ id:
             No members yet — be the first to join.
           </p>
         ) : (
-          <div className="mt-4 border-t border-ink/10">
-            {members.map(({ traveller, user }) => (
-              <div key={traveller.id} className="flex items-center justify-between border-b border-ink/10 py-3">
-                <div>
-                  <p className="text-sm font-medium text-ink">{traveller.displayName}</p>
-                  <p className="text-xs text-ink/40">@{user.username}</p>
+          <>
+            <div className="mt-3">
+              <AttendeeAvatars attendees={memberAvatars} totalCount={members.length} label="members" />
+            </div>
+            <div className="mt-4 border-t border-ink/10">
+              {visibleMembers.map(({ traveller, user }) => (
+                <div key={traveller.id} className="flex items-center justify-between border-b border-ink/10 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-ink">{traveller.displayName}</p>
+                    <p className="text-xs text-ink/40">@{user.username}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </>
         )}
       </section>
 

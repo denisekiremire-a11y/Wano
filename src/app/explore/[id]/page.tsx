@@ -1,10 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ListingItemCard } from "@/components/listing-item-card";
 import { ImageLightbox } from "@/components/image-lightbox";
+import { InlineAuthGate } from "@/components/inline-auth-gate";
 import { PostComposer } from "@/components/post-composer";
 import { RatingBadge } from "@/components/rating-badge";
 import { SaveButton } from "@/components/save-button";
+import { ShareButton } from "@/components/share-button";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { BestPriceBadge } from "@/components/best-price-badge";
 import { GettingThere, type TransportOption } from "@/components/afcon/getting-there";
@@ -60,6 +63,40 @@ const socialLinks = [
 const DETAIL_TABS = ["overview", "items", "photos", "reviews"] as const;
 type DetailTab = (typeof DETAIL_TABS)[number];
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const row = await getListingById(id);
+  if (!row) return {};
+  const { listing, vendor } = row;
+  const title = `${listing.title} — ${vendor.location}`;
+  const description = listing.description;
+  const price = formatListingPrice(listing);
+  const imageIds = await getListingImageIdsFor(listing.id);
+  const image = imageIds[0] ? `${APP_URL}/api/listing-images/${imageIds[0]}` : undefined;
+  const url = `${APP_URL}/explore/${listing.id}`;
+
+  return {
+    title: `${title} | Wano`,
+    description: price ? `${description} ${price}` : description,
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      url,
+      images: image ? [{ url: image }] : undefined,
+    },
+    twitter: {
+      card: image ? "summary_large_image" : "summary",
+      title,
+      description,
+      images: image ? [image] : undefined,
+    },
+  };
+}
+
 export default async function ListingDetailPage({
   params,
   searchParams,
@@ -98,6 +135,7 @@ export default async function ListingDetailPage({
   let hasBirthdaySet = false;
   let travellerDisplayName = "";
   let viewerTravellerId: string | null = null;
+  let viewerReferralCode: string | null = null;
   let myBookings: Awaited<ReturnType<typeof getMyBookingsForListing>> = [];
   let claimableRewards: Awaited<ReturnType<typeof getClaimableRewardsForTarget>> = [];
   let myClaimedRewards: Awaited<ReturnType<typeof getMyClaimedRewardsForTarget>> = [];
@@ -118,6 +156,7 @@ export default async function ListingDetailPage({
       hasBirthdaySet = travellerProfile.dateOfBirth != null;
       travellerDisplayName = travellerProfile.displayName;
       viewerTravellerId = travellerProfile.id;
+      viewerReferralCode = travellerProfile.referralCode;
       myBookings = myListingBookings;
       claimableRewards = claimable;
       myClaimedRewards = myClaimed;
@@ -361,7 +400,15 @@ export default async function ListingDetailPage({
           <>
             <div className="flex items-start justify-between gap-4">
               <p className="max-w-2xl text-ink/60">{listing.description}</p>
-              {session?.role === "traveller" && <SaveButton listingId={listing.id} initialSaved={saved} />}
+              <div className="flex flex-none items-center gap-2">
+                <ShareButton
+                  title={listing.title}
+                  path={`/explore/${listing.id}`}
+                  text={`${listing.title} — ${vendor.location}`}
+                  referralCode={viewerReferralCode}
+                />
+                {session?.role === "traveller" && <SaveButton listingId={listing.id} initialSaved={saved} />}
+              </div>
             </div>
             {session?.role === "traveller" && (
               <Link href={`/plans/new?listingId=${listing.id}`} className="mt-3 inline-block text-sm font-semibold text-ember hover:underline">
@@ -465,40 +512,44 @@ export default async function ListingDetailPage({
               </div>
             )}
 
-            <div id="book" className="mt-6 scroll-mt-20">
-              {listing.externalBookingUrl ? (
-                <a
-                  href={listing.externalBookingUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-ink/85"
-                >
-                  Book on {vendor.businessName} →
-                </a>
-              ) : session?.role === "traveller" ? (
-                <BookingForm
-                  listingId={listing.id}
-                  journeyId={bookingJourneyId}
-                  items={items}
-                  itemImageIds={itemImageIdsMap}
-                  listingType={type}
-                  preselectedItemId={itemParam}
-                  travellerDisplayName={travellerDisplayName}
-                  myClaimedRewards={myClaimedRewards}
-                  birthdayPerks={birthdayPerks}
-                  hasBirthdaySet={hasBirthdaySet}
-                  allowsPreorder={typeDetails.restaurant?.allowsPreorder ?? false}
-                  slotPicker={slotPickerElement}
-                />
-              ) : (
-                <Link
-                  href={`/login?next=/explore/${listing.id}`}
-                  className="inline-flex rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white"
-                >
-                  Log in to book
-                </Link>
-              )}
-            </div>
+            {type !== "restaurant" && (
+              <div id="book" className="mt-6 scroll-mt-20">
+                {listing.externalBookingUrl ? (
+                  <a
+                    href={listing.externalBookingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-ink/85"
+                  >
+                    Book on {vendor.businessName} →
+                  </a>
+                ) : session?.role === "traveller" ? (
+                  <BookingForm
+                    listingId={listing.id}
+                    journeyId={bookingJourneyId}
+                    items={items}
+                    itemImageIds={itemImageIdsMap}
+                    listingType={type}
+                    preselectedItemId={itemParam}
+                    travellerDisplayName={travellerDisplayName}
+                    myClaimedRewards={myClaimedRewards}
+                    birthdayPerks={birthdayPerks}
+                    hasBirthdaySet={hasBirthdaySet}
+                    allowsPreorder={typeDetails.restaurant?.allowsPreorder ?? false}
+                    slotPicker={slotPickerElement}
+                  />
+                ) : session ? (
+                  <Link
+                    href="/"
+                    className="inline-flex rounded-full border border-ink/20 px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-ink/5"
+                  >
+                    Vendors browse, not book
+                  </Link>
+                ) : (
+                  <InlineAuthGate ctaLabel="Book" />
+                )}
+              </div>
+            )}
 
             {(myBookings.length > 0 ||
               claimableRewards.length > 0 ||

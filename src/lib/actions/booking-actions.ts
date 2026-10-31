@@ -32,6 +32,7 @@ import { createFlutterwavePayment, isFlutterwaveConfigured, missingFlutterwaveEn
 import type { ListingType } from "@/lib/listing-type";
 import { cancelBooking, confirmHeldBookingWithoutPayment, releaseHeldBooking, reserveSlotHold } from "@/lib/slot-booking";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
+import { generateGoingItem } from "@/lib/feed-generators";
 import type { ActionState } from "@/lib/validation";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
@@ -150,6 +151,11 @@ export async function bookListingFormAction(_prev: ActionState | undefined, form
 
   const [listing] = await db.select().from(listings).where(eq(listings.id, listingId)).limit(1);
   if (!listing || !listing.active) return { error: "This listing is not available." };
+  // Restaurants/bars/eateries stay information-only — never bookable, no
+  // matter what a client sends. The UI never renders a booking form for
+  // one (see BookingForm's dispatch and explore/[id]/page.tsx), so this
+  // is the server-side backstop, not the primary gate.
+  if (listing.type === "restaurant") return { error: "This listing is for browsing only — it can't be booked." };
 
   const draft = decodeBookingDraft(formDataToRecord(formData));
   const [journeyId, rewardRow, listingItemRows] = await Promise.all([
@@ -433,6 +439,7 @@ export async function buyEventTicketsAction(_prev: ActionState | undefined, form
   });
   await notifyVendorOfNewBooking(booking.id);
   await notifyTravellerOfNewBooking(booking.id);
+  await generateGoingItem(eventId, travellerProfile.id);
 
   revalidatePath("/passport");
   revalidatePath("/vendor/dashboard/bookings");

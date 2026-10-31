@@ -131,3 +131,20 @@ export async function setFeedActivityVisibilityAction(showActivityInFeed: boolea
   revalidatePath("/social");
   revalidatePath("/passport");
 }
+
+export async function setAttendeeListVisibilityAction(hideFromAttendeeLists: boolean) {
+  const session = await requireRole("traveller");
+  const travellerProfile = await getTravellerProfileByUserId(session.userId);
+  if (!travellerProfile) return;
+
+  await withRlsContext({ userId: session.userId, role: "traveller", travellerProfileId: travellerProfile.id }, async (tx) => {
+    await tx
+      .update(travellerProfiles)
+      .set({ hideFromAttendeeLists })
+      .where(eq(travellerProfiles.id, travellerProfile.id));
+  });
+
+  revalidatePath("/events");
+  revalidatePath("/social");
+  revalidatePath("/passport");
+}

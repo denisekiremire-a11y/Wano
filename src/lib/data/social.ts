@@ -160,6 +160,21 @@ export async function getFollowingTravellerIds(travellerId: string) {
   return rows.map((r) => r.id);
 }
 
+/** Travellers who follow this traveller AND are followed back — "friends"
+ * in the sense the signup flow creates them (both directions inserted at
+ * once on a referral join). Powers mutual-connections-first sorting on
+ * attendee lists. */
+export async function getMutualFollowIds(travellerId: string): Promise<Set<string>> {
+  const [following, followers] = await Promise.all([
+    db.select({ id: follows.followingId }).from(follows).where(eq(follows.followerId, travellerId)),
+    db.select({ id: follows.followerId }).from(follows).where(eq(follows.followingId, travellerId)),
+  ]);
+  const followingIds = new Set(following.map((r) => r.id));
+  const mutual = new Set<string>();
+  for (const f of followers) if (followingIds.has(f.id)) mutual.add(f.id);
+  return mutual;
+}
+
 export async function isFollowing(followerId: string, followingId: string) {
   const [row] = await db
     .select()

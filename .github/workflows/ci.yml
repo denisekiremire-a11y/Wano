@@ -55,6 +55,7 @@ jobs:
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/manual_wano_part_b.sql
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/manual_password_reset.sql
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/manual_bookings_indexes.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/manual_attendee_privacy_and_going_feed.sql
       - run: npm run db:seed
       - run: npm run db:seed:wano
       - run: npm test
