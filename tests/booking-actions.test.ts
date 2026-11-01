@@ -54,7 +54,7 @@ vi.mock("@/lib/flutterwave", async (importOriginal) => ({
   ...flutterwave,
 }));
 
-import { bookListingFormAction } from "@/lib/actions/booking-actions";
+import { bookListingFormAction, buyEventTicketsAction } from "@/lib/actions/booking-actions";
 
 const listing = { id: "listing-1", active: true, type: "restaurant", priceMinor: 30_000 };
 
@@ -183,5 +183,65 @@ describe("bookListingFormAction (instant mode, paid)", () => {
     expect(err).toBeInstanceOf(RedirectError);
     expect((err as RedirectError).url).toBe("https://checkout.flutterwave.test/pay/xyz");
     expect(slotBooking.confirmHeldBookingWithoutPayment).not.toHaveBeenCalled();
+  });
+});
+
+const cappedEvent = { id: "event-1", active: true, capacity: 5 };
+const uncappedEvent = { id: "event-2", active: true, capacity: null };
+
+describe("buyEventTicketsAction (capacity)", () => {
+  beforeEach(() => {
+    fake.current = createFakeDb();
+    notify.vendor.mockReset();
+    notify.traveller.mockReset();
+  });
+
+  it("sells a ticket when under capacity", async () => {
+    fake.current.queue("select", [cappedEvent]); // event lookup
+    fake.current.queue("select", []); // listing items (no reward requested)
+    fake.current.queue("select", [{ total: "3" }]); // tickets already sold
+
+    const url = await redirectOf(
+      buyEventTicketsAction(undefined, form({ eventId: "event-1", partySize: "2" })),
+    );
+
+    expect(fake.current.inserted).toHaveLength(1);
+    const values = fake.current.inserted[0].values as Record<string, unknown>;
+    expect(values).toMatchObject({ eventId: "event-1", status: "pending", partySize: 2 });
+    expect(url).toBe(`/bookings/${values.bookingRef}`);
+  });
+
+  it("refuses a purchase that would push a capacity-limited event over capacity", async () => {
+    fake.current.queue("select", [cappedEvent]);
+    fake.current.queue("select", []);
+    fake.current.queue("select", [{ total: "4" }]); // 1 spot left
+
+    await expect(
+      buyEventTicketsAction(undefined, form({ eventId: "event-1", partySize: "2" })),
+    ).resolves.toEqual({ error: "Only 1 ticket(s) left." });
+    expect(fake.current.inserted).toHaveLength(0);
+  });
+
+  it("refuses a purchase on a sold-out event", async () => {
+    fake.current.queue("select", [cappedEvent]);
+    fake.current.queue("select", []);
+    fake.current.queue("select", [{ total: "5" }]); // fully sold
+
+    await expect(
+      buyEventTicketsAction(undefined, form({ eventId: "event-1", partySize: "1" })),
+    ).resolves.toEqual({ error: "This event is sold out." });
+    expect(fake.current.inserted).toHaveLength(0);
+  });
+
+  it("never queries capacity for an uncapped event", async () => {
+    fake.current.queue("select", [uncappedEvent]);
+    fake.current.queue("select", []);
+
+    const url = await redirectOf(
+      buyEventTicketsAction(undefined, form({ eventId: "event-2", partySize: "10" })),
+    );
+
+    expect(fake.current.inserted).toHaveLength(1);
+    expect(url).toMatch(/^\/bookings\//);
   });
 });
