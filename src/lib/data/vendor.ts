@@ -34,6 +34,15 @@ export async function getVendorProfileById(id: string) {
   return profile ?? null;
 }
 
+export async function getVendorProfileByStaffAccessToken(staffAccessToken: string) {
+  const [profile] = await db
+    .select()
+    .from(vendorProfiles)
+    .where(eq(vendorProfiles.staffAccessToken, staffAccessToken))
+    .limit(1);
+  return profile ?? null;
+}
+
 export async function getVendorListingWithOffer(vendorProfileId: string) {
   const [row] = await db
     .select({ listing: listings, offer: offers })

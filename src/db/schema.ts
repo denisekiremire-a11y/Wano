@@ -343,6 +343,14 @@ export const vendorProfiles = pgTable("vendor_profiles", {
   // in plain text.
   staffPinHash: text("staff_pin_hash"),
   pinRotatedAt: timestamp("pin_rotated_at", { withTimezone: true }),
+  // The secret in the shareable "staff link" (wano.app/staff/{token}) —
+  // the whole point is staff never see the vendor's email/password: they
+  // open this bookmarked link, enter the venue PIN once per shift, and can
+  // then check in tickets/bookings and redeem vouchers from their own
+  // phone (see src/lib/vendor-access.ts). Rotating it (a lost phone, staff
+  // turnover) kills every outstanding link instantly, independent of the
+  // PIN. Null until the vendor first generates one.
+  staffAccessToken: text("staff_access_token").unique(),
   // Incremented every time vendorCancelConfirmedBookingAction cancels one
   // of this vendor's already-confirmed bookings — surfaced on the admin
   // dashboard so support can spot a vendor who's cancelling a lot.
@@ -1045,6 +1053,21 @@ export const visitorCodeFailures = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("visitor_code_failures_vendor_idx").on(t.vendorProfileId, t.createdAt)],
+);
+
+// Wrong PINs typed on the no-login staff link (src/app/staff/[token]) — a
+// 4-6 digit PIN is guessable, and this surface needs no account at all to
+// reach, so it's rate-limited the same way visitor codes are.
+export const staffPinFailures = pgTable(
+  "staff_pin_failures",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    vendorProfileId: uuid("vendor_profile_id")
+      .notNull()
+      .references(() => vendorProfiles.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("staff_pin_failures_vendor_idx").on(t.vendorProfileId, t.createdAt)],
 );
 
 // This week's three Passport challenges (see src/lib/weekly-challenges.ts).
