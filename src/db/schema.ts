@@ -767,7 +767,9 @@ export const events = pgTable("events", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const bookings = pgTable("bookings", {
+export const bookings = pgTable(
+  "bookings",
+  {
   id: uuid("id").primaryKey().defaultRandom(),
   travellerId: uuid("traveller_id")
     .notNull()
@@ -851,7 +853,22 @@ export const bookings = pgTable("bookings", {
   // booking today. "Cash paid" for earn-rate purposes is always
   // totalMinor minus this, never the full total.
   pointsAppliedMinor: integer("points_applied_minor"),
-});
+  },
+  (table) => [
+    // Traveller's own booking history/dashboard, newest first.
+    index("bookings_traveller_idx").on(table.travellerId, table.createdAt),
+    // Vendor/admin listing-booking views, usually filtered by status too.
+    index("bookings_listing_idx").on(table.listingId, table.status),
+    // Event ticket views and the capacity check in buyEventTicketsAction.
+    index("bookings_event_idx").on(table.eventId, table.status),
+    // recomputeSlotCapacity's per-slot capacity scan.
+    index("bookings_slot_idx").on(table.slotId, table.status),
+    // The held/pending expiry cron sweeps (expireStaleHolds,
+    // expirePendingRequests) scan by status first, then filter on
+    // heldUntil/requestExpiresAt — this index serves both.
+    index("bookings_status_idx").on(table.status),
+  ],
+);
 
 // A line item actually selected for one booking — a chosen room, vehicle,
 // service, package tier, or (for a restaurant pre-order) one of several
