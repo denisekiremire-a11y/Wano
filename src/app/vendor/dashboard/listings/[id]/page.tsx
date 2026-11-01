@@ -24,7 +24,7 @@ export default async function EditVendorListingPage({ params }: PageProps<"/vend
   ]);
   if (!listingRow) notFound();
 
-  const { listing, offer, journeyTags, hotel, restaurant, experience } = listingRow;
+  const { listing, offer, journeyTags, hotel, restaurant, experience, charity } = listingRow;
 
   return (
     <div className="space-y-6">
@@ -50,21 +50,23 @@ export default async function EditVendorListingPage({ params }: PageProps<"/vend
 
       <VendorPhotoManager listingId={listing.id} existingImages={existingImages} />
 
-      <div className="flex flex-wrap items-center gap-3">
-        <Link
-          href={`/vendor/dashboard/listings/${listing.id}/items`}
-          className="inline-flex items-center rounded-full border border-ink/20 px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-ink/5"
-        >
-          Manage {listingItemSectionLabel[listing.type]} →
-        </Link>
-        <Link
-          href={`/vendor/dashboard/listings/${listing.id}/slots`}
-          className="inline-flex items-center rounded-full border border-ink/20 px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-ink/5"
-        >
-          Manage availability →
-        </Link>
-        <BookingModeToggle listingId={listing.id} bookingMode={listing.bookingMode} />
-      </div>
+      {listing.type !== "charity" && (
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            href={`/vendor/dashboard/listings/${listing.id}/items`}
+            className="inline-flex items-center rounded-full border border-ink/20 px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-ink/5"
+          >
+            Manage {listingItemSectionLabel[listing.type]} →
+          </Link>
+          <Link
+            href={`/vendor/dashboard/listings/${listing.id}/slots`}
+            className="inline-flex items-center rounded-full border border-ink/20 px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-ink/5"
+          >
+            Manage availability →
+          </Link>
+          <BookingModeToggle listingId={listing.id} bookingMode={listing.bookingMode} />
+        </div>
+      )}
 
       <VendorListingForm
         journeys={journeys.map((j) => ({ id: j.id, name: j.name }))}
@@ -93,6 +95,7 @@ export default async function EditVendorListingPage({ params }: PageProps<"/vend
           hotel,
           restaurant,
           experience,
+          charity,
         }}
       />
     </div>
