@@ -1,4 +1,5 @@
 import "server-only";
+import { timingSafeEqualString } from "@/lib/timing-safe-equal";
 
 // Real payment processing for Wano XP paid seats — Standard Checkout v3
 // API. Small, isolated functions (mirrors reward-token.ts/ticket-token.ts)
@@ -128,5 +129,5 @@ export async function refundFlutterwaveTransaction(transactionId: string, amount
  * HMAC, a plain shared-secret comparison. */
 export function verifyWebhookSignature(headerValue: string | null): boolean {
   const secret = process.env.FLUTTERWAVE_WEBHOOK_SECRET_HASH;
-  return Boolean(secret) && headerValue === secret;
+  return Boolean(secret) && Boolean(headerValue) && timingSafeEqualString(headerValue!, secret!);
 }

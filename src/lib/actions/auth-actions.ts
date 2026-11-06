@@ -27,6 +27,13 @@ import { loginSchema, signupSchema, type ActionState } from "@/lib/validation";
 const MAX_FAILED_ATTEMPTS = 5;
 const ATTEMPT_WINDOW_MINUTES = 15;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+// Not a real account's hash — just a validly-formatted bcrypt hash to
+// compare against when the email doesn't match any user, so a login
+// attempt against a nonexistent email takes about as long as one against
+// a real email with the wrong password. Skipping the compare entirely
+// would still leave email enumeration open via response timing, even
+// after unifying the two cases' error message below.
+const DUMMY_PASSWORD_HASH = "$2b$10$CwTycUXWue0Thq9StjUM0uJ8Z7cXu1v5P8kKfxVOwRE5IWq8v1X3C";
 
 async function recordLoginAttempt(email: string, success: boolean) {
   await db.insert(loginAttempts).values({ email: email.toLowerCase(), success });
@@ -72,14 +79,18 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
   }
 
   const [user] = await db.select().from(users).where(eq(users.email, parsed.data.email)).limit(1);
-  if (!user) {
-    await recordLoginAttempt(parsed.data.email, false);
-    return { error: "No account found with that email." };
-  }
+  // Same generic message whichever one is wrong, and the bcrypt compare
+  // always runs (against a dummy hash when there's no matching user) —
+  // distinct messages or a fast-path skip here would let this form be
+  // used to enumerate which emails are registered, by response text or
+  // by response timing respectively.
+  const valid = await verifyPassword(parsed.data.password, user?.passwordHash ?? DUMMY_PASSWORD_HASH);
+  await recordLoginAttempt(parsed.data.email, Boolean(user) && valid);
+  if (!user || !valid) return { error: "Incorrect email or password." };
 
-  const valid = await verifyPassword(parsed.data.password, user.passwordHash);
-  await recordLoginAttempt(parsed.data.email, valid);
-  if (!valid) return { error: "Incorrect password." };
+  if (user.suspendedAt) {
+    return { error: "This account has been suspended. Contact support if you think this is a mistake." };
+  }
 
   await createSessionCookie({
     userId: user.id,
