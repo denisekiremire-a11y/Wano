@@ -7,7 +7,8 @@ android {
         applicationId "com.panerasolutions.wano"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
+        // CI passes the build number so every upload to Play gets a new versionCode.
+        versionCode((project.findProperty("versionCode") ?: "1") as Integer)
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
@@ -16,8 +17,25 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Upload key for Google Play. Only set when the signing secrets are
+    // present (the GitHub "Android build" workflow); otherwise the release
+    // bundle is built unsigned.
+    def uploadKeystore = System.getenv("ANDROID_KEYSTORE_PATH")
+    signingConfigs {
+        if (uploadKeystore) {
+            upload {
+                storeFile file(uploadKeystore)
+                storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("ANDROID_KEY_ALIAS")
+                keyPassword System.getenv("ANDROID_KEY_PASSWORD")
+            }
+        }
+    }
     buildTypes {
         release {
+            if (uploadKeystore) {
+                signingConfig signingConfigs.upload
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
