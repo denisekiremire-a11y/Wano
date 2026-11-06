@@ -26,9 +26,14 @@ export function LoginForm({ next }: { next?: string }) {
         />
       </div>
       <div>
-        <label htmlFor="password" className="text-sm font-medium text-forest-900">
-          Password
-        </label>
+        <div className="flex items-baseline justify-between">
+          <label htmlFor="password" className="text-sm font-medium text-forest-900">
+            Password
+          </label>
+          <Link href="/forgot-password" className="text-xs font-medium text-nile-700 hover:underline">
+            Forgot password?
+          </Link>
+        </div>
         <input
           id="password"
           name="password"

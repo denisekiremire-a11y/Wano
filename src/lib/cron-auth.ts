@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { timingSafeEqualString } from "@/lib/timing-safe-equal";
 
 // Shared auth check for /api/cron/*. Vercel Cron sends
 // `Authorization: Bearer $CRON_SECRET` on cron-triggered requests when
@@ -16,7 +17,8 @@ export function rejectUnauthorizedCron(request: Request): NextResponse | null {
     return NextResponse.json({ error: "Cron is not configured" }, { status: 503 });
   }
 
-  if (request.headers.get("authorization") !== `Bearer ${secret}`) {
+  const provided = request.headers.get("authorization");
+  if (!provided || !timingSafeEqualString(provided, `Bearer ${secret}`)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   return null;
