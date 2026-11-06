@@ -185,15 +185,18 @@ describe("weekly streak", () => {
     expect(await getStreakStatus(t.travellerId)).toMatchObject({ current: 3, thisWeekDone: false });
 
     const before = await getXpEarnedLast12Months(t.travellerId);
+    const dropDaysBefore = await countXpDropDays(t.travellerId);
     await recordCheckIn(t.travellerId, ntinda.vendorId, "qr", new Date(now));
     expect(await getStreakStatus(t.travellerId)).toMatchObject({ current: 4, best: 4, thisWeekDone: true });
     const summary = await getRewardsSummary(t.travellerId, null, null);
     expect(summary.breakdown.find((b) => b.label === "Streak milestones")).toMatchObject({ count: 1, points: 300 });
-    // The new visit may also finish this week's "Out and about"; the
-    // streak adds exactly 300 on top of challenge XP.
+    // The new visit may also finish this week's "Out and about", and on
+    // days when the XP Drop area is Ntinda it also pays the XP Drop; the
+    // streak adds exactly 300 on top of those.
+    const xpDropXp = ((await countXpDropDays(t.travellerId)) - dropDaysBefore) * XP_DROP_XP;
     const challengeXp = (await getWeeklyChallengeStatus(t.travellerId))
       .filter((c) => c.done)
       .reduce((sum, c) => sum + c.challenge.xp, 0);
-    expect((await getXpEarnedLast12Months(t.travellerId)) - before).toBe(300 + challengeXp);
+    expect((await getXpEarnedLast12Months(t.travellerId)) - before).toBe(300 + challengeXp + xpDropXp);
   });
 });
