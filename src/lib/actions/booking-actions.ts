@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, notInArray, sql, sum } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { attachPlanGuests } from "@/lib/data/plans";
 import { takeGroupPlanId } from "@/lib/group-plan-cookie";
@@ -359,9 +359,32 @@ export async function buyEventTicketsAction(_prev: ActionState | undefined, form
     rewardRow ? { discountType: rewardRow.reward.discountType, discountValue: rewardRow.reward.discountValue } : null,
   );
 
-  const booking = await withRlsContext(
+  const requestedPartySize = draft.partySize ?? 1;
+
+  const result = await withRlsContext(
     { userId: session.userId, role: "traveller", travellerProfileId: travellerProfile.id },
     async (tx) => {
+      // Serialize ticket sales for this event the same way reserveSlotHold
+      // serializes a slot — without this lock, two concurrent purchases
+      // can both pass the capacity check below and oversell the event.
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${eventId}))`);
+
+      if (event.capacity != null) {
+        const [{ total }] = await tx
+          .select({ total: sum(bookings.partySize) })
+          .from(bookings)
+          .where(and(eq(bookings.eventId, eventId), notInArray(bookings.status, ["cancelled", "expired"])));
+        // sum() over partySize rows that are each NULL falls back to the
+        // same "1 person" default the insert itself uses below, so a mix
+        // of ticket purchases with and without an explicit party size
+        // still counts accurately against capacity.
+        const ticketsSold = Number(total ?? 0);
+        const remaining = event.capacity - ticketsSold;
+        if (requestedPartySize > remaining) {
+          return { error: remaining <= 0 ? "This event is sold out." : `Only ${remaining} ticket(s) left.` } as const;
+        }
+      }
+
       const [booking] = await tx
         .insert(bookings)
         .values({
@@ -398,6 +421,9 @@ export async function buyEventTicketsAction(_prev: ActionState | undefined, form
       return booking;
     },
   );
+
+  if ("error" in result) return result;
+  const booking = result;
 
   await attachGroupIfAny(booking);
   await logEvent("booking_completed", {
