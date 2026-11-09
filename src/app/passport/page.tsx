@@ -174,7 +174,7 @@ export default async function PassportPage({
 
   return (
     <main className="font-editorial-body bg-paper mx-auto max-w-4xl px-4 py-8 md:px-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
           <div className="relative flex-none">
             <span className="flex h-16 w-16 items-center justify-center rounded-full bg-ink/5 text-2xl font-semibold text-ink/70">
@@ -199,7 +199,7 @@ export default async function PassportPage({
             </p>
           </div>
         </div>
-        <div className="flex flex-none items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 sm:flex-none">
           <TierBadge
             tier={tierStatus.tier}
             nextTier={tierStatus.nextTier}
