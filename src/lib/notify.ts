@@ -1,5 +1,5 @@
-import { sendEmail } from "@/lib/email";
-import { renderEmailHtml, type EmailBadge } from "@/lib/email-template";
+import { sendEmail, type EmailAttachment } from "@/lib/email";
+import { renderEmailHtml, type EmailBadge, type DetailRow } from "@/lib/email-template";
 
 // Same address the footer's "Need help?" link uses, by default — override
 // with ADMIN_NOTIFICATION_EMAIL if these should go somewhere else.
@@ -17,6 +17,10 @@ export type NotifyOptions = {
   /** Rendered as a real button instead of an inline link. */
   ctaLabel?: string;
   ctaUrl?: string;
+  /** A label/value table (check-in, party size, price, etc.) — the
+   * "Reservation details" block on a real booking confirmation email. */
+  detailsRows?: DetailRow[];
+  attachments?: EmailAttachment[];
 };
 
 /** Fire-and-forget transactional ping to any user — never throws, so a
@@ -33,9 +37,10 @@ export async function notifyUser(email: string, subject: string, bodyLines: stri
       code: opts?.code,
       ctaLabel: opts?.ctaLabel,
       ctaUrl: opts?.ctaUrl,
+      detailsRows: opts?.detailsRows,
       appUrl: APP_URL,
     });
-    await sendEmail({ to: email, subject: `[Wano] ${subject}`, html });
+    await sendEmail({ to: email, subject: `[Wano] ${subject}`, html, attachments: opts?.attachments });
   } catch (err) {
     console.error("[notifyUser] failed:", err);
   }
