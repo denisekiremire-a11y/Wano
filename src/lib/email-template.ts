@@ -39,6 +39,8 @@ const BADGE_FONT_STYLE: Record<EmailBadge, string> = {
   alert: "font-weight:800;",
 };
 
+export type DetailRow = { label: string; value: string };
+
 export function renderEmailHtml(opts: {
   heading: string;
   bodyHtml: string;
@@ -46,9 +48,10 @@ export function renderEmailHtml(opts: {
   code?: string;
   ctaLabel?: string;
   ctaUrl?: string;
+  detailsRows?: DetailRow[];
   appUrl: string;
 }) {
-  const { heading, bodyHtml, badge, code, ctaLabel, ctaUrl, appUrl } = opts;
+  const { heading, bodyHtml, badge, code, ctaLabel, ctaUrl, detailsRows, appUrl } = opts;
 
   const badgeHtml = badge
     ? `<tr><td align="center" style="padding-bottom:16px;">
@@ -57,6 +60,22 @@ export function renderEmailHtml(opts: {
          </tr></table>
        </td></tr>`
     : "";
+
+  const detailsHtml =
+    detailsRows && detailsRows.length > 0
+      ? `<tr><td style="padding:4px 0 20px;">
+           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${BORDER};">
+             ${detailsRows
+               .map(
+                 (row, i) => `<tr>
+                 <td style="padding:10px 14px;${i > 0 ? `border-top:1px solid ${BORDER};` : ""}font-family:${SANS_STACK};font-size:12px;color:${INK_MUTED};vertical-align:top;white-space:nowrap;">${row.label}</td>
+                 <td style="padding:10px 14px;${i > 0 ? `border-top:1px solid ${BORDER};` : ""}font-family:${SANS_STACK};font-size:13px;font-weight:600;color:${INK};text-align:right;">${row.value}</td>
+               </tr>`,
+               )
+               .join("")}
+           </table>
+         </td></tr>`
+      : "";
 
   const codeHtml = code
     ? `<tr><td align="center" style="padding:4px 0 20px;">
@@ -98,6 +117,7 @@ export function renderEmailHtml(opts: {
                   ${badgeHtml}
                   <tr><td align="center" style="padding-bottom:12px;font-family:${SERIF_STACK};font-size:24px;color:${INK};text-align:center;">${heading}</td></tr>
                   <tr><td style="padding-bottom:4px;font-family:${SANS_STACK};font-size:14px;line-height:1.6;color:${INK};">${bodyHtml}</td></tr>
+                  ${detailsHtml}
                   ${codeHtml}
                   ${ctaHtml}
                 </table>
