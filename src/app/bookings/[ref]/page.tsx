@@ -3,8 +3,10 @@ import { notFound } from "next/navigation";
 import { BookingThread } from "@/components/booking-thread";
 import { CancelBookingButton } from "@/components/cancel-booking-button";
 import { CopyCodeButton } from "@/components/copy-code-button";
+import { CheckCircleIcon } from "@/components/icons";
 import { ShareBookingButton } from "@/components/share-booking-button";
 import { TicketQrCard } from "@/components/ticket-qr-card";
+import { toWhatsAppNumber } from "@/lib/afcon/phone";
 import { requireRole } from "@/lib/auth";
 import { CANCELLATION_CUTOFF_HOURS, REQUEST_EXPIRY_HOURS } from "@/lib/booking-config";
 import { formatMinor } from "@/lib/currency";
@@ -103,6 +105,7 @@ export default async function BookingConfirmationPage({
       : booking.status === "cancelled" || booking.status === "completed" || booking.status === "expired"
         ? "text-ink/40"
         : "text-ember";
+  const vendorWhatsApp = toWhatsAppNumber(vendor?.contactPhone);
 
   return (
     <main className="font-editorial-body bg-paper">
@@ -119,7 +122,10 @@ export default async function BookingConfirmationPage({
           </div>
         )}
         <div className="flex flex-col items-center text-center">
-          <p className={`eyebrow capitalize ${statusColorClass}`}>{booking.status}</p>
+          {booking.status === "confirmed" && (
+            <CheckCircleIcon className="animate-confirm-pop h-12 w-12 text-forest-700" />
+          )}
+          <p className={`eyebrow mt-3 capitalize ${statusColorClass}`}>{booking.status}</p>
           <h1 className="font-serif-editorial mt-3 text-3xl text-ink">{status.label}</h1>
           <p className="mt-2 max-w-sm text-sm text-ink/60">{status.detail}</p>
         </div>
@@ -279,6 +285,24 @@ export default async function BookingConfirmationPage({
               className="rounded-full border border-ink/20 px-5 py-2.5 text-sm font-semibold text-ink transition hover:bg-ink/5"
             >
               Contact provider
+            </a>
+          )}
+          {vendor?.contactPhone && (
+            <a
+              href={`tel:${vendor.contactPhone}`}
+              className="rounded-full border border-ink/20 px-5 py-2.5 text-sm font-semibold text-ink transition hover:bg-ink/5"
+            >
+              Call {vendor.businessName}
+            </a>
+          )}
+          {vendorWhatsApp && (
+            <a
+              href={`https://wa.me/${vendorWhatsApp}`}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-full border border-ink/20 px-5 py-2.5 text-sm font-semibold text-ink transition hover:bg-ink/5"
+            >
+              WhatsApp {vendor?.businessName}
             </a>
           )}
           <ShareBookingButton title={`${title} — Wano booking`} url={`${APP_URL}/bookings/${booking.bookingRef}`} />

@@ -288,6 +288,34 @@
   }
 }
 
+/* .animate-confirm-pop: one-shot scale+fade-in for the booking-confirmation
+   checkmark (see bookings/[ref]/page.tsx) — a small mechanical "snap into
+   place" rather than a glow/confetti burst, same anti-AI-slop reasoning as
+   .live-dot above. Plays once on mount; reduced-motion just renders the
+   icon at its resting state with no animation. */
+@keyframes wano-confirm-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@utility animate-confirm-pop {
+  animation: wano-confirm-pop 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
 @utility live-dot {
   display: inline-block;
   width: 6px;
