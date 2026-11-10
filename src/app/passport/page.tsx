@@ -4,13 +4,13 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { BirthdayEditor } from "@/components/birthday-editor";
 import { FeedActivityToggle } from "@/components/feed-activity-toggle";
-import { CameraIcon } from "@/components/icons";
 import { HowYouGotHereSection } from "@/components/how-you-got-here-section";
 import { LiteModeToggle } from "@/components/lite-mode-toggle";
 import { LogoutButton } from "@/components/logout-button";
 import { PassportGrid } from "@/components/passport-grid";
 import { PassportTabs } from "@/components/passport-tabs";
 import { ProfileEditor } from "@/components/profile-editor";
+import { ProfilePhotoUpload } from "@/components/profile-photo-upload";
 import { PastVouchersSection } from "@/components/past-vouchers-section";
 import { RedeemPointsRewardButton } from "@/components/redeem-points-reward-button";
 import { ResendVerificationButton } from "@/components/resend-verification-button";
@@ -176,18 +176,7 @@ export default async function PassportPage({
     <main className="font-editorial-body bg-paper mx-auto max-w-4xl px-4 py-8 md:px-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
-          <div className="relative flex-none">
-            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-ink/5 text-2xl font-semibold text-ink/70">
-              {travellerProfile.displayName.charAt(0).toUpperCase()}
-            </span>
-            <Link
-              href="/passport?tab=account"
-              aria-label="Change profile photo"
-              className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-paper bg-ink text-white"
-            >
-              <CameraIcon className="h-3.5 w-3.5" />
-            </Link>
-          </div>
+          <ProfilePhotoUpload avatarUrl={user?.avatarUrl ?? null} displayName={travellerProfile.displayName} />
           <div>
             <h1 className="font-serif-editorial text-2xl text-ink">
               {travellerProfile.displayName}
