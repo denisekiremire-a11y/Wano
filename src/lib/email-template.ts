@@ -110,9 +110,7 @@ export function renderEmailHtml(opts: {
               </td>
             </tr>
             <tr>
-              <td
-                style="padding:32px;background-image:url('${appUrl}/api/email-watermark');background-repeat:no-repeat;background-position:right -70px top -60px;background-size:260px 260px;"
-              >
+              <td style="padding:32px;">
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                   ${badgeHtml}
                   <tr><td align="center" style="padding-bottom:12px;font-family:${SERIF_STACK};font-size:24px;color:${INK};text-align:center;">${heading}</td></tr>
