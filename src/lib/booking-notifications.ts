@@ -22,6 +22,45 @@ const STATUS_BADGE: Partial<Record<string, NotifyOptions["badge"]>> = {
   confirmed: "check",
 };
 
+/** The shared "Reservation details" table — guest, reservation name, dates,
+ * party size, pickup/drop-off, location, vendor phone, notes, total — used
+ * by every traveller-facing booking email (request sent, confirmed,
+ * cancelled, completed) so the full picture is in the email itself however
+ * the booking's status changes, not just on first confirmation. */
+function buildDetailsRows(params: {
+  booking: typeof bookings.$inferSelect;
+  travellerName: string;
+  vendorLocation?: string | null;
+  vendorPhone?: string | null;
+}): DetailRow[] {
+  const { booking, travellerName, vendorLocation, vendorPhone } = params;
+  const when = booking.visitDate ? `${booking.visitDate}${booking.visitTime ? ` at ${booking.visitTime}` : ""}` : null;
+
+  const rows: DetailRow[] = [{ label: "Guest", value: travellerName }];
+  if (booking.bookingName && booking.bookingName !== travellerName) {
+    rows.push({ label: "Reservation name", value: booking.bookingName });
+  }
+  if (when) rows.push({ label: "Date", value: when });
+  if (booking.endDate) rows.push({ label: "Until", value: booking.endDate });
+  if (booking.partySize) {
+    rows.push({
+      label: "Party size",
+      value: String(booking.partySize) + (booking.childrenCount ? ` + ${booking.childrenCount} children` : ""),
+    });
+  }
+  if (booking.pickupLocation || booking.dropoffLocation) {
+    rows.push({
+      label: "Pickup / drop-off",
+      value: [booking.pickupLocation, booking.dropoffLocation].filter(Boolean).join(" → "),
+    });
+  }
+  if (vendorLocation) rows.push({ label: "Location", value: vendorLocation });
+  if (vendorPhone) rows.push({ label: "Vendor phone", value: vendorPhone });
+  if (booking.notes) rows.push({ label: "Notes", value: booking.notes });
+  if (booking.totalMinor != null) rows.push({ label: "Total", value: `${formatMinor(booking.totalMinor)} (pay at venue)` });
+  return rows;
+}
+
 /** Emails the traveller when their booking's status changes — confirmed,
  * cancelled, or completed. No-ops for "pending" (nothing to tell them yet).
  * Every status gets a full reservation-details table in the email body —
@@ -57,32 +96,12 @@ export async function notifyTravellerOfBookingStatus(bookingId: string, status: 
   if (!row) return;
 
   const title = row.listingTitle ?? row.eventTitle ?? "Booking";
-  const when = row.booking.visitDate
-    ? `${row.booking.visitDate}${row.booking.visitTime ? ` at ${row.booking.visitTime}` : ""}`
-    : null;
-
-  const detailsRows: DetailRow[] = [{ label: "Guest", value: row.travellerName }];
-  if (row.booking.bookingName && row.booking.bookingName !== row.travellerName) {
-    detailsRows.push({ label: "Reservation name", value: row.booking.bookingName });
-  }
-  if (when) detailsRows.push({ label: "Date", value: when });
-  if (row.booking.endDate) detailsRows.push({ label: "Until", value: row.booking.endDate });
-  if (row.booking.partySize) {
-    detailsRows.push({
-      label: "Party size",
-      value: String(row.booking.partySize) + (row.booking.childrenCount ? ` + ${row.booking.childrenCount} children` : ""),
-    });
-  }
-  if (row.booking.pickupLocation || row.booking.dropoffLocation) {
-    detailsRows.push({
-      label: "Pickup / drop-off",
-      value: [row.booking.pickupLocation, row.booking.dropoffLocation].filter(Boolean).join(" → "),
-    });
-  }
-  if (row.vendorLocation) detailsRows.push({ label: "Location", value: row.vendorLocation });
-  if (row.vendorPhone) detailsRows.push({ label: "Vendor phone", value: row.vendorPhone });
-  if (row.booking.notes) detailsRows.push({ label: "Notes", value: row.booking.notes });
-  if (row.booking.totalMinor != null) detailsRows.push({ label: "Total", value: `${formatMinor(row.booking.totalMinor)} (pay at venue)` });
+  const detailsRows = buildDetailsRows({
+    booking: row.booking,
+    travellerName: row.travellerName,
+    vendorLocation: row.vendorLocation,
+    vendorPhone: row.vendorPhone,
+  });
 
   await notifyUser(
     row.travellerEmail,
@@ -233,6 +252,8 @@ export async function notifyTravellerOfNewBooking(bookingId: string) {
       listingTitle: listings.title,
       eventTitle: events.title,
       vendorBusinessName: vendorProfiles.businessName,
+      vendorLocation: vendorProfiles.location,
+      vendorPhone: vendorProfiles.contactPhone,
       travellerName: travellerProfiles.displayName,
       travellerEmail: users.email,
     })
@@ -249,7 +270,7 @@ export async function notifyTravellerOfNewBooking(bookingId: string) {
     .limit(1);
   if (!row) return;
 
-  const title = row.listingTitle ?? row.eventTitle;
+  const title = row.listingTitle ?? row.eventTitle ?? "Booking";
   await notifyUser(
     row.travellerEmail,
     "Booking request sent",
@@ -263,6 +284,12 @@ export async function notifyTravellerOfNewBooking(bookingId: string) {
       code: row.booking.bookingRef,
       ctaLabel: "View your booking",
       ctaUrl: `${APP_URL}/bookings/${row.booking.bookingRef}`,
+      detailsRows: buildDetailsRows({
+        booking: row.booking,
+        travellerName: row.travellerName,
+        vendorLocation: row.vendorLocation,
+        vendorPhone: row.vendorPhone,
+      }),
     },
   );
 
