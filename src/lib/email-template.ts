@@ -19,10 +19,24 @@ const SANS_STACK = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helve
 
 export type EmailBadge = "check" | "info" | "alert";
 
+// Plain ASCII only — Unicode symbol entities like &#8505; (information
+// source, ℹ) get swapped for a full-color emoji glyph by Gmail/iOS/etc,
+// clashing badly with the solid monochrome circle around it (confirmed by
+// seeing it render that way). "i" and "!" are common enough letters that no
+// mail client substitutes an emoji for them; the check mark is the one
+// genuine symbol here and renders as plain text everywhere that matters.
 const BADGE_GLYPH: Record<EmailBadge, string> = {
   check: "&#10003;",
-  info: "&#8505;",
+  info: "i",
   alert: "!",
+};
+
+// The plain "i" needs some styling to read as an intentional badge glyph
+// rather than a stray letter — italic serif, same voice as the heading.
+const BADGE_FONT_STYLE: Record<EmailBadge, string> = {
+  check: "",
+  info: `font-style:italic;font-family:${SERIF_STACK};font-weight:700;`,
+  alert: "font-weight:800;",
 };
 
 export function renderEmailHtml(opts: {
@@ -39,7 +53,7 @@ export function renderEmailHtml(opts: {
   const badgeHtml = badge
     ? `<tr><td align="center" style="padding-bottom:16px;">
          <table role="presentation" cellpadding="0" cellspacing="0"><tr>
-           <td width="48" height="48" align="center" valign="middle" style="width:48px;height:48px;border-radius:50%;background:${INK};color:${WHITE};font-size:22px;line-height:48px;font-family:${SANS_STACK};">${BADGE_GLYPH[badge]}</td>
+           <td width="48" height="48" align="center" valign="middle" style="width:48px;height:48px;border-radius:50%;background:${INK};color:${WHITE};font-size:22px;line-height:48px;font-family:${SANS_STACK};${BADGE_FONT_STYLE[badge]}">${BADGE_GLYPH[badge]}</td>
          </tr></table>
        </td></tr>`
     : "";
