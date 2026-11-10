@@ -1,4 +1,4 @@
-import { sendEmail, type EmailAttachment } from "@/lib/email";
+import { sendEmail } from "@/lib/email";
 import { renderEmailHtml, type EmailBadge, type DetailRow } from "@/lib/email-template";
 
 // Same address the footer's "Need help?" link uses, by default — override
@@ -20,7 +20,6 @@ export type NotifyOptions = {
   /** A label/value table (check-in, party size, price, etc.) — the
    * "Reservation details" block on a real booking confirmation email. */
   detailsRows?: DetailRow[];
-  attachments?: EmailAttachment[];
 };
 
 /** Fire-and-forget transactional ping to any user — never throws, so a
@@ -40,7 +39,7 @@ export async function notifyUser(email: string, subject: string, bodyLines: stri
       detailsRows: opts?.detailsRows,
       appUrl: APP_URL,
     });
-    await sendEmail({ to: email, subject: `[Wano] ${subject}`, html, attachments: opts?.attachments });
+    await sendEmail({ to: email, subject: `[Wano] ${subject}`, html });
   } catch (err) {
     console.error("[notifyUser] failed:", err);
   }

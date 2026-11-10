@@ -4,7 +4,6 @@ import { bookings, events, listings, travellerProfiles, users, vendorProfiles } 
 import { notifyAdmin, notifyUser, type NotifyOptions } from "@/lib/notify";
 import { toWhatsAppNumber } from "@/lib/afcon/phone";
 import { sendWhatsappTemplate } from "@/lib/whatsapp";
-import { generateBookingPdf } from "@/lib/booking-pdf";
 import { formatMinor } from "@/lib/currency";
 import type { DetailRow } from "@/lib/email-template";
 
@@ -25,10 +24,10 @@ const STATUS_BADGE: Partial<Record<string, NotifyOptions["badge"]>> = {
 
 /** Emails the traveller when their booking's status changes — confirmed,
  * cancelled, or completed. No-ops for "pending" (nothing to tell them yet).
- * "confirmed" gets the full treatment: a reservation-details table in the
- * email body (the same "proof of booking" info a real booking confirmation
- * carries — dates, party size, location, price) plus a one-page PDF copy
- * attached, generated fresh per send rather than stored. */
+ * Every status gets a full reservation-details table in the email body —
+ * guest, reservation name, dates, party size, pickup/dropoff, location,
+ * vendor phone, notes, total — everything a traveller would want on hand
+ * without opening the app. */
 export async function notifyTravellerOfBookingStatus(bookingId: string, status: string) {
   const message = STATUS_MESSAGE[status];
   if (!message) return;
@@ -63,6 +62,9 @@ export async function notifyTravellerOfBookingStatus(bookingId: string, status: 
     : null;
 
   const detailsRows: DetailRow[] = [{ label: "Guest", value: row.travellerName }];
+  if (row.booking.bookingName && row.booking.bookingName !== row.travellerName) {
+    detailsRows.push({ label: "Reservation name", value: row.booking.bookingName });
+  }
   if (when) detailsRows.push({ label: "Date", value: when });
   if (row.booking.endDate) detailsRows.push({ label: "Until", value: row.booking.endDate });
   if (row.booking.partySize) {
@@ -71,35 +73,16 @@ export async function notifyTravellerOfBookingStatus(bookingId: string, status: 
       value: String(row.booking.partySize) + (row.booking.childrenCount ? ` + ${row.booking.childrenCount} children` : ""),
     });
   }
+  if (row.booking.pickupLocation || row.booking.dropoffLocation) {
+    detailsRows.push({
+      label: "Pickup / drop-off",
+      value: [row.booking.pickupLocation, row.booking.dropoffLocation].filter(Boolean).join(" → "),
+    });
+  }
   if (row.vendorLocation) detailsRows.push({ label: "Location", value: row.vendorLocation });
   if (row.vendorPhone) detailsRows.push({ label: "Vendor phone", value: row.vendorPhone });
+  if (row.booking.notes) detailsRows.push({ label: "Notes", value: row.booking.notes });
   if (row.booking.totalMinor != null) detailsRows.push({ label: "Total", value: `${formatMinor(row.booking.totalMinor)} (pay at venue)` });
-
-  // Only a genuinely confirmed booking is worth a keepsake PDF — not a
-  // request that was merely sent, and not a cancellation. Generated in its
-  // own try/catch: a PDF bug must never take the confirmation email down
-  // with it (the email is the important part; the attachment is a bonus).
-  let attachments: NotifyOptions["attachments"];
-  if (status === "confirmed") {
-    try {
-      const pdfBytes = await generateBookingPdf({
-        propertyTitle: title,
-        vendorName: row.vendorBusinessName,
-        guestName: row.travellerName,
-        confirmationCode: row.booking.bookingRef,
-        visitDate: row.booking.visitDate,
-        visitTime: row.booking.visitTime,
-        endDate: row.booking.endDate,
-        partySize: row.booking.partySize,
-        location: row.vendorLocation,
-        vendorPhone: row.vendorPhone,
-        totalLabel: row.booking.totalMinor != null ? formatMinor(row.booking.totalMinor) : null,
-      });
-      attachments = [{ filename: `wano-booking-${row.booking.bookingRef}.pdf`, content: Buffer.from(pdfBytes).toString("base64") }];
-    } catch (err) {
-      console.error("[notifyTravellerOfBookingStatus] PDF generation failed, sending email without it:", err);
-    }
-  }
 
   await notifyUser(
     row.travellerEmail,
@@ -115,7 +98,6 @@ export async function notifyTravellerOfBookingStatus(bookingId: string, status: 
       ctaLabel: "View your booking",
       ctaUrl: `${APP_URL}/bookings/${row.booking.bookingRef}`,
       detailsRows,
-      attachments,
     },
   );
 }
