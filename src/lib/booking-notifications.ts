@@ -76,23 +76,29 @@ export async function notifyTravellerOfBookingStatus(bookingId: string, status: 
   if (row.booking.totalMinor != null) detailsRows.push({ label: "Total", value: `${formatMinor(row.booking.totalMinor)} (pay at venue)` });
 
   // Only a genuinely confirmed booking is worth a keepsake PDF — not a
-  // request that was merely sent, and not a cancellation.
+  // request that was merely sent, and not a cancellation. Generated in its
+  // own try/catch: a PDF bug must never take the confirmation email down
+  // with it (the email is the important part; the attachment is a bonus).
   let attachments: NotifyOptions["attachments"];
   if (status === "confirmed") {
-    const pdfBytes = await generateBookingPdf({
-      propertyTitle: title,
-      vendorName: row.vendorBusinessName,
-      guestName: row.travellerName,
-      confirmationCode: row.booking.bookingRef,
-      visitDate: row.booking.visitDate,
-      visitTime: row.booking.visitTime,
-      endDate: row.booking.endDate,
-      partySize: row.booking.partySize,
-      location: row.vendorLocation,
-      vendorPhone: row.vendorPhone,
-      totalLabel: row.booking.totalMinor != null ? formatMinor(row.booking.totalMinor) : null,
-    });
-    attachments = [{ filename: `wano-booking-${row.booking.bookingRef}.pdf`, content: Buffer.from(pdfBytes).toString("base64") }];
+    try {
+      const pdfBytes = await generateBookingPdf({
+        propertyTitle: title,
+        vendorName: row.vendorBusinessName,
+        guestName: row.travellerName,
+        confirmationCode: row.booking.bookingRef,
+        visitDate: row.booking.visitDate,
+        visitTime: row.booking.visitTime,
+        endDate: row.booking.endDate,
+        partySize: row.booking.partySize,
+        location: row.vendorLocation,
+        vendorPhone: row.vendorPhone,
+        totalLabel: row.booking.totalMinor != null ? formatMinor(row.booking.totalMinor) : null,
+      });
+      attachments = [{ filename: `wano-booking-${row.booking.bookingRef}.pdf`, content: Buffer.from(pdfBytes).toString("base64") }];
+    } catch (err) {
+      console.error("[notifyTravellerOfBookingStatus] PDF generation failed, sending email without it:", err);
+    }
   }
 
   await notifyUser(
