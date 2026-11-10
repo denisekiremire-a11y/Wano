@@ -149,6 +149,25 @@ export const users = pgTable("users", {
   emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
 });
 
+// The actual bytes behind users.avatarUrl — same bytea-in-Postgres approach
+// as postImages/listingImages, kept out of the users row itself so the
+// (potentially large) blob never rides along on the ordinary `select()`
+// every page does for the logged-in user. One row per user (upserted on
+// re-upload, same row/id/URL reused rather than creating a new one each
+// time), unlike postImages/listingImages which are genuinely one-of-many.
+// No RLS — avatars are meant to be publicly visible wherever a user's
+// identity appears, same reasoning as post/listing photos.
+export const userPhotos = pgTable("user_photos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .unique()
+    .references(() => users.id, { onDelete: "cascade" }),
+  data: bytea("data").notNull(),
+  mimeType: text("mime_type").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // One-time emailed links, same shape/reasoning as the newsletter confirm
 // flow (see newsletter-actions.ts) generalised into a real table instead
 // of a bespoke column on the target row. usedAt set (not deleted) once

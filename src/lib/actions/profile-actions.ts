@@ -4,7 +4,7 @@ import { and, eq, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
-import { travellerProfiles, users } from "@/db/schema";
+import { travellerProfiles, userPhotos, users } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { withRlsContext } from "@/lib/db-context";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
@@ -12,6 +12,9 @@ import { sendVerificationEmail } from "@/lib/actions/email-verification-actions"
 import { createSessionCookie } from "@/lib/session";
 import { toWhatsAppNumber } from "@/lib/afcon/phone";
 import type { ActionState } from "@/lib/validation";
+
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+const ALLOWED_PHOTO_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 const birthdaySchema = z.object({
   dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Enter a valid date."),
@@ -109,6 +112,41 @@ export async function updateProfileAction(_prev: ActionState, formData: FormData
   if (emailChanged) {
     await sendVerificationEmail(session.userId, email);
   }
+
+  revalidatePath("/passport");
+  revalidatePath("/social");
+
+  return {};
+}
+
+/** Uploads (or replaces) the signed-in user's profile photo. Stores the
+ * bytes in userPhotos (see schema.ts for why that's a separate table from
+ * users itself) and points users.avatarUrl at the stable serving URL —
+ * every avatar display across the app (posts, stories, discover, the
+ * public profile page) already reads avatarUrl, so this is the only piece
+ * that was missing; nothing else needs to change. */
+export async function updateProfilePhotoAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const session = await requireRole("traveller");
+
+  const file = formData.get("photo");
+  if (!(file instanceof File) || file.size === 0) return { error: "Choose a photo to upload." };
+  if (file.size > MAX_PHOTO_BYTES) return { error: "Photo is too large — max 5MB." };
+  if (!ALLOWED_PHOTO_MIME_TYPES.has(file.type)) return { error: "Unsupported file type — upload a JPG, PNG, or WebP." };
+
+  const data = Buffer.from(await file.arrayBuffer());
+
+  await db
+    .insert(userPhotos)
+    .values({ userId: session.userId, data, mimeType: file.type })
+    .onConflictDoUpdate({
+      target: userPhotos.userId,
+      set: { data, mimeType: file.type, updatedAt: new Date() },
+    });
+
+  await db
+    .update(users)
+    .set({ avatarUrl: `/api/user-photo/${session.userId}` })
+    .where(eq(users.id, session.userId));
 
   revalidatePath("/passport");
   revalidatePath("/social");
