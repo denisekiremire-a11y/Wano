@@ -1,7 +1,7 @@
 import { eq, or } from "drizzle-orm";
 import { db } from "@/db";
 import { bookings, events, listings, travellerProfiles, users, vendorProfiles } from "@/db/schema";
-import { notifyAdmin, notifyUser } from "@/lib/notify";
+import { notifyAdmin, notifyUser, type NotifyOptions } from "@/lib/notify";
 import { toWhatsAppNumber } from "@/lib/afcon/phone";
 import { sendWhatsappTemplate } from "@/lib/whatsapp";
 
@@ -11,6 +11,13 @@ const STATUS_MESSAGE: Partial<Record<string, string>> = {
   confirmed: "has been confirmed by the partner",
   cancelled: "was declined by the partner",
   completed: "is marked completed",
+};
+
+// Only "confirmed" gets the celebratory checkmark badge — "cancelled" and
+// "completed" are neutral-to-disappointing news, not something to badge as
+// a success.
+const STATUS_BADGE: Partial<Record<string, NotifyOptions["badge"]>> = {
+  confirmed: "check",
 };
 
 /** Emails the traveller when their booking's status changes — confirmed,
@@ -41,13 +48,21 @@ export async function notifyTravellerOfBookingStatus(bookingId: string, status: 
   if (!row) return;
 
   const title = row.listingTitle ?? row.eventTitle;
-  await notifyUser(row.travellerEmail, `Your booking ${message}`, [
-    row.vendorBusinessName
-      ? `Your booking with <strong>${row.vendorBusinessName}</strong> for <strong>${title}</strong> ${message}.`
-      : `Your booking for <strong>${title}</strong> ${message}.`,
-    `Confirmation code: ${row.booking.bookingRef}`,
-    `<a href="${APP_URL}/bookings/${row.booking.bookingRef}">View your booking</a>.`,
-  ]);
+  await notifyUser(
+    row.travellerEmail,
+    `Your booking ${message}`,
+    [
+      row.vendorBusinessName
+        ? `Your booking with <strong>${row.vendorBusinessName}</strong> for <strong>${title}</strong> ${message}.`
+        : `Your booking for <strong>${title}</strong> ${message}.`,
+    ],
+    {
+      badge: STATUS_BADGE[status],
+      code: row.booking.bookingRef,
+      ctaLabel: "View your booking",
+      ctaUrl: `${APP_URL}/bookings/${row.booking.bookingRef}`,
+    },
+  );
 }
 
 /** Emails the traveller a nudge to review, right after their booking is
@@ -198,13 +213,21 @@ export async function notifyTravellerOfNewBooking(bookingId: string) {
   if (!row) return;
 
   const title = row.listingTitle ?? row.eventTitle;
-  await notifyUser(row.travellerEmail, "Booking request sent", [
-    row.vendorBusinessName
-      ? `Your request to book <strong>${title}</strong> with <strong>${row.vendorBusinessName}</strong> is in.`
-      : `Your request to book <strong>${title}</strong> is in.`,
-    `Confirmation code: ${row.booking.bookingRef}`,
-    `<a href="${APP_URL}/bookings/${row.booking.bookingRef}">View your booking</a>.`,
-  ]);
+  await notifyUser(
+    row.travellerEmail,
+    "Booking request sent",
+    [
+      row.vendorBusinessName
+        ? `Your request to book <strong>${title}</strong> with <strong>${row.vendorBusinessName}</strong> is in.`
+        : `Your request to book <strong>${title}</strong> is in.`,
+    ],
+    {
+      badge: "info",
+      code: row.booking.bookingRef,
+      ctaLabel: "View your booking",
+      ctaUrl: `${APP_URL}/bookings/${row.booking.bookingRef}`,
+    },
+  );
 
   await notifyAdmin("New booking", [
     `<strong>${row.travellerName}</strong> booked <strong>${title}</strong>${row.vendorBusinessName ? ` (${row.vendorBusinessName})` : ""}.`,
