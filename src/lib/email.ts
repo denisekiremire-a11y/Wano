@@ -9,26 +9,9 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY;
 // Resend and set EMAIL_FROM once this needs to reach anyone else reliably.
 const FROM_EMAIL = process.env.EMAIL_FROM || "Wano <onboarding@resend.dev>";
 
-export type EmailAttachment = {
-  filename: string;
-  /** Base64-encoded file content — Resend's own attachment format. */
-  content: string;
-};
-
-export async function sendEmail({
-  to,
-  subject,
-  html,
-  attachments,
-}: {
-  to: string;
-  subject: string;
-  html: string;
-  attachments?: EmailAttachment[];
-}) {
+export async function sendEmail({ to, subject, html }: { to: string; subject: string; html: string }) {
   if (!RESEND_API_KEY) {
-    const attachmentNote = attachments?.length ? ` (+ ${attachments.length} attachment(s): ${attachments.map((a) => a.filename).join(", ")})` : "";
-    console.log(`[email stub] To: ${to}\nSubject: ${subject}${attachmentNote}\n${html}\n`);
+    console.log(`[email stub] To: ${to}\nSubject: ${subject}\n${html}\n`);
     return { id: `stub_${Date.now()}` };
   }
 
@@ -38,7 +21,7 @@ export async function sendEmail({
       Authorization: `Bearer ${RESEND_API_KEY}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ from: FROM_EMAIL, to, subject, html, attachments }),
+    body: JSON.stringify({ from: FROM_EMAIL, to, subject, html }),
   });
 
   if (!res.ok) {
