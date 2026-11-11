@@ -142,7 +142,7 @@ export async function notifyTravellerToReview(bookingId: string) {
 
   await notifyUser(row.travellerEmail, "How was your trip?", [
     `Your booking for <strong>${row.listingTitle}</strong> is complete — tell other travellers how it went.`,
-    `<a href="${APP_URL}/passport?tab=bookings#booking-${bookingId}">Leave a review</a>.`,
+    `<a href="${APP_URL}/rewards?tab=bookings#booking-${bookingId}">Leave a review</a>.`,
   ]);
 }
 

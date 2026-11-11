@@ -16,7 +16,7 @@ export default async function PointsReservePage() {
         <Link href="/admin/rewards" className="eyebrow text-ink/40 hover:text-ink">
           ← Rewards
         </Link>
-        <h1 className="font-serif-editorial mt-2 text-2xl text-ink">Points reserve</h1>
+        <h1 className="font-serif-editorial mt-2 text-2xl text-ink">Wano Points reserve</h1>
         <p className="mt-1 text-sm text-ink/60">
           Part B paid-bookings pilot only — the UGX cost of every point on the books, and whether rewards are
           outpacing what the pilot is actually earning in commission.

@@ -130,7 +130,7 @@ export async function generatePerkAddedItem(promoCodeId: string) {
       kind: "perk_added",
       title: promo.title,
       discountText: promo.discountText,
-      href: promo.listingId ? `/explore/${promo.listingId}` : "/passport?tab=rewards",
+      href: promo.listingId ? `/explore/${promo.listingId}` : "/rewards",
     },
   });
 }
@@ -334,7 +334,7 @@ export async function runFeedTimeBasedGenerators() {
           title: promo.title,
           discountText: promo.discountText,
           expiresAt: promo.expiresAt!.toISOString(),
-          href: promo.listingId ? `/explore/${promo.listingId}` : "/passport?tab=rewards",
+          href: promo.listingId ? `/explore/${promo.listingId}` : "/rewards",
         },
       })
     ) {

@@ -36,7 +36,7 @@ export default async function ClaimPage({ params }: { params: Promise<{ code: st
     const travellerProfile = await getTravellerProfileByUserId(session.userId);
     if (travellerProfile) {
       await finalizeFunzoneClaim(code, travellerProfile.id);
-      redirect("/passport?tab=rewards");
+      redirect("/rewards");
     }
   }
 

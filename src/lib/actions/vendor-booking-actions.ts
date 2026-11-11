@@ -8,6 +8,8 @@ import { notifyTravellerOfBookingStatus, notifyTravellerOfVendorCancellation } f
 import { withRlsContext } from "@/lib/db-context";
 import { awardReferralCreditOnFirstBooking } from "@/lib/data/traveller";
 import { stampBookingGuests } from "@/lib/data/plans";
+import { awardPoints } from "@/lib/data/points";
+import { STAMP_XP } from "@/lib/rewards-config";
 import { getVendorProfileByUserId } from "@/lib/data/vendor";
 import { vendorCancelConfirmedBooking } from "@/lib/slot-booking";
 import type { ActionState } from "@/lib/validation";
@@ -73,11 +75,24 @@ export async function respondToBookingAction(
         .limit(1);
 
       if (!existingStamp) {
-        await tx.insert(stamps).values({
-          travellerId: confirmedBooking.travellerId,
-          journeyId: confirmedBooking.journeyId!,
-          bookingId: confirmedBooking.id,
-        });
+        const [stamp] = await tx
+          .insert(stamps)
+          .values({
+            travellerId: confirmedBooking.travellerId,
+            journeyId: confirmedBooking.journeyId!,
+            bookingId: confirmedBooking.id,
+          })
+          .returning({ id: stamps.id });
+        await awardPoints(
+          {
+            travellerId: confirmedBooking.travellerId,
+            delta: STAMP_XP,
+            sourceType: "stamp",
+            sourceId: stamp.id,
+            reason: "Passport stamp",
+          },
+          tx,
+        );
       }
       await stampBookingGuests(tx, confirmedBooking);
     });
@@ -135,6 +150,7 @@ export async function vendorCancelConfirmedBookingAction(bookingId: string): Pro
   revalidatePath("/vendor/dashboard/bookings");
   revalidatePath("/admin/bookings");
   revalidatePath("/passport");
+  revalidatePath("/rewards");
 
   return {};
 }

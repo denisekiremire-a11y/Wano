@@ -6,7 +6,7 @@ import { notifyTravellerToReview } from "@/lib/booking-notifications";
 import { withRlsContext } from "@/lib/db-context";
 import { checkAndAwardTrailCompletions } from "@/lib/data/trails";
 import { issueCollabRewardsForBooking } from "@/lib/actions/reward-actions";
-import { awardPointsForCompletedBooking } from "@/lib/points-on-booking";
+import { awardCompletionXp, awardPointsForCompletedBooking } from "@/lib/points-on-booking";
 
 // Flips "confirmed" bookings whose date has passed to "completed" — the
 // only other place status reaches "completed" today is a manual admin
@@ -52,7 +52,7 @@ export async function GET(request: Request) {
 
     // Event-sourced: the standalone event's own start time.
     const dueEventBookings = await tx
-      .select({ id: bookings.id })
+      .select({ id: bookings.id, travellerId: bookings.travellerId })
       .from(bookings)
       .innerJoin(events, eq(events.id, bookings.eventId))
       .where(and(eq(bookings.status, "confirmed"), lt(events.startAt, new Date())));
@@ -72,6 +72,11 @@ export async function GET(request: Request) {
     if (listingId) await checkAndAwardTrailCompletions(travellerId, listingId);
     await issueCollabRewardsForBooking(travellerId, vendorProfileId);
     await awardPointsForCompletedBooking(id);
+    await awardCompletionXp(id, travellerId);
+  }
+
+  for (const { id, travellerId } of dueEventBookings) {
+    await awardCompletionXp(id, travellerId);
   }
 
   return NextResponse.json({

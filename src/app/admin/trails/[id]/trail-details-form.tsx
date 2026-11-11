@@ -36,7 +36,7 @@ export function TrailDetailsForm({
       </div>
       <div className="flex items-end gap-4">
         <div>
-          <label className="text-sm font-medium text-ink">Bonus XP</label>
+          <label className="text-sm font-medium text-ink">Bonus Wano Points</label>
           <input
             name="bonusXp"
             type="number"

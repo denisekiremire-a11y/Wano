@@ -32,8 +32,9 @@ export default async function CrewPage() {
           <p className="eyebrow text-ember">Crews</p>
           <h1 className="font-serif-editorial mt-2 text-3xl text-ink">Go out as a crew</h1>
           <p className="mt-2 text-sm text-ink/70">
-            Up to {CREW_MAX} friends share one Passport: everyone&apos;s XP added up, every neighbourhood any of you has
-            stamped, and who has done this week&apos;s challenges. You can be in one crew at a time.
+            Up to {CREW_MAX} friends share one Passport: everyone&apos;s Wano Points added up, every
+            neighbourhood any of you has stamped, and who has done this week&apos;s challenges. You can be
+            in one crew at a time.
           </p>
         </div>
         <section className="space-y-3 border border-ink/10 bg-white p-5">
@@ -70,7 +71,7 @@ export default async function CrewPage() {
       <section className="grid grid-cols-3 gap-px overflow-hidden border border-ink/10 bg-ink/10 text-center">
         <div className="bg-white p-4">
           <p className="font-mono-data text-2xl text-ink">{passport.totalXp.toLocaleString("en-UG")}</p>
-          <p className="eyebrow mt-1 text-ink/40">Crew XP</p>
+          <p className="eyebrow mt-1 text-ink/40">Crew points</p>
         </div>
         <div className="bg-white p-4">
           <p className="font-mono-data text-2xl text-ink">
@@ -86,7 +87,8 @@ export default async function CrewPage() {
         </div>
       </section>
       <p className="-mt-3 text-xs text-ink/50">
-        Crew XP is everyone&apos;s XP from the last 12 months added up. Each of you still keeps your own.
+        Crew points are everyone&apos;s Wano Points from the last 12 months added up. Each of you still
+        keeps your own.
       </p>
 
       <section className="space-y-3 border border-ink/10 bg-white p-5">
@@ -94,7 +96,7 @@ export default async function CrewPage() {
         {passport.challenges.map(({ challenge, doneBy }) => (
           <div key={challenge.id} className="border-t border-ink/10 pt-3 first:border-0 first:pt-0">
             <p className="text-sm font-medium text-ink">
-              {challenge.title} <span className="font-mono-data text-xs text-ink/40">+{challenge.xp} XP each</span>
+              {challenge.title} <span className="font-mono-data text-xs text-ink/40">+{challenge.xp} pts each</span>
             </p>
             <p className="text-xs text-ink/60">
               {doneBy.length === 0
@@ -132,7 +134,7 @@ export default async function CrewPage() {
                   {m.role === "owner" && <span className="eyebrow ml-2 text-ember">Owner</span>}
                 </p>
                 <p className="font-mono-data text-xs text-ink/50">
-                  {m.xp.toLocaleString("en-UG")} XP · {m.visitsThisWeek}{" "}
+                  {m.xp.toLocaleString("en-UG")} pts · {m.visitsThisWeek}{" "}
                   {m.visitsThisWeek === 1 ? "visit" : "visits"} this week
                 </p>
               </div>
@@ -148,8 +150,8 @@ export default async function CrewPage() {
         <section className="space-y-3 border border-ink/10 bg-white p-5">
           <h2 className="font-serif-editorial text-lg text-ink">Invite friends</h2>
           <p className="text-sm text-ink/60">
-            Anyone with this link can join while there&apos;s room. Your crew sees each other&apos;s XP, stamps and
-            weekly challenges.
+            Anyone with this link can join while there&apos;s room. Your crew sees each other&apos;s Wano
+            Points, stamps and weekly challenges.
           </p>
           <a
             href={whatsapp}

@@ -44,7 +44,7 @@ export default function DeleteAccountInfoPage() {
             <h2 className="font-serif-editorial text-lg text-ink">What gets deleted</h2>
             <p className="mt-1">
               Your name, email, phone number, birthday, photo, posts, stories, comments, reviews, follows and saved
-              places. Your Passport XP and stamps are lost.
+              places. Your Wano Points and stamps are lost.
             </p>
           </section>
           <section>

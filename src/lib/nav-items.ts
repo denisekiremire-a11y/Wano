@@ -39,7 +39,7 @@ export type NavItem = {
 const PRIMARY_NAV_ITEMS: NavItem[] = [
   { href: "/explore", label: "Explore", icon: "compass" },
   { href: "/events", label: "Events", icon: "calendar" },
-  { href: "/afcon", label: "AFCON 27", icon: "trophy" },
+  { href: "/rewards", label: "Rewards", icon: "ticket" },
   { href: "/social", label: "Social", icon: "chat", matchPrefixes: ["/messages"] },
   { href: "/passport", label: "Passport", icon: "stamp" },
 ];

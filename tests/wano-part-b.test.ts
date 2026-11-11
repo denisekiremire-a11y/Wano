@@ -157,7 +157,15 @@ describe("Part B — real-DB integration", () => {
     });
 
     it("applies points once, updates the booking, and refuses a second application", async () => {
-      await db.update(travellerProfiles).set({ phoneVerifiedAt: new Date() }).where(eq(travellerProfiles.id, travellerId));
+      // pointsUnlockedAt set directly here (not via awardPoints) since this
+      // test seeds the ledger with a raw insert too, below — both bypass
+      // the normal award path on purpose, to seed state rather than
+      // exercise earning. A traveller with a real 1000+ balance earned
+      // through awardPoints would already have this set automatically.
+      await db
+        .update(travellerProfiles)
+        .set({ phoneVerifiedAt: new Date(), pointsUnlockedAt: new Date() })
+        .where(eq(travellerProfiles.id, travellerId));
       await db.insert(pointsLedger).values({
         travellerId,
         delta: 1000,
@@ -185,9 +193,12 @@ describe("Part B — real-DB integration", () => {
     });
 
     it("refuses to apply more points than the booking total", async () => {
+      // 1 Wano Point = UGX 1 (POINT_VALUE_MINOR) — 100 points > a 50-minor
+      // total, regardless of balance (this check runs before the balance
+      // check, so it isn't about having enough points to spend).
       const [booking] = await db
         .insert(bookings)
-        .values({ travellerId, listingId: hotelListingId, status: "held", bookingRef: bookingRef(), totalMinor: 1_000 })
+        .values({ travellerId, listingId: hotelListingId, status: "held", bookingRef: bookingRef(), totalMinor: 50 })
         .returning();
 
       const result = await spendPointsOnBooking(booking.id, travellerId, 100);

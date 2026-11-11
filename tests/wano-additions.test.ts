@@ -29,6 +29,7 @@ import { tierForPoints } from "@/lib/data/points";
 import { getXpEarnedLast12Months } from "@/lib/data/rewards";
 import { awardReferralCreditOnFirstBooking } from "@/lib/data/traveller";
 import { checkAndAwardTrailCompletions } from "@/lib/data/trails";
+import { awardCompletionXp } from "@/lib/points-on-booking";
 import { issueCollabRewardsForBooking } from "@/lib/actions/reward-actions";
 import { WELCOME_POINTS, BOOKING_COMPLETION_XP } from "@/lib/rewards-config";
 
@@ -184,24 +185,33 @@ describe("Wano additions — real-DB integration", () => {
   });
 
   describe("getXpEarnedLast12Months", () => {
-    it("counts completed listing and event bookings without erroring", async () => {
-      // Regression test: the event-booking branch originally interpolated a
-      // raw JS Date into the sql`` template, which postgres.js rejects
-      // ("must be of type string... Received an instance of Date") — this
-      // only ever surfaced at runtime (Passport crashed), never in a type
-      // check, since drizzle's sql`` accepts any value at compile time.
-      await db.insert(bookings).values({
-        travellerId: referrerId,
-        listingId: listingAId,
-        status: "completed",
-        bookingRef: bookingRef(),
-      });
-      await db.insert(bookings).values({
-        travellerId: referrerId,
-        eventId,
-        status: "completed",
-        bookingRef: bookingRef(),
-      });
+    it("counts completed listing and event bookings, awarded via awardCompletionXp, without erroring", async () => {
+      // Regression coverage for both a listing-sourced and an event-sourced
+      // completed booking — the booking-completion cron calls
+      // awardCompletionXp for both kinds (see its two for-loops), so this
+      // exercises the same path rather than asserting on raw `bookings`
+      // rows the ledger was never told about.
+      const [listingBooking] = await db
+        .insert(bookings)
+        .values({
+          travellerId: referrerId,
+          listingId: listingAId,
+          status: "completed",
+          bookingRef: bookingRef(),
+        })
+        .returning({ id: bookings.id });
+      const [eventBooking] = await db
+        .insert(bookings)
+        .values({
+          travellerId: referrerId,
+          eventId,
+          status: "completed",
+          bookingRef: bookingRef(),
+        })
+        .returning({ id: bookings.id });
+
+      await awardCompletionXp(listingBooking.id, referrerId);
+      await awardCompletionXp(eventBooking.id, referrerId);
 
       const xp = await getXpEarnedLast12Months(referrerId);
 

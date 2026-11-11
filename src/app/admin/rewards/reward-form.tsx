@@ -86,7 +86,7 @@ export function RewardForm({
           <option value="manual">Campaign — travellers claim it on the place/event page</option>
           <option value="funzone">Fun Zone — staff issue it to a game winner</option>
           <option value="xp_draw">XP draw — awarded to a match-day draw winner</option>
-          <option value="points_shop">Points shop — travellers spend points to redeem</option>
+          <option value="points_shop">Points shop — travellers spend Wano Points to redeem</option>
           <option value="collab">Wano Collab — unlocked by a completed booking elsewhere</option>
         </select>
       </div>
@@ -118,7 +118,7 @@ export function RewardForm({
 
       {source === "points_shop" && (
         <div>
-          <label className="text-sm font-medium text-ink">Cost in points</label>
+          <label className="text-sm font-medium text-ink">Cost in Wano Points</label>
           <input
             name="pointsCost"
             type="number"
@@ -128,7 +128,7 @@ export function RewardForm({
             className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ember"
           />
           <p className="mt-1 text-xs text-ink/50">
-            Travellers can redeem this again and again, any time their points balance covers the cost.
+            Travellers can redeem this again and again, any time their Wano Points balance covers the cost.
           </p>
         </div>
       )}
@@ -146,7 +146,7 @@ export function RewardForm({
             <option value="fixed">Fixed amount (UGX)</option>
             <option value="freebie">Freebie</option>
             <option value="spend_perk">Spend-based perk (restaurants/bars)</option>
-            <option value="points">Points</option>
+            <option value="points">Wano Points</option>
           </select>
         </div>
         {discountType !== "freebie" && (
@@ -155,7 +155,7 @@ export function RewardForm({
               {discountType === "fixed"
                 ? "Amount (UGX)"
                 : discountType === "points"
-                  ? "Points granted"
+                  ? "Wano Points granted"
                   : "Percent"}
             </label>
             <input

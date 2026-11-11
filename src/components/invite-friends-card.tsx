@@ -3,7 +3,7 @@ import { FRIEND_FIRST_VISIT_XP } from "@/lib/rewards-config";
 
 /** "Bring your friends": a WhatsApp invite with the member's own join link.
  * Friends who join with it are connected automatically, and the member
- * earns XP when each one makes a first visit. */
+ * earns Wano Points when each one makes a first visit. */
 export function InviteFriendsCard({ referralCode, displayName }: { referralCode: string; displayName: string }) {
   const { whatsappUrl } = inviteLinks(referralCode, displayName.split(" ")[0] || displayName);
   return (
@@ -12,7 +12,7 @@ export function InviteFriendsCard({ referralCode, displayName }: { referralCode:
       <h2 className="font-serif-editorial mt-1 text-xl text-ink">Wano is better with your people</h2>
       <p className="mt-1 text-sm text-ink/60">
         Friends who join from your link are added as friends straight away, so you see where each other
-        is going. You get {FRIEND_FIRST_VISIT_XP} XP when each one makes their first visit.
+        is going. You get {FRIEND_FIRST_VISIT_XP} Wano Points when each one makes their first visit.
       </p>
       <a
         href={whatsappUrl}

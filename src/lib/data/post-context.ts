@@ -116,7 +116,7 @@ export async function resolvePostContexts(
         id: row.id,
         title: row.title,
         subtitle: row.discountText,
-        href: "/passport?tab=rewards",
+        href: "/rewards",
         ctaLabel: "Get code",
       });
     }

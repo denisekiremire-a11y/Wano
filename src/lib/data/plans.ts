@@ -3,6 +3,8 @@ import { and, asc, desc, eq, inArray, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
 import { bookingGuests, events, listings, planMembers, plans, stamps, travellerProfiles } from "@/db/schema";
 import type { DbOrTx } from "@/lib/db-context";
+import { awardPoints } from "@/lib/data/points";
+import { STAMP_XP } from "@/lib/rewards-config";
 
 export type PlanStatus = "going" | "maybe" | "no";
 export const PLAN_STATUSES: PlanStatus[] = ["going", "maybe", "no"];
@@ -123,8 +125,15 @@ export async function stampBookingGuests(
   const stamped = new Set(have.map((h) => h.travellerId));
   const fresh = guests.filter((g) => !stamped.has(g.travellerId));
   if (fresh.length > 0) {
-    await tx
+    const inserted = await tx
       .insert(stamps)
-      .values(fresh.map((g) => ({ travellerId: g.travellerId, journeyId: booking.journeyId!, bookingId: booking.id })));
+      .values(fresh.map((g) => ({ travellerId: g.travellerId, journeyId: booking.journeyId!, bookingId: booking.id })))
+      .returning({ id: stamps.id, travellerId: stamps.travellerId });
+    for (const stamp of inserted) {
+      await awardPoints(
+        { travellerId: stamp.travellerId, delta: STAMP_XP, sourceType: "stamp", sourceId: stamp.id, reason: "Passport stamp" },
+        tx,
+      );
+    }
   }
 }

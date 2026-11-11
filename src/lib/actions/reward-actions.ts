@@ -13,7 +13,9 @@ import { generateVoucherCode } from "@/lib/codes";
 import type { DbOrTx } from "@/lib/db-context";
 import { withRlsContext } from "@/lib/db-context";
 import { enforceBudgetCapIfNeeded } from "@/lib/data/budget";
-import { getClaimableRewardsAtVendorForTraveller, getOwningVendorProfileId, getRewardsSummary, getUserRewardById } from "@/lib/data/rewards";
+import { getClaimableRewardsAtVendorForTraveller, getOwningVendorProfileId, getUserRewardById } from "@/lib/data/rewards";
+import { awardPoints, POINTS_UNLOCK_THRESHOLD } from "@/lib/data/points";
+import { DROP_REDEMPTION_XP } from "@/lib/rewards-config";
 import { vendorRewardContentSchema } from "@/lib/actions/reward-shared";
 import { getPendingEditSubmission } from "@/lib/data/submissions";
 import { getTravellerProfileById, getTravellerProfileByUserId } from "@/lib/data/traveller";
@@ -37,6 +39,7 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 function revalidateRewardPaths() {
   revalidatePath("/passport");
+  revalidatePath("/rewards");
   revalidatePath("/admin/rewards");
   revalidatePath("/vendor/dashboard/redeem");
 }
@@ -184,23 +187,34 @@ export async function redeemPointsRewardAction(rewardId: string): Promise<Action
   if (!reward || !reward.active || reward.source !== "points_shop" || !reward.pointsCost) {
     return { error: "That reward isn't available to redeem." };
   }
-
-  const { totalPoints } = await getRewardsSummary(travellerProfile.id, travellerProfile.persona, travellerProfile.city);
+  if (!travellerProfile.pointsUnlockedAt) {
+    return { error: `Reach ${POINTS_UNLOCK_THRESHOLD.toLocaleString()} Wano Points to start spending.` };
+  }
 
   const redemption = await db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${travellerProfile.id}))`);
 
-    const [{ spent }] = await tx
-      .select({ spent: sql<number>`coalesce(sum(${pointRedemptions.pointsCost}), 0)::int` })
-      .from(pointRedemptions)
-      .where(eq(pointRedemptions.travellerId, travellerProfile.id));
+    const [{ balance }] = await tx
+      .select({ balance: sql<number>`coalesce(sum(${pointsLedger.delta}), 0)::int` })
+      .from(pointsLedger)
+      .where(eq(pointsLedger.travellerId, travellerProfile.id));
 
-    if (totalPoints - spent < reward.pointsCost!) return null;
+    if (balance < reward.pointsCost!) return null;
 
     const [created] = await tx
       .insert(pointRedemptions)
       .values({ travellerId: travellerProfile.id, rewardId: reward.id, pointsCost: reward.pointsCost! })
       .returning();
+    await awardPoints(
+      {
+        travellerId: travellerProfile.id,
+        delta: -reward.pointsCost!,
+        sourceType: "points_shop_redemption",
+        sourceId: created.id,
+        reason: `Redeemed "${reward.title}"`,
+      },
+      tx,
+    );
     return created;
   });
 
@@ -552,13 +566,31 @@ export async function markRewardRedeemedAction(
       if (updated.length === 0) return { error: "Already redeemed." };
 
       if (amounts.pointsToGrant) {
-        await tx.insert(pointsLedger).values({
-          travellerId: full.userReward.travellerId,
-          delta: amounts.pointsToGrant,
-          reason: `Redeemed "${full.reward.title}"`,
-          sourceType: "reward_redemption",
-          sourceId: userRewardId,
-        });
+        await awardPoints(
+          {
+            travellerId: full.userReward.travellerId,
+            delta: amounts.pointsToGrant,
+            sourceType: "reward_redemption",
+            sourceId: userRewardId,
+            reason: `Redeemed "${full.reward.title}"`,
+          },
+          tx,
+        );
+      } else if (full.reward.source === "drop") {
+        // A Daily Drop voucher redeemed for something other than points
+        // (a free item, a percent off, …) still pays its own flat Drop XP —
+        // the discountType="points" branch above already grants the
+        // reward's own point value instead, so the two never stack.
+        await awardPoints(
+          {
+            travellerId: full.userReward.travellerId,
+            delta: DROP_REDEMPTION_XP,
+            sourceType: "drop_redemption",
+            sourceId: userRewardId,
+            reason: "Daily Drop used",
+          },
+          tx,
+        );
       }
 
       return { travellerId: full.userReward.travellerId, pointsGranted: amounts.pointsToGrant };

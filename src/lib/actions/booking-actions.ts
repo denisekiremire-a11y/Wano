@@ -38,6 +38,7 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 function revalidateBookingPaths() {
   revalidatePath("/passport");
+  revalidatePath("/rewards");
   revalidatePath("/vendor/dashboard/bookings");
   revalidatePath("/vendor/dashboard/referrals");
 }
@@ -435,6 +436,7 @@ export async function buyEventTicketsAction(_prev: ActionState | undefined, form
   await notifyTravellerOfNewBooking(booking.id);
 
   revalidatePath("/passport");
+  revalidatePath("/rewards");
   revalidatePath("/vendor/dashboard/bookings");
 
   redirect(`/bookings/${booking.bookingRef}`);
@@ -457,6 +459,7 @@ export async function cancelBookingAction(bookingId: string): Promise<ActionStat
   await notifyVendorOfTravellerCancellation(bookingId);
 
   revalidatePath("/passport");
+  revalidatePath("/rewards");
   revalidatePath(`/bookings`);
   revalidatePath("/vendor/dashboard/bookings");
 

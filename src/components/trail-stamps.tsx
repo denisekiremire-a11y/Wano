@@ -24,7 +24,7 @@ export function TrailStamps({ rows }: { rows: Awaited<ReturnType<typeof getTrail
           </div>
           <p className="font-mono-data mt-1.5 text-xs text-ink/60">
             {visitedCount} of {totalCount} {totalCount === 1 ? "listing" : "listings"} visited
-            {completed ? ` · +${trail.bonusXp} XP earned` : ` · +${trail.bonusXp} bonus XP`}
+            {completed ? ` · +${trail.bonusXp} pts earned` : ` · +${trail.bonusXp} bonus pts`}
           </p>
         </div>
       ))}

@@ -1,10 +1,10 @@
 import "server-only";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { bookings, listings, pointsLedger } from "@/db/schema";
+import { bookingGuests, bookings, listings, pointsLedger } from "@/db/schema";
 import { withRlsContext } from "@/lib/db-context";
-import { POINT_VALUE_MINOR } from "@/lib/data/points";
-import { EARN_RATE_BY_LISTING_TYPE } from "@/lib/rewards-config";
+import { awardPoints, POINT_VALUE_MINOR } from "@/lib/data/points";
+import { BOOKING_COMPLETION_XP, EARN_RATE_BY_LISTING_TYPE } from "@/lib/rewards-config";
 
 /** Awards Rewards points on a just-completed booking — Part B pilot
  * only. Gated on estimatedCommission > 0 rather than re-checking the
@@ -57,4 +57,32 @@ export async function awardPointsForCompletedBooking(bookingId: string): Promise
       sourceId: bookingId,
     }),
   );
+}
+
+/** Booking-completion XP (the universal, always-on 100 XP) plus the same
+ * amount to any group-booking guests — for whichever booking (listing or
+ * event) just transitioned confirmed→completed. Separate sourceType from
+ * this file's Part-B-pilot-only "booking" ledger entry above, which only
+ * fires under the paid-bookings pilot and is valued differently. */
+export async function awardCompletionXp(bookingId: string, travellerId: string) {
+  await awardPoints({
+    travellerId,
+    delta: BOOKING_COMPLETION_XP,
+    sourceType: "booking_completion_xp",
+    sourceId: bookingId,
+    reason: "Booking completed",
+  });
+  const guests = await db
+    .select({ travellerId: bookingGuests.travellerId })
+    .from(bookingGuests)
+    .where(eq(bookingGuests.bookingId, bookingId));
+  for (const guest of guests) {
+    await awardPoints({
+      travellerId: guest.travellerId,
+      delta: BOOKING_COMPLETION_XP,
+      sourceType: "group_outing",
+      sourceId: bookingId,
+      reason: "Group outing completed",
+    });
+  }
 }

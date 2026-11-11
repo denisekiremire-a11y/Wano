@@ -164,9 +164,9 @@ describe("group bookings", () => {
     expect(guestStamps.map((s) => s.travellerId).sort()).toEqual([maker.id, friends[0].id, friends[1].id].sort());
 
     await adminSetBookingStatusAction(booking.id, "completed");
-    const summary = await getRewardsSummary(friends[0].id, null, null);
+    const summary = await getRewardsSummary(friends[0].id);
     expect(summary.breakdown.find((b) => b.label === "Group outings with friends")).toMatchObject({ count: 1, points: 100 });
-    const notOnIt = await getRewardsSummary(friends[2].id, null, null);
+    const notOnIt = await getRewardsSummary(friends[2].id);
     expect(notOnIt.breakdown.find((b) => b.label === "Group outings with friends")?.count).toBe(0);
   });
 
