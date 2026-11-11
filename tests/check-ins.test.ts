@@ -117,7 +117,7 @@ describe("verified visits", () => {
     const xpDrop = (await countXpDropDays(t.travellerId)) * XP_DROP_XP;
     expect(after - before).toBe(challengeXp + 2 * AREA_STAMP_XP + xpDrop);
 
-    const summary = await getRewardsSummary(t.travellerId, null, null);
+    const summary = await getRewardsSummary(t.travellerId);
     expect(summary.breakdown.find((b) => b.label === "Neighbourhood stamps")?.count).toBe(2);
     expect(summary.breakdown.find((b) => b.label === "Weekly challenges")?.points).toBe(challengeXp);
   });
@@ -188,7 +188,7 @@ describe("weekly streak", () => {
     const dropDaysBefore = await countXpDropDays(t.travellerId);
     await recordCheckIn(t.travellerId, ntinda.vendorId, "qr", new Date(now));
     expect(await getStreakStatus(t.travellerId)).toMatchObject({ current: 4, best: 4, thisWeekDone: true });
-    const summary = await getRewardsSummary(t.travellerId, null, null);
+    const summary = await getRewardsSummary(t.travellerId);
     expect(summary.breakdown.find((b) => b.label === "Streak milestones")).toMatchObject({ count: 1, points: 300 });
     // The new visit may also finish this week's "Out and about", and on
     // days when the XP Drop area is Ntinda it also pays the XP Drop; the

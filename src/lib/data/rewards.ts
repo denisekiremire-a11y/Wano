@@ -1,277 +1,86 @@
-import { and, asc, desc, eq, gte, ilike, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   adminActionLog,
-  bookingGuests,
-  bookings,
-  challengeCompletions,
   events,
   listings,
-  pointRedemptions,
-  referralCredits,
-  reviews,
+  pointsLedger,
   rewards,
-  stamps,
-  trailCompletions,
-  trails,
-  travellerInterests,
   travellerProfiles,
   userRewards,
   users,
   vendorProfiles,
 } from "@/db/schema";
 import type { DbOrTx } from "@/lib/db-context";
-import { getPointsEarnedLast12Months, tierForPoints, twelveMonthsAgo, type Tier } from "@/lib/data/points";
-import { AREA_STAMP_XP, BOOKING_COMPLETION_XP, FRIEND_FIRST_VISIT_XP, DROP_REDEMPTION_XP, TIER_THRESHOLDS, XP_DROP_XP } from "@/lib/rewards-config";
-import {
-  countAreaStampsEarned,
-  countXpDropDays,
-  countInvitedFriendsVisited,
-  getStreakXp,
-  getWeeklyChallengeXp,
-} from "@/lib/data/check-ins";
-import { withRlsContext } from "@/lib/db-context";
-import { getChallengesWithStatus, getPassportProgress, getReferralStats } from "./traveller";
+import { getPointsBalance, getPointsEarnedLast12Months, tierForPoints, type Tier } from "@/lib/data/points";
+import { TIER_THRESHOLDS } from "@/lib/rewards-config";
+import { getReferralStats } from "./traveller";
 import { resolvePostContexts } from "./post-context";
 
-// Points weighting — extends the existing stamps/challenges/reviews/referral
-// mechanics into one balance rather than building a separate parallel
-// currency. Tune freely; these are just starting values.
-const POINTS = {
-  perStamp: 100,
-  perChallenge: 50,
-  perReview: 30,
-  perReferral: 150,
-  profileComplete: 50,
-} as const;
+// Every sourceType that can carry a positive delta into pointsLedger, in
+// the fixed display order the Rewards page's breakdown has always shown —
+// see each award call site (awardPoints/maybeAwardProfileCompleteBonus) for
+// where each one is actually written.
+const BREAKDOWN_SOURCES: { sourceType: string; label: string }[] = [
+  { sourceType: "stamp", label: "Passport stamps" },
+  { sourceType: "challenge", label: "Challenges completed" },
+  { sourceType: "review", label: "Reviews written" },
+  { sourceType: "referral_credit", label: "Friends referred" },
+  { sourceType: "welcome_bonus", label: "Welcome bonus" },
+  { sourceType: "profile_complete", label: "Profile complete" },
+  { sourceType: "booking_completion_xp", label: "Bookings completed" },
+  { sourceType: "trail_completion", label: "Trails completed" },
+  { sourceType: "drop_redemption", label: "Daily Drops used" },
+  { sourceType: "xp_drop", label: "XP Drops" },
+  { sourceType: "weekly_challenge", label: "Weekly challenges" },
+  { sourceType: "area_stamp", label: "Neighbourhood stamps" },
+  { sourceType: "friend_first_visit", label: "Invited friends out" },
+  { sourceType: "streak_milestone", label: "Streak milestones" },
+  { sourceType: "group_outing", label: "Group outings with friends" },
+  { sourceType: "reward_redemption", label: "Reward points granted" },
+  { sourceType: "booking", label: "Booking points earned" },
+];
 
-/** Daily Drop vouchers this member actually used at the venue (optionally
- * since a date). user_rewards is owner-only under RLS, so the count is read
- * in the member's own context. */
-async function countRedeemedDrops(travellerId: string, since?: Date): Promise<number> {
-  const [row] = await withRlsContext({ role: "traveller", travellerProfileId: travellerId }, (tx) =>
-    tx
-      .select({ n: sql<number>`count(*)::int` })
-      .from(userRewards)
-      .innerJoin(rewards, eq(userRewards.rewardId, rewards.id))
-      .where(
-        and(
-          eq(userRewards.travellerId, travellerId),
-          eq(userRewards.status, "redeemed"),
-          eq(rewards.source, "drop"),
-          since ? gte(userRewards.redeemedAt, since) : undefined,
-        ),
-      ),
-  );
-  return row?.n ?? 0;
-}
-
-/** Completed bookings a friend made for this member as a group guest. They
- * earn the same completed-booking XP as the booker. */
-async function countCompletedGroupOutings(travellerId: string, since?: Date): Promise<number> {
-  const rows = await withRlsContext({ role: "admin" }, (tx) =>
-    tx
-      .select({ id: bookingGuests.id })
-      .from(bookingGuests)
-      .innerJoin(bookings, eq(bookings.id, bookingGuests.bookingId))
-      .where(
-        and(
-          eq(bookingGuests.travellerId, travellerId),
-          eq(bookings.status, "completed"),
-          since ? bookingCompletionDateFilter(since) : undefined,
-        ),
-      ),
-  );
-  return rows.length;
-}
-
-export async function getRewardsSummary(travellerId: string, persona: string | null, city: string | null) {
-  const [
-    { stampCount },
-    challenges,
-    myReviews,
-    referralStats,
-    interestRows,
-    [{ spent }],
-    completedBookings,
-    trailXpRows,
-    dropsUsed,
-    weekly,
-    areaStamps,
-    friendsVisited,
-    streak,
-    groupOutings,
-    xpDrops,
-  ] = await Promise.all([
-    getPassportProgress(travellerId),
-    getChallengesWithStatus(travellerId),
-    db.select({ id: reviews.id }).from(reviews).where(eq(reviews.travellerId, travellerId)),
+export async function getRewardsSummary(travellerId: string) {
+  const [earnedBySource, balance, referralStats] = await Promise.all([
+    db
+      .select({
+        sourceType: pointsLedger.sourceType,
+        count: sql<number>`count(*)::int`,
+        points: sql<number>`sum(${pointsLedger.delta})::int`,
+      })
+      .from(pointsLedger)
+      .where(and(eq(pointsLedger.travellerId, travellerId), sql`${pointsLedger.delta} > 0`))
+      .groupBy(pointsLedger.sourceType),
+    getPointsBalance(travellerId),
     getReferralStats(travellerId),
-    db.select({ id: travellerInterests.id }).from(travellerInterests).where(eq(travellerInterests.travellerId, travellerId)),
-    db
-      .select({ spent: sql<number>`coalesce(sum(${pointRedemptions.pointsCost}), 0)::int` })
-      .from(pointRedemptions)
-      .where(eq(pointRedemptions.travellerId, travellerId)),
-    db
-      .select({ id: bookings.id })
-      .from(bookings)
-      .where(and(eq(bookings.travellerId, travellerId), eq(bookings.status, "completed"))),
-    db
-      .select({ bonusXp: trails.bonusXp })
-      .from(trailCompletions)
-      .innerJoin(trails, eq(trailCompletions.trailId, trails.id))
-      .where(eq(trailCompletions.travellerId, travellerId)),
-    countRedeemedDrops(travellerId),
-    getWeeklyChallengeXp(travellerId),
-    countAreaStampsEarned(travellerId),
-    countInvitedFriendsVisited(travellerId),
-    getStreakXp(travellerId),
-    countCompletedGroupOutings(travellerId),
-    countXpDropDays(travellerId),
   ]);
 
-  const completedChallenges = challenges.filter((c) => c.completion?.status === "verified").length;
-  const profileComplete = Boolean(persona && city && interestRows.length > 0);
-  const trailsXp = trailXpRows.reduce((sum, r) => sum + r.bonusXp, 0);
-
-  const breakdown = [
-    { label: "Passport stamps", count: stampCount, points: stampCount * POINTS.perStamp },
-    { label: "Challenges completed", count: completedChallenges, points: completedChallenges * POINTS.perChallenge },
-    { label: "Reviews written", count: myReviews.length, points: myReviews.length * POINTS.perReview },
-    {
-      // Counted from referralCredits with status="awarded" (see
-      // getReferralStats) — a referral only pays out once the referee's
-      // first booking is confirmed, not at signup.
-      label: "Friends referred",
-      count: referralStats.awardedCount,
-      points: referralStats.awardedPoints,
-    },
-    { label: "Profile complete", count: profileComplete ? 1 : 0, points: profileComplete ? POINTS.profileComplete : 0 },
-    {
-      label: "Bookings completed",
-      count: completedBookings.length,
-      points: completedBookings.length * BOOKING_COMPLETION_XP,
-    },
-    { label: "Trails completed", count: trailXpRows.length, points: trailsXp },
-    { label: "Daily Drops used", count: dropsUsed, points: dropsUsed * DROP_REDEMPTION_XP },
-    { label: "XP Drops", count: xpDrops, points: xpDrops * XP_DROP_XP },
-    { label: "Weekly challenges", count: weekly.count, points: weekly.xp },
-    { label: "Neighbourhood stamps", count: areaStamps, points: areaStamps * AREA_STAMP_XP },
-    { label: "Invited friends out", count: friendsVisited, points: friendsVisited * FRIEND_FIRST_VISIT_XP },
-    { label: "Streak milestones", count: streak.count, points: streak.xp },
-    { label: "Group outings with friends", count: groupOutings, points: groupOutings * BOOKING_COMPLETION_XP },
-  ];
-
-  // "totalPoints"/"availablePoints" are this function's existing field
-  // names — they're Passport XP, shown under that label in the UI (see
-  // the two-ledger split in the Wano additions plan). Spendable, UGX-valued
-  // points live in pointsLedger (src/lib/data/points.ts) and are entirely
-  // separate — never summed with this total.
+  const earnedMap = new Map(earnedBySource.map((r) => [r.sourceType, { count: r.count, points: r.points }]));
+  const breakdown = BREAKDOWN_SOURCES.map(({ sourceType, label }) => ({
+    label,
+    count: earnedMap.get(sourceType)?.count ?? 0,
+    points: earnedMap.get(sourceType)?.points ?? 0,
+  }));
   const totalPoints = breakdown.reduce((sum, b) => sum + b.points, 0);
 
   return {
     totalPoints,
-    availablePoints: totalPoints - spent,
+    availablePoints: balance,
     breakdown,
     referralCode: referralStats.referralCode,
     pendingReferrals: referralStats.pendingCount,
   };
 }
 
-function bookingCompletionDateFilter(since: Date) {
-  // Mirrors the booking-completion cron's own due-date logic: a listing
-  // booking's date proxy is coalesce(endDate, visitDate); an event
-  // booking's is the event's own startAt.
-  return sql`(
-    (${bookings.listingId} is not null and coalesce(${bookings.endDate}, ${bookings.visitDate}) >= ${since.toISOString().slice(0, 10)})
-    or (${bookings.eventId} is not null and exists (
-      select 1 from events e where e.id = ${bookings.eventId} and e.start_at >= ${since.toISOString()}
-    ))
-  )`;
-}
-
-// XP earned in the trailing 12 months — the window getTierStatus uses for
-// tiering (see judgment call 4 in the Wano additions plan). The one-off
-// "profile complete" bonus has no event date, so it's excluded here
-// (counted only in getRewardsSummary's lifetime total).
-export async function getXpEarnedLast12Months(travellerId: string): Promise<number> {
-  const since = twelveMonthsAgo();
-
-  const [stampRows, completionRows, reviewRows, referralRows, completedBookingRows, trailRows, dropsUsed, weekly, areaStamps, friendsVisited, streak, groupOutings, xpDrops] =
-    await Promise.all([
-    db
-      .select({ id: stamps.id })
-      .from(stamps)
-      .where(and(eq(stamps.travellerId, travellerId), gte(stamps.earnedAt, since))),
-    db
-      .select({ id: challengeCompletions.id })
-      .from(challengeCompletions)
-      .where(
-        and(
-          eq(challengeCompletions.travellerId, travellerId),
-          eq(challengeCompletions.status, "verified"),
-          isNotNull(challengeCompletions.completedAt),
-          gte(challengeCompletions.completedAt, since),
-        ),
-      ),
-    db
-      .select({ id: reviews.id })
-      .from(reviews)
-      .where(and(eq(reviews.travellerId, travellerId), gte(reviews.createdAt, since))),
-    db
-      .select({ points: referralCredits.points })
-      .from(referralCredits)
-      .where(
-        and(
-          eq(referralCredits.referrerId, travellerId),
-          eq(referralCredits.status, "awarded"),
-          isNotNull(referralCredits.awardedAt),
-          gte(referralCredits.awardedAt, since),
-        ),
-      ),
-    db
-      .select({ id: bookings.id })
-      .from(bookings)
-      .where(
-        and(eq(bookings.travellerId, travellerId), eq(bookings.status, "completed"), bookingCompletionDateFilter(since)),
-      ),
-    db
-      .select({ bonusXp: trails.bonusXp })
-      .from(trailCompletions)
-      .innerJoin(trails, eq(trailCompletions.trailId, trails.id))
-      .where(and(eq(trailCompletions.travellerId, travellerId), gte(trailCompletions.completedAt, since))),
-    countRedeemedDrops(travellerId, since),
-    getWeeklyChallengeXp(travellerId, since),
-    countAreaStampsEarned(travellerId, since),
-    countInvitedFriendsVisited(travellerId, since),
-    getStreakXp(travellerId, since),
-    countCompletedGroupOutings(travellerId, since),
-    countXpDropDays(travellerId, since),
-  ]);
-
-  return (
-    stampRows.length * POINTS.perStamp +
-    completionRows.length * POINTS.perChallenge +
-    reviewRows.length * POINTS.perReview +
-    referralRows.reduce((sum, r) => sum + r.points, 0) +
-    completedBookingRows.length * BOOKING_COMPLETION_XP +
-    trailRows.reduce((sum, r) => sum + r.bonusXp, 0) +
-    dropsUsed * DROP_REDEMPTION_XP +
-    weekly.xp +
-    areaStamps * AREA_STAMP_XP +
-    friendsVisited * FRIEND_FIRST_VISIT_XP +
-    streak.xp +
-    groupOutings * BOOKING_COMPLETION_XP +
-    xpDrops * XP_DROP_XP
-  );
-}
+// Every XP-earning (or -spending) action now lives in one ledger — see
+// awardPoints in src/lib/data/points.ts, which getPointsEarnedLast12Months
+// already sums (positive deltas only, trailing 12 months). Kept under this
+// name since src/lib/data/crews.ts imports it for a crew's combined total.
+export { getPointsEarnedLast12Months as getXpEarnedLast12Months } from "@/lib/data/points";
 
 export async function getTierStatus(travellerId: string) {
-  const [xp, points] = await Promise.all([
-    getXpEarnedLast12Months(travellerId),
-    getPointsEarnedLast12Months(travellerId),
-  ]);
-  const earnedLast12Months = xp + points;
+  const earnedLast12Months = await getPointsEarnedLast12Months(travellerId);
   const tier: Tier = tierForPoints(earnedLast12Months);
 
   const nextTier: Exclude<Tier, "explorer"> | null =
@@ -281,8 +90,12 @@ export async function getTierStatus(travellerId: string) {
   return {
     tier,
     earnedLast12Months,
-    xpEarnedLast12Months: xp,
-    pointsEarnedLast12Months: points,
+    // Both now the same unified figure — kept as two fields so
+    // src/app/admin/rewards/points/page.tsx (which shows them as separate
+    // "XP (12mo)"/"Points (12mo)" stats) doesn't need changing in this
+    // backend-only change; collapsing the display to one stat is PR2's job.
+    xpEarnedLast12Months: earnedLast12Months,
+    pointsEarnedLast12Months: earnedLast12Months,
     nextTier,
     nextThreshold,
     progressToNextTier: nextThreshold ? Math.min(1, earnedLast12Months / nextThreshold) : 1,

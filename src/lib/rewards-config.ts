@@ -1,14 +1,15 @@
 import type { listingTypeEnum } from "@/db/schema";
-import { POINT_VALUE_MINOR, TIER_THRESHOLDS } from "@/lib/data/points";
+import { POINT_VALUE_MINOR, PROFILE_COMPLETE_XP, TIER_THRESHOLDS } from "@/lib/data/points";
 
 type ListingType = (typeof listingTypeEnum.enumValues)[number];
 
 // Single source of truth for every rewards/commission number the Wano
-// additions plan specifies. POINT_VALUE_UGX and TIER_THRESHOLDS are
-// re-exported from points.ts (their canonical owner) rather than
-// redefined here, to avoid a circular import and keep one literal each.
+// additions plan specifies. POINT_VALUE_UGX, TIER_THRESHOLDS, and
+// PROFILE_COMPLETE_XP are re-exported from points.ts (their canonical
+// owner) rather than redefined here, to avoid a circular import and keep
+// one literal each.
 export const POINT_VALUE_UGX = POINT_VALUE_MINOR;
-export { TIER_THRESHOLDS };
+export { TIER_THRESHOLDS, PROFILE_COMPLETE_XP };
 
 // Referral: 150 points to the referrer, 50 welcome points to the new
 // user, both paid only once the new user's first booking completes (see
@@ -16,14 +17,24 @@ export { TIER_THRESHOLDS };
 export const REFERRAL_POINTS = 150;
 export const WELCOME_POINTS = 50;
 
-// XP awarded for each completed booking (live-counted, not ledger-backed
-// — see getXpEarnedLast12Months in data/rewards.ts, same style as every
-// other XP source).
+// XP awarded for each completed booking, now ledger-backed via awardPoints
+// (sourceType "booking_completion_xp" — distinct from points-on-booking.ts's
+// Part-B-pilot-only "booking" sourceType, so the two never collide).
 export const BOOKING_COMPLETION_XP = 100;
 
-// XP for each Daily Drop voucher used at the venue (live-counted the same
-// way, from redeemed user_rewards whose reward is a Drop).
+// XP for each Daily Drop voucher used at the venue, ledger-backed via
+// awardPoints for every voucher except a discountType="points" one (that
+// subtype already grants ledger points directly in markRewardRedeemedAction).
 export const DROP_REDEMPTION_XP = 50;
+
+// Passport stamp (one per journey booked, including group-booking guests).
+export const STAMP_XP = 100;
+
+// A verified/admin-approved challenge completion.
+export const CHALLENGE_XP = 50;
+
+// A review written on a completed booking.
+export const REVIEW_XP = 30;
 
 // Commission per listing type. Used only by Part B (paid bookings, behind
 // NEXT_PUBLIC_PAID_BOOKINGS_ENABLED) — 0 while every booking is pay-at-venue.

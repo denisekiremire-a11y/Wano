@@ -227,6 +227,11 @@ export const travellerProfiles = pgTable(
     // Discovery Makers). Shows the creator badge and unlocks creator lists,
     // which an admin still reviews before they go public.
     creatorApprovedAt: timestamp("creator_approved_at", { withTimezone: true }),
+    // Set once (never cleared) the first time this traveller's Wano Points
+    // balance reaches POINTS_UNLOCK_THRESHOLD (src/lib/data/points.ts) — a
+    // permanent, lifetime gate on spending points, separate from Tier
+    // (which is a rolling trailing-12-months figure and can go back down).
+    pointsUnlockedAt: timestamp("points_unlocked_at", { withTimezone: true }),
   },
   (table) => [index("traveller_profiles_referred_by_idx").on(table.referredByTravellerId)],
 );

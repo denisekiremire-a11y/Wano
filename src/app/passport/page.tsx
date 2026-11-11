@@ -99,7 +99,7 @@ export default async function PassportPage({
   ] = await Promise.all([
     db.select().from(users).where(eq(users.id, session.userId)).limit(1).then((r) => r[0]),
     getPassportProgress(travellerProfile.id),
-    getRewardsSummary(travellerProfile.id, travellerProfile.persona, travellerProfile.city),
+    getRewardsSummary(travellerProfile.id),
     getTierStatus(travellerProfile.id),
     getPointsSummary(travellerProfile.id),
     getTrailProgressForTraveller(travellerProfile.id),

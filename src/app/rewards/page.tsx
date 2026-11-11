@@ -51,7 +51,7 @@ export default async function RewardsPage({
     await Promise.all([
       getTravellerBookings(travellerProfile.id),
       getReviewableBookings(travellerProfile.id),
-      getRewardsSummary(travellerProfile.id, travellerProfile.persona, travellerProfile.city),
+      getRewardsSummary(travellerProfile.id),
       getTierStatus(travellerProfile.id),
       getPointsSummary(travellerProfile.id),
       getAllActiveDeals(),

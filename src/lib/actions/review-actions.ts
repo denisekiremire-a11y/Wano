@@ -10,6 +10,8 @@ import { logEvent } from "@/lib/analytics";
 import { withRlsContext } from "@/lib/db-context";
 import { generateReviewPostedItem } from "@/lib/feed-generators";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
+import { awardPoints } from "@/lib/data/points";
+import { REVIEW_XP } from "@/lib/rewards-config";
 import type { ActionState } from "@/lib/validation";
 
 const ratingField = z.coerce.number().int().min(1).max(5);
@@ -86,6 +88,13 @@ export async function submitReviewAction(
     .returning();
 
   await generateReviewPostedItem(review.id);
+  await awardPoints({
+    travellerId: travellerProfile.id,
+    delta: REVIEW_XP,
+    sourceType: "review",
+    sourceId: review.id,
+    reason: "Review written",
+  });
 
   await logEvent("review_submitted", {
     userId: session.userId,

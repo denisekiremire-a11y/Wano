@@ -6,6 +6,8 @@ import { db } from "@/db";
 import { challengeCompletions } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
+import { awardPoints } from "@/lib/data/points";
+import { CHALLENGE_XP } from "@/lib/rewards-config";
 
 export async function completeChallengeAction(challengeId: string) {
   const session = await requireRole("traveller");
@@ -28,11 +30,21 @@ export async function completeChallengeAction(challengeId: string) {
     return;
   }
 
-  await db.insert(challengeCompletions).values({
+  const [completion] = await db
+    .insert(challengeCompletions)
+    .values({
+      travellerId: travellerProfile.id,
+      challengeId,
+      status: "verified",
+      completedAt: new Date(),
+    })
+    .returning({ id: challengeCompletions.id });
+  await awardPoints({
     travellerId: travellerProfile.id,
-    challengeId,
-    status: "verified",
-    completedAt: new Date(),
+    delta: CHALLENGE_XP,
+    sourceType: "challenge",
+    sourceId: completion.id,
+    reason: "Challenge completed",
   });
 
   revalidatePath("/passport");

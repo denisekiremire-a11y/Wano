@@ -8,6 +8,7 @@ import { requireRole } from "@/lib/auth";
 import { logEvent } from "@/lib/analytics";
 import { withRlsContext } from "@/lib/db-context";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
+import { maybeAwardProfileCompleteBonus } from "@/lib/data/points";
 
 const PERSONAS = new Set(["newcomer", "tourist", "local"]);
 
@@ -29,6 +30,7 @@ export async function savePersonaAction(formData: FormData) {
   });
 
   await logEvent("onboarding_started", { userId: session.userId, role: session.role, metadata: { persona } });
+  await maybeAwardProfileCompleteBonus(travellerProfile.id);
   redirect("/onboarding/city");
 }
 
@@ -49,6 +51,7 @@ export async function saveCityAction(formData: FormData) {
       .where(eq(travellerProfiles.id, travellerProfile.id));
   });
 
+  await maybeAwardProfileCompleteBonus(travellerProfile.id);
   redirect("/onboarding/interests");
 }
 
@@ -67,5 +70,6 @@ export async function saveInterestsAction(formData: FormData) {
   }
 
   await logEvent("onboarding_completed", { userId: session.userId, role: session.role });
+  await maybeAwardProfileCompleteBonus(travellerProfile.id);
   redirect("/onboarding/done");
 }

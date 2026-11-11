@@ -3,6 +3,7 @@ import { and, asc, eq, gt, gte, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   listings,
+  pointsLedger,
   travellerProfiles,
   vendorProfiles,
   venueCheckIns,
@@ -15,7 +16,8 @@ import { areaForLocation, STAMP_AREAS } from "@/lib/areas";
 import { kampalaDateIso, xpDropArea } from "@/lib/drops";
 import { getFundedDropDates } from "@/lib/data/drops";
 import { kampalaWeekBounds, kampalaWeekStartIso } from "@/lib/kampala-time";
-import { XP_DROP_XP } from "@/lib/rewards-config";
+import { AREA_STAMP_XP, FRIEND_FIRST_VISIT_XP, XP_DROP_XP } from "@/lib/rewards-config";
+import { awardPoints } from "@/lib/data/points";
 import { computeStreak } from "@/lib/streaks";
 import {
   challengeProgress,
@@ -234,6 +236,7 @@ export async function recordCheckIn(
     .onConflictDoNothing()
     .returning({ id: venueCheckIns.id });
   if (inserted.length === 0) return { created: false, newArea: null, completed: [] };
+  const checkInId = inserted[0].id;
 
   const status = await getWeeklyChallengeStatus(travellerId, now);
   const completed: { title: string; xp: number }[] = [];
@@ -244,7 +247,16 @@ export async function recordCheckIn(
       .values({ travellerId, weeklyChallengeId: s.challenge.id, completedAt: now })
       .onConflictDoNothing()
       .returning({ id: weeklyChallengeCompletions.id });
-    if (won.length > 0) completed.push({ title: s.challenge.title, xp: s.challenge.xp });
+    if (won.length > 0) {
+      completed.push({ title: s.challenge.title, xp: s.challenge.xp });
+      await awardPoints({
+        travellerId,
+        delta: s.challenge.xp,
+        sourceType: "weekly_challenge",
+        sourceId: won[0].id,
+        reason: `Weekly challenge: ${s.challenge.title}`,
+      });
+    }
   }
   // First visit in today's XP Drop area (on a day without a funded Drop).
   const date = kampalaDateIso(now);
@@ -254,9 +266,72 @@ export async function recordCheckIn(
       .from(venueCheckIns)
       .where(and(eq(venueCheckIns.travellerId, travellerId), eq(venueCheckIns.kampalaDate, date), eq(venueCheckIns.area, area)))
       .limit(2);
-    if (sameArea.length === 1) completed.push({ title: `XP Drop in ${area}`, xp: XP_DROP_XP });
+    if (sameArea.length === 1) {
+      completed.push({ title: `XP Drop in ${area}`, xp: XP_DROP_XP });
+      await awardPoints({
+        travellerId,
+        delta: XP_DROP_XP,
+        sourceType: "xp_drop",
+        sourceId: checkInId,
+        reason: `Points Drop in ${area}`,
+      });
+    }
   }
-  return { created: true, newArea: area && !hadArea ? area : null, completed };
+
+  const newArea = area && !hadArea ? area : null;
+  if (newArea) {
+    await awardPoints({
+      travellerId,
+      delta: AREA_STAMP_XP,
+      sourceType: "area_stamp",
+      sourceId: checkInId,
+      reason: `Neighbourhood stamp: ${newArea}`,
+    });
+  }
+
+  // This traveller's very first ever verified visit, anywhere — pays their
+  // inviter, if any. Naturally one-time: can only be true once per
+  // traveller's lifetime.
+  const [priorCheckIn] = await db
+    .select({ id: venueCheckIns.id })
+    .from(venueCheckIns)
+    .where(and(eq(venueCheckIns.travellerId, travellerId), sql`${venueCheckIns.id} != ${checkInId}`))
+    .limit(1);
+  if (!priorCheckIn) {
+    const [traveller] = await db
+      .select({ referredByTravellerId: travellerProfiles.referredByTravellerId })
+      .from(travellerProfiles)
+      .where(eq(travellerProfiles.id, travellerId))
+      .limit(1);
+    if (traveller?.referredByTravellerId) {
+      await awardPoints({
+        travellerId: traveller.referredByTravellerId,
+        delta: FRIEND_FIRST_VISIT_XP,
+        sourceType: "friend_first_visit",
+        sourceId: checkInId,
+        reason: "Invited friend's first visit",
+      });
+    }
+  }
+
+  // Streak milestones reached as of this check-in's week — awarded once per
+  // (milestone tier, run) via a reason-text existence check, since a
+  // milestone has no row of its own to key a sourceId off of, and the same
+  // tier can be re-earned in a later run after a streak breaks and restarts.
+  const { milestones } = await getStreakStatus(travellerId, now);
+  for (const m of milestones) {
+    const reason = `Streak milestone: ${m.weeks} weeks (week of ${m.weekStart})`;
+    const [already] = await db
+      .select({ id: pointsLedger.id })
+      .from(pointsLedger)
+      .where(and(eq(pointsLedger.travellerId, travellerId), eq(pointsLedger.sourceType, "streak_milestone"), eq(pointsLedger.reason, reason)))
+      .limit(1);
+    if (!already) {
+      await awardPoints({ travellerId, delta: m.xp, sourceType: "streak_milestone", sourceId: checkInId, reason });
+    }
+  }
+
+  return { created: true, newArea, completed };
 }
 
 /** A fresh 6-digit backup code for the member's QR, or their current one
