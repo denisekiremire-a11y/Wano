@@ -17,8 +17,8 @@ export async function GroupBookingBanner() {
     <div className="mb-6 border border-ember/40 bg-ember/5 p-4 text-sm text-ink">
       <p className="font-semibold">Booking for “{plan.title}”</p>
       <p className="mt-1 text-ink/70">
-        Set the party size to {going}. Everyone going is added to the booking, gets the stamp and XP, and pays at the
-        venue.
+        Set the party size to {going}. Everyone going is added to the booking, gets the stamp and Wano
+        Points, and pays at the venue.
       </p>
     </div>
   );

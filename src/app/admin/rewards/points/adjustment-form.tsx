@@ -15,7 +15,7 @@ export function AdjustmentForm({ travellerId }: { travellerId: string }) {
       <h3 className="text-sm font-semibold text-ink">Manual adjustment</h3>
       <div className="flex flex-wrap items-end gap-3">
         <div>
-          <label className="text-sm font-medium text-ink">Points (+/-)</label>
+          <label className="text-sm font-medium text-ink">Wano Points (+/-)</label>
           <input
             name="delta"
             type="number"

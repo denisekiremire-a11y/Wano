@@ -26,7 +26,7 @@ export function DeleteAccountForm() {
     <form action={formAction} className="max-w-sm space-y-3">
       <p className="text-sm text-ink/70">
         This permanently removes your name, email, phone, photo, posts, stories, comments, reviews and
-        saved places, and signs you out. Your Passport XP and stamps can&apos;t be recovered. Past
+        saved places, and signs you out. Your Wano Points and stamps can&apos;t be recovered. Past
         bookings stay on record for the venue, with your name removed.
       </p>
       <label htmlFor="confirm-delete" className="block text-xs font-medium text-ink/70">

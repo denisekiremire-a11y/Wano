@@ -90,7 +90,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
             <>
               <p className="text-sm text-ink/60">
                 Book for {going.length} {going.length === 1 ? "person" : "people"} going. Friends on the booking get the
-                same stamp and XP as you, and everyone pays their own share at the venue.
+                same stamp and Wano Points as you, and everyone pays their own share at the venue.
               </p>
               <form action={startGroupBookingAction.bind(null, plan.id)}>
                 <button className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white hover:bg-ink/85">

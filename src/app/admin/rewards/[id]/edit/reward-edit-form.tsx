@@ -127,7 +127,7 @@ export function RewardEditForm({
 
       {reward.source === "points_shop" && (
         <div>
-          <label className="text-sm font-medium text-ink">Cost in points</label>
+          <label className="text-sm font-medium text-ink">Cost in Wano Points</label>
           <input
             name="pointsCost"
             type="number"
@@ -152,7 +152,7 @@ export function RewardEditForm({
             <option value="fixed">Fixed amount (UGX)</option>
             <option value="freebie">Freebie</option>
             <option value="spend_perk">Spend-based perk (restaurants/bars)</option>
-            <option value="points">Points</option>
+            <option value="points">Wano Points</option>
           </select>
         </div>
         {discountType !== "freebie" && (
@@ -161,7 +161,7 @@ export function RewardEditForm({
               {discountType === "fixed"
                 ? "Amount (UGX)"
                 : discountType === "points"
-                  ? "Points granted"
+                  ? "Wano Points granted"
                   : "Percent"}
             </label>
             <input

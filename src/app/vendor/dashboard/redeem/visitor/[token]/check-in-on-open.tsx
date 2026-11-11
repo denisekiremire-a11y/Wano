@@ -33,7 +33,7 @@ export function CheckInOnOpen({ token, via }: { token: string; via: "qr" | "code
       {outcome.newArea && <p className="mt-1">New neighbourhood stamp: {outcome.newArea}.</p>}
       {outcome.completed.map((c) => (
         <p key={c.title} className="mt-1">
-          Challenge done: {c.title} (+{c.xp} XP)
+          Challenge done: {c.title} (+{c.xp} pts)
         </p>
       ))}
     </div>

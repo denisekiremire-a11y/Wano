@@ -35,7 +35,7 @@ export default async function AdminRewardsPage() {
             Voucher search →
           </Link>
           <Link href="/admin/rewards/points" className="hover:underline">
-            Points &amp; tiers →
+            Wano Points &amp; tiers →
           </Link>
           <Link href="/admin/rewards/budget" className="hover:underline">
             Budget dashboard →
@@ -44,7 +44,7 @@ export default async function AdminRewardsPage() {
             Weekly settlement →
           </Link>
           <Link href="/admin/rewards/reserve" className="hover:underline">
-            Points reserve →
+            Wano Points reserve →
           </Link>
           <Link href="/admin/rewards/price-match" className="hover:underline">
             Price match reports →

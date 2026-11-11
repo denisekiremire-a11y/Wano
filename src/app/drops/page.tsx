@@ -24,13 +24,13 @@ function windowLabel(drop: DropView) {
   return `${formatKampalaTime(drop.redeemFrom)} to ${formatKampalaTime(drop.redeemUntil)}`;
 }
 
-/** On days with no venue perk: XP for a verified visit in that day's area. */
+/** On days with no venue perk: Wano Points for a verified visit in that day's area. */
 function XpDropCard({ drop, when }: { drop: XpDropView; when: "Today" | "Tomorrow" }) {
   return (
     <article className="border border-ink/10 bg-white p-6">
-      <p className="eyebrow text-ember">{when}&apos;s XP Drop · all day</p>
+      <p className="eyebrow text-ember">{when}&apos;s Points Drop · all day</p>
       <h2 className="font-serif-editorial mt-3 text-2xl text-ink">
-        +{drop.xp} XP for a visit in {drop.area}
+        +{drop.xp} points for a visit in {drop.area}
       </h2>
       <p className="mt-2 text-sm text-ink/70">
         Visit any Wano partner in {drop.area} and show your Wano QR. Nothing to claim, and it counts once per day.
@@ -68,7 +68,8 @@ export default async function DropsPage() {
         <h1 className="font-serif-editorial mt-2 text-4xl text-ink">The Daily Drop</h1>
         <p className="mt-3 text-ink/60">
           One perk from a Kampala partner, announced at 5 pm for the next day so you can plan. The first people to
-          claim it get a voucher to use at the venue. Using it earns Passport XP. On days without one, there&apos;s an XP Drop: Passport XP for a visit in that day&apos;s neighbourhood.
+          claim it get a voucher to use at the venue. Using it earns Wano Points. On days without one,
+          there&apos;s a Points Drop: Wano Points for a visit in that day&apos;s neighbourhood.
         </p>
 
         {traveller && identity && !identity.ok && (

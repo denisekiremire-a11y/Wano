@@ -32,7 +32,7 @@ export default async function AdminDropsPage() {
         <h1 className="font-serif-editorial text-2xl text-ink">Daily Drops</h1>
         <p className="mt-1 text-sm text-ink/60">
           One vendor-funded perk a day. It is announced at 5 pm the day before for the first people to claim, and
-          used at the venue during its window on the day. Using it earns 50 XP. One Drop per date.
+          used at the venue during its window on the day. Using it earns 50 Wano Points. One Drop per date.
         </p>
       </div>
 

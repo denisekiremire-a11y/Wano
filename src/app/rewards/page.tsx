@@ -3,7 +3,7 @@ import { getSession } from "@/lib/session";
 import { getTravellerBookings, getTravellerProfileByUserId } from "@/lib/data/traveller";
 import { getReviewableBookings } from "@/lib/data/reviews";
 import { getRewardsSummary, getTierStatus, getMyWallet, getPointsShopCatalog } from "@/lib/data/rewards";
-import { getPointsSummary, POINT_VALUE_MINOR } from "@/lib/data/points";
+import { POINTS_UNLOCK_THRESHOLD } from "@/lib/data/points";
 import { getAllActiveDeals, getClaimedDealIds } from "@/lib/data/deals";
 import { claimDealFormAction } from "@/lib/actions/deal-actions";
 import { withRlsContext } from "@/lib/db-context";
@@ -37,7 +37,8 @@ export default async function RewardsPage({
           <p className="eyebrow text-ember">Wano Rewards</p>
           <p className="font-serif-editorial text-2xl text-ink">Create your Wano Passport</p>
           <p className="text-sm text-ink/60">
-            Earn XP on every booking, review, and referral, then spend it on perks — free to start.
+            Earn Wano Points on every booking, review, and referral, then spend them on perks — free to
+            start.
           </p>
         </Link>
       </main>
@@ -47,16 +48,14 @@ export default async function RewardsPage({
   const travellerProfile = await getTravellerProfileByUserId(session.userId);
   if (!travellerProfile) return null;
 
-  const [bookingRows, reviewableRows, rewardsSummary, tierStatus, pointsSummary, deals, claimedIds] =
-    await Promise.all([
-      getTravellerBookings(travellerProfile.id),
-      getReviewableBookings(travellerProfile.id),
-      getRewardsSummary(travellerProfile.id),
-      getTierStatus(travellerProfile.id),
-      getPointsSummary(travellerProfile.id),
-      getAllActiveDeals(),
-      getClaimedDealIds(travellerProfile.id),
-    ]);
+  const [bookingRows, reviewableRows, rewardsSummary, tierStatus, deals, claimedIds] = await Promise.all([
+    getTravellerBookings(travellerProfile.id),
+    getReviewableBookings(travellerProfile.id),
+    getRewardsSummary(travellerProfile.id),
+    getTierStatus(travellerProfile.id),
+    getAllActiveDeals(),
+    getClaimedDealIds(travellerProfile.id),
+  ]);
 
   const [wallet, pointsShopCatalog] = await withRlsContext(
     { userId: session.userId, role: "traveller", travellerProfileId: travellerProfile.id },
@@ -88,7 +87,7 @@ export default async function RewardsPage({
           <RewardsTab
             summary={rewardsSummary}
             tierStatus={tierStatus}
-            pointsSummary={pointsSummary}
+            pointsUnlocked={Boolean(travellerProfile.pointsUnlockedAt)}
             wallet={wallet}
             deals={deals}
             claimedIds={claimedIds}
@@ -106,7 +105,7 @@ export default async function RewardsPage({
 function RewardsTab({
   summary,
   tierStatus,
-  pointsSummary,
+  pointsUnlocked,
   wallet,
   deals,
   claimedIds,
@@ -114,7 +113,7 @@ function RewardsTab({
 }: {
   summary: Awaited<ReturnType<typeof getRewardsSummary>>;
   tierStatus: Awaited<ReturnType<typeof getTierStatus>>;
-  pointsSummary: Awaited<ReturnType<typeof getPointsSummary>>;
+  pointsUnlocked: boolean;
   wallet: Awaited<ReturnType<typeof getMyWallet>>;
   deals: Awaited<ReturnType<typeof getAllActiveDeals>>;
   claimedIds: Awaited<ReturnType<typeof getClaimedDealIds>>;
@@ -143,7 +142,8 @@ function RewardsTab({
         <div>
           <h2 className="font-serif-editorial text-2xl text-ink">Rewards</h2>
           <p className="mt-1 text-sm text-ink/60">
-            Earned from booking, reviewing, and referring friends to Wano — spend XP on the perks below.
+            Earned from booking, reviewing, and referring friends to Wano — spend Wano Points on the perks
+            below.
           </p>
         </div>
         <TierBadge
@@ -154,27 +154,28 @@ function RewardsTab({
         />
       </div>
 
-      <div className="grid gap-px overflow-hidden border border-ink/10 bg-ink/10 sm:grid-cols-2">
-        <div className="bg-ink p-6 text-white">
-          <p className="eyebrow text-white/60">XP to spend</p>
-          <p className="font-mono-data mt-1 text-4xl font-semibold">{summary.availablePoints.toLocaleString()} XP</p>
-          <p className="mt-1.5 text-xs text-white/60">{summary.totalPoints.toLocaleString()} XP earned lifetime</p>
-        </div>
-        <div className="bg-white p-6">
-          <p className="eyebrow text-ink/40">Rewards points</p>
-          <p className="font-mono-data mt-1 text-4xl font-semibold text-ink">{pointsSummary.balance.toLocaleString()}</p>
-          <p className="mt-1.5 text-xs text-ink/60">
-            ≈ UGX {(pointsSummary.balance * POINT_VALUE_MINOR).toLocaleString()} — spendable value, from
-            referrals and welcome bonuses. Spending them on a booking is coming soon.
+      <div className="border border-ink/10 bg-ink p-6 text-white">
+        <p className="eyebrow text-white/60">Wano Points</p>
+        <p className="font-mono-data mt-1 text-4xl font-semibold">{summary.availablePoints.toLocaleString()}</p>
+        <p className="mt-1.5 text-xs text-white/60">{summary.totalPoints.toLocaleString()} earned lifetime</p>
+        {!pointsUnlocked && (
+          <p className="mt-1.5 text-xs text-white/60">
+            {Math.max(0, POINTS_UNLOCK_THRESHOLD - summary.availablePoints).toLocaleString()} more to unlock
+            spending
           </p>
-        </div>
+        )}
       </div>
 
       <VisitorQrCard />
 
       <section>
-        <h3 className="font-serif-editorial text-lg text-ink">Redeem your XP</h3>
-        {pointsShopCatalog.length === 0 ? (
+        <h3 className="font-serif-editorial text-lg text-ink">Redeem your Wano Points</h3>
+        {!pointsUnlocked ? (
+          <p className="mt-3 text-sm text-ink/60">
+            Reach {POINTS_UNLOCK_THRESHOLD.toLocaleString()} Wano Points to start redeeming — you have{" "}
+            {summary.availablePoints.toLocaleString()}.
+          </p>
+        ) : pointsShopCatalog.length === 0 ? (
           <p className="mt-3 text-sm text-ink/60">No rewards to redeem yet — check back soon.</p>
         ) : (
           <div className="mt-3 border-t border-ink/10">
@@ -202,7 +203,7 @@ function RewardsTab({
                       />
                     ) : (
                       <span className="font-mono-data flex-none text-xs text-ink/40">
-                        Need {((reward.pointsCost ?? 0) - summary.availablePoints).toLocaleString()} more XP
+                        Need {((reward.pointsCost ?? 0) - summary.availablePoints).toLocaleString()} more points
                       </span>
                     )}
                   </div>
@@ -212,7 +213,8 @@ function RewardsTab({
                         <div className="h-full bg-ember" style={{ width: `${percent}%` }} />
                       </div>
                       <p className="font-mono-data mt-1 text-[11px] text-ink/50">
-                        {summary.availablePoints.toLocaleString()} / {(reward.pointsCost ?? 0).toLocaleString()} XP
+                        {summary.availablePoints.toLocaleString()} / {(reward.pointsCost ?? 0).toLocaleString()}{" "}
+                        points
                       </p>
                     </div>
                   )}

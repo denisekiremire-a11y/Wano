@@ -20,7 +20,6 @@ import { LAUNCH_AREAS, STAMP_AREAS } from "@/lib/areas";
 import { PASSPORT_TABS, type PassportTabKey } from "@/lib/passport-tabs";
 import { getSession, type SessionPayload } from "@/lib/session";
 import { getRewardsSummary, getTierStatus } from "@/lib/data/rewards";
-import { getPointsSummary } from "@/lib/data/points";
 import { TierBadge } from "@/components/tier-badge";
 import {
   getCommentsForPost,
@@ -87,7 +86,6 @@ export default async function PassportPage({
     passportProgress,
     rewardsSummary,
     tierStatus,
-    pointsSummary,
     trailProgress,
     postRows,
     blockedList,
@@ -101,7 +99,6 @@ export default async function PassportPage({
     getPassportProgress(travellerProfile.id),
     getRewardsSummary(travellerProfile.id),
     getTierStatus(travellerProfile.id),
-    getPointsSummary(travellerProfile.id),
     getTrailProgressForTraveller(travellerProfile.id),
     getPostsByTraveller(travellerProfile.id),
     getMyBlockedList(travellerProfile.id),
@@ -173,12 +170,8 @@ export default async function PassportPage({
             remainingToNextTier={tierStatus.remainingToNextTier}
           />
           <div className="border border-ink/10 bg-white px-4 py-2 text-right">
-            <p className="font-mono-data text-lg font-semibold text-ember">{rewardsSummary.totalPoints}</p>
-            <p className="eyebrow text-ink/40">XP</p>
-          </div>
-          <div className="border border-ink/10 bg-white px-4 py-2 text-right">
-            <p className="font-mono-data text-lg font-semibold text-ink">{pointsSummary.balance}</p>
-            <p className="eyebrow text-ink/40">points</p>
+            <p className="font-mono-data text-lg font-semibold text-ember">{rewardsSummary.availablePoints}</p>
+            <p className="eyebrow text-ink/40">Wano Points</p>
           </div>
         </Link>
       </div>
@@ -310,7 +303,7 @@ function StampsTab({
                   {done && <span aria-hidden>✓ </span>}
                   {challenge.title}
                 </p>
-                <p className="font-mono-data shrink-0 text-xs text-ink/50">+{challenge.xp} XP</p>
+                <p className="font-mono-data shrink-0 text-xs text-ink/50">+{challenge.xp} pts</p>
               </div>
               <p className="mt-0.5 text-sm text-ink/60">{challenge.description}</p>
               <div className="mt-2 h-[3px] w-full bg-ink/10">
@@ -342,7 +335,7 @@ function StampsTab({
         </p>
         {nextMilestone && (
           <p className="font-mono-data mt-2 text-xs text-ink/50">
-            {nextMilestone.weeks} weeks: +{nextMilestone.xp.toLocaleString()} XP
+            {nextMilestone.weeks} weeks: +{nextMilestone.xp.toLocaleString()} pts
           </p>
         )}
       </section>
