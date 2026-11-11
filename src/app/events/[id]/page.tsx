@@ -1,10 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AttendeeAvatars } from "@/components/attendee-avatars";
 import { ListingItemCard } from "@/components/listing-item-card";
 import { BookingConfirmForm } from "@/components/booking/booking-confirm-form";
 import { EventTicketForm } from "@/components/booking/event-ticket-form";
 import { GroupBookingBanner } from "@/components/plans/group-booking-banner";
+import { InlineAuthGate } from "@/components/inline-auth-gate";
 import { PostComposer } from "@/components/post-composer";
+import { ShareButton } from "@/components/share-button";
 import {
   getEventBookers,
   getEventBookingCounts,
@@ -42,6 +46,26 @@ function formatEventWhen(startAt: Date, endAt: Date | null) {
   return `${start} – ${end}`;
 }
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const row = await getEventById(id);
+  if (!row) return {};
+  const { event } = row;
+  const title = event.title;
+  const description = `${formatEventWhen(event.startAt, event.endAt)} · ${event.location}. ${event.description}`;
+  const url = `${APP_URL}/events/${event.id}`;
+
+  return {
+    title: `${title} | Wano`,
+    description,
+    alternates: { canonical: url },
+    openGraph: { title, description, type: "website", url },
+    twitter: { card: "summary_large_image", title, description },
+  };
+}
+
 export default async function EventDetailPage({
   params,
   searchParams,
@@ -65,6 +89,8 @@ export default async function EventDetailPage({
   let myXpBookings: Awaited<ReturnType<typeof getMyXpBookingsForMatch>> = [];
   let myEventBooking: Awaited<ReturnType<typeof getMyEventBooking>> = null;
   let travellerDisplayName = "";
+  let viewerReferralCode: string | null = null;
+  let viewerTravellerId: string | null = null;
   let isOrganizer = false;
   const isMatchDay = event.category === MATCH_DAY_CATEGORY;
   let xpPaymentJustConfirmed = false;
@@ -99,6 +125,8 @@ export default async function EventDetailPage({
       myXpBookings = xpBookings;
       myEventBooking = existingBooking;
       travellerDisplayName = travellerProfile.displayName;
+      viewerReferralCode = travellerProfile.referralCode;
+      viewerTravellerId = travellerProfile.id;
     }
   } else if (session?.role === "vendor" && event.organizerVendorProfileId) {
     const vendorProfile = await getVendorProfileByUserId(session.userId);
@@ -127,7 +155,7 @@ export default async function EventDetailPage({
 
   const [bookingCounts, bookers, media] = await Promise.all([
     getEventBookingCounts([event.id]),
-    getEventBookers(event.id),
+    getEventBookers(event.id, viewerTravellerId),
     getMediaPostsFor({ eventId: event.id }),
   ]);
   const goingCount = bookingCounts.get(event.id) ?? 0;
@@ -231,7 +259,17 @@ export default async function EventDetailPage({
           </div>
         ) : (
           <>
-            <p className="max-w-2xl text-ink/60">{event.description}</p>
+            <div className="flex items-start justify-between gap-4">
+              <p className="max-w-2xl text-ink/60">{event.description}</p>
+              <div className="flex-none">
+                <ShareButton
+                  title={event.title}
+                  path={`/events/${event.id}`}
+                  text={`${event.title} — ${event.location}`}
+                  referralCode={viewerReferralCode}
+                />
+              </div>
+            </div>
             {organizer && <p className="mt-2 text-sm text-ink/50">Hosted by {organizer.businessName}</p>}
             {!isMatchDay && <p className="font-mono-data mt-2 font-medium text-ember">{event.priceHint ?? "Free to attend"}</p>}
             {isOrganizer && (
@@ -306,12 +344,18 @@ export default async function EventDetailPage({
                     <p className="font-mono-data text-sm text-ink/60">
                       {seatsRemaining} seat{seatsRemaining === 1 ? "" : "s"} left · {event.priceHint}
                     </p>
-                    <Link
-                      href={`/login?next=/events/${event.id}`}
-                      className="mt-3 inline-flex rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white"
-                    >
-                      Log in to book
-                    </Link>
+                    <div className="mt-3">
+                      {session ? (
+                        <Link
+                          href="/"
+                          className="inline-flex rounded-full border border-ink/20 px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-ink/5"
+                        >
+                          Vendors browse, not book
+                        </Link>
+                      ) : (
+                        <InlineAuthGate ctaLabel="Book" />
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -337,13 +381,15 @@ export default async function EventDetailPage({
                       myClaimedRewards={myClaimedRewards}
                     />
                   )
-                ) : (
+                ) : session ? (
                   <Link
-                    href={`/login?next=/events/${event.id}`}
-                    className="inline-flex rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white"
+                    href="/"
+                    className="inline-flex rounded-full border border-ink/20 px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-ink/5"
                   >
-                    Log in to book
+                    Vendors browse, not book
                   </Link>
+                ) : (
+                  <InlineAuthGate ctaLabel="Get ticket" />
                 )}
               </div>
             )}
@@ -366,11 +412,9 @@ export default async function EventDetailPage({
                   Make a plan with friends →
                 </Link>
               )}
-              {bookers.length > 0 && (
-                <p className="mt-3 text-sm text-ink/50">
-                  {bookers.slice(0, 20).map((a) => a.displayName).join(" · ")}
-                </p>
-              )}
+              <div className="mt-3">
+                <AttendeeAvatars attendees={bookers} totalCount={goingCount} />
+              </div>
             </div>
 
             <TargetRewardsSection claimable={claimableRewards} claimed={myClaimedRewards} />

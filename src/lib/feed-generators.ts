@@ -73,6 +73,36 @@ export async function generatePlaceAddedItemsForVendor(vendorProfileId: string) 
   for (const { id } of rows) await generatePlaceAddedItem(id);
 }
 
+/** Call once a traveller's booking for an event is confirmed/pending (an
+ * event ticket purchase, or an XP match-day seat) — "X is going to Y" in
+ * the Social feed. Suppressed the same way review_posted is (see
+ * getRankedFeed) when the traveller has turned off showActivityInFeed; the
+ * attendee-list privacy toggle is separate and doesn't affect this. */
+export async function generateGoingItem(eventId: string, travellerId: string) {
+  const [row] = await db
+    .select({ event: events, traveller: travellerProfiles })
+    .from(events)
+    .innerJoin(travellerProfiles, eq(travellerProfiles.id, travellerId))
+    .where(eq(events.id, eventId))
+    .limit(1);
+  if (!row) return;
+
+  await insertFeedItem({
+    type: "going",
+    dedupeKey: `going:${eventId}:${travellerId}`,
+    eventId,
+    subjectTravellerId: travellerId,
+    city: row.event.location,
+    payload: {
+      kind: "going",
+      travellerName: row.traveller.displayName,
+      eventTitle: row.event.title,
+      location: row.event.location,
+      href: `/events/${eventId}`,
+    },
+  });
+}
+
 export async function generateReviewPostedItem(reviewId: string) {
   const [row] = await db
     .select({

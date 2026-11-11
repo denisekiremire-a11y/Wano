@@ -13,6 +13,7 @@ const TYPE_WEIGHT: Record<FeedItemType, number> = {
   club_meetup: 1.25,
   journal_published: 1.1,
   user_post: 1.0,
+  going: 0.95,
   review_posted: 0.9,
   place_added: 0.8,
 };

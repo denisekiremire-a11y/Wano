@@ -89,12 +89,15 @@ export async function getRankedFeed(viewerTravellerId: string | null, limit = 30
     .orderBy(desc(feedItems.createdAt))
     .limit(300);
 
-  // The privacy toggle only suppresses review_posted — the one type in this
-  // table that's unambiguously "this specific traveller's activity" rather
-  // than a platform- or event-level aggregate. Blocks (in either direction)
-  // suppress any item authored by the blocked party, regardless of type.
+  // The privacy toggle only suppresses review_posted and going — the two
+  // types in this table that are unambiguously "this specific traveller's
+  // activity" rather than a platform- or event-level aggregate. Blocks (in
+  // either direction) suppress any item authored by the blocked party,
+  // regardless of type.
   const visible = rows.filter((r) => {
-    if (r.item.type === "review_posted" && r.subjectShowsActivity === false) return false;
+    if ((r.item.type === "review_posted" || r.item.type === "going") && r.subjectShowsActivity === false) {
+      return false;
+    }
     if (r.item.subjectTravellerId && blockedIds.has(r.item.subjectTravellerId)) return false;
     return true;
   });

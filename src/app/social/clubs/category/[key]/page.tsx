@@ -1,17 +1,16 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ClubButton } from "@/components/club-button";
-import { requireRole } from "@/lib/auth";
 import { getApprovedClubsByCategory } from "@/lib/data/social";
 import { getTravellerProfileByUserId } from "@/lib/data/traveller";
+import { getSession } from "@/lib/session";
 
 export default async function ClubCategoryPage({ params }: { params: Promise<{ key: string }> }) {
-  const session = await requireRole("traveller");
-  const travellerProfile = await getTravellerProfileByUserId(session.userId);
-  if (!travellerProfile) return null;
+  const session = await getSession();
+  const travellerProfile = session?.role === "traveller" ? await getTravellerProfileByUserId(session.userId) : null;
 
   const { key } = await params;
-  const { interest, clubs } = await getApprovedClubsByCategory(key, travellerProfile.id);
+  const { interest, clubs } = await getApprovedClubsByCategory(key, travellerProfile?.id);
   if (!interest) notFound();
 
   return (
@@ -56,7 +55,16 @@ export default async function ClubCategoryPage({ params }: { params: Promise<{ k
                   {memberCount} {memberCount === 1 ? "member" : "members"}
                 </p>
               </div>
-              <ClubButton clubId={club.id} initialJoined={joined} />
+              {travellerProfile ? (
+                <ClubButton clubId={club.id} initialJoined={joined} />
+              ) : (
+                <Link
+                  href={`/login?next=/social/clubs/category/${key}`}
+                  className="flex-none rounded-full bg-forest-800 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-forest-700"
+                >
+                  Log in to join
+                </Link>
+              )}
             </div>
           ))
         )}

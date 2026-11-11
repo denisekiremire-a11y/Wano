@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
+import { AttendeeListPrivacyToggle } from "@/components/attendee-list-privacy-toggle";
 import { BirthdayEditor } from "@/components/birthday-editor";
 import { FeedActivityToggle } from "@/components/feed-activity-toggle";
 import { LiteModeToggle } from "@/components/lite-mode-toggle";
@@ -242,6 +243,7 @@ export default async function PassportPage({
             phoneVerified={Boolean(travellerProfile.phoneVerifiedAt)}
             dateOfBirth={travellerProfile.dateOfBirth}
             showActivityInFeed={travellerProfile.showActivityInFeed}
+            hideFromAttendeeLists={travellerProfile.hideFromAttendeeLists}
             blockedList={blockedList}
             emailVerified={Boolean(user?.emailVerifiedAt)}
           />
@@ -471,6 +473,7 @@ function AccountTab({
   phoneVerified,
   dateOfBirth,
   showActivityInFeed,
+  hideFromAttendeeLists,
   blockedList,
   emailVerified,
 }: {
@@ -480,6 +483,7 @@ function AccountTab({
   phoneVerified: boolean;
   dateOfBirth: string | null;
   showActivityInFeed: boolean;
+  hideFromAttendeeLists: boolean;
   blockedList: Awaited<ReturnType<typeof getMyBlockedList>>;
   emailVerified: boolean;
 }) {
@@ -513,6 +517,7 @@ function AccountTab({
         <h3 className="font-serif-editorial text-lg text-ink">Preferences</h3>
         <LiteModeToggle />
         <FeedActivityToggle initialValue={showActivityInFeed} />
+        <AttendeeListPrivacyToggle initialValue={hideFromAttendeeLists} />
       </section>
 
       <section className="space-y-4 border border-ink/10 bg-white p-5">
