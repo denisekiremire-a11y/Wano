@@ -7,6 +7,7 @@ export const listingTypeLabels = {
   attraction: "Attraction",
   event: "Event",
   rental: "Rental",
+  charity: "Charity / Community Organisation",
 } as const;
 
 export type ListingType = keyof typeof listingTypeLabels;
@@ -20,10 +21,14 @@ export const listingTypeGradient: Record<ListingType, string> = {
   attraction: "from-marigold-800 via-forest-600 to-nile-400",
   event: "from-nile-900 via-marigold-600 to-marigold-300",
   rental: "from-forest-900 via-forest-600 to-nile-300",
+  charity: "from-forest-800 via-marigold-500 to-forest-400",
 };
 
 // What the "items" section of a listing page is called for this type —
-// the same underlying listingItems table backs all of them.
+// the same underlying listingItems table backs all of them. Charity
+// listings don't use this tab at all (Phase 2 replaces the tab set for
+// listingType "charity" with Events/Volunteer/Donate/Reports) — this
+// entry only exists to satisfy the exhaustive Record and is unused.
 export const listingItemSectionLabel: Record<ListingType, string> = {
   restaurant: "Menu",
   spa_salon: "Services",
@@ -33,4 +38,5 @@ export const listingItemSectionLabel: Record<ListingType, string> = {
   rental: "Vehicles",
   event: "Tickets",
   attraction: "Experiences",
+  charity: "Ways to help",
 };

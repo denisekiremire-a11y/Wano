@@ -23,6 +23,8 @@ export function computeEstimatedCommission(
   return (totalMinor * COMMISSION_BY_LISTING_TYPE[listingType]).toFixed(2);
 }
 
+// Charity listings never reach this label (no BookingForm case for
+// "charity" — see booking-form.tsx) but the Record must stay exhaustive.
 export const bookingActionLabel: Record<ListingType, string> = {
   restaurant: "Reserve table",
   hotel: "Reserve room",
@@ -32,6 +34,7 @@ export const bookingActionLabel: Record<ListingType, string> = {
   attraction: "Book visit",
   event: "Get tickets",
   rental: "Reserve vehicle",
+  charity: "Donate",
 };
 
 export type BookingDraft = {

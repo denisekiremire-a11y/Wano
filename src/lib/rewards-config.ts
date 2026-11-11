@@ -37,6 +37,7 @@ export const COMMISSION_BY_LISTING_TYPE: Record<ListingType, number> = {
   rental: 0.1,
   event: 0,
   restaurant: 0,
+  charity: 0,
 };
 export const EVENT_BOOKING_FEE_PCT = 0.05;
 
@@ -52,6 +53,7 @@ export const EARN_RATE_BY_LISTING_TYPE: Record<ListingType, number> = {
   rental: 0.03,
   event: 0.01,
   restaurant: 0,
+  charity: 0,
 };
 
 // Rewards liability (UGX value of unspent points) as a share of

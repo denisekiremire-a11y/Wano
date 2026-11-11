@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import {
+  charityDetails,
   experienceDetails,
   hotelDetails,
   listingJourneys,
@@ -11,55 +12,109 @@ import {
 } from "@/db/schema";
 import type { Tx } from "@/lib/db-context";
 import { generatePlaceAddedItem } from "@/lib/feed-generators";
+import { CHARITY_AGREEMENT_VERSION } from "@/lib/charity-config";
 
 // Shared by the admin's direct-edit form (applies immediately) and the
 // vendor-submission approval flow (applies once an admin approves the
 // vendor's proposed payload) — same field set either way, so both paths
 // stay in sync instead of drifting apart.
-export const listingContentSchema = z.object({
-  type: z.enum([
-    "hotel",
-    "restaurant",
-    "experience",
-    "transport",
-    "spa_salon",
-    "attraction",
-    "event",
-    "rental",
-  ]),
-  title: z.string().min(2).max(150),
-  description: z.string().min(10).max(1000),
-  priceLabel: z.string().max(30).optional().or(z.literal("")),
-  priceMinor: z.coerce.number().int().min(0),
-  currency: z.string().min(1).max(10).optional().or(z.literal("")),
-  priceUnit: z.string().max(20).optional().or(z.literal("")),
-  externalBookingUrl: z.string().url().max(300).optional().or(z.literal("")),
-  latitude: z.coerce.number().min(-90).max(90).optional().or(z.literal("")),
-  longitude: z.coerce.number().min(-180).max(180).optional().or(z.literal("")),
-  journeyIds: z.array(z.string().uuid()).default([]),
-  discountText: z.string().min(1).max(200),
-  freebieText: z.string().max(200).optional().or(z.literal("")),
-  hotelRoomTypes: z.string().max(300).optional().or(z.literal("")),
-  hotelAmenities: z.string().max(300).optional().or(z.literal("")),
-  hotelCheckIn: z.string().max(20).optional().or(z.literal("")),
-  hotelCheckOut: z.string().max(20).optional().or(z.literal("")),
-  restaurantCuisine: z.string().max(100).optional().or(z.literal("")),
-  restaurantPriceRange: z.string().max(20).optional().or(z.literal("")),
-  restaurantHours: z.string().max(100).optional().or(z.literal("")),
-  // Gates whether the booking form offers a menu pre-order step — see
-  // restaurantDetails.allowsPreorder.
-  restaurantAllowsPreorder: z.boolean().optional().default(false),
-  experienceDuration: z.string().max(60).optional().or(z.literal("")),
-  experienceGroupSize: z.string().max(60).optional().or(z.literal("")),
-  experienceIncluded: z.string().max(300).optional().or(z.literal("")),
-  instagramUrl: z.string().url().max(300).optional().or(z.literal("")),
-  facebookUrl: z.string().url().max(300).optional().or(z.literal("")),
-  tiktokUrl: z.string().url().max(300).optional().or(z.literal("")),
-  websiteUrl: z.string().url().max(300).optional().or(z.literal("")),
-  // One perk per line, free text (late checkout, airport pickup) — split
-  // into listings.wanoOnlyExtras in applyListingContent below.
-  wanoOnlyExtras: z.string().max(2000).optional().or(z.literal("")),
-});
+export const listingContentSchema = z
+  .object({
+    type: z.enum([
+      "hotel",
+      "restaurant",
+      "experience",
+      "transport",
+      "spa_salon",
+      "attraction",
+      "event",
+      "rental",
+      "charity",
+    ]),
+    title: z.string().min(2).max(150),
+    description: z.string().min(10).max(1000),
+    priceLabel: z.string().max(30).optional().or(z.literal("")),
+    // Charities have no price (coerces an omitted/null field to 0 fine,
+    // and applyListingContent never shows it for type "charity" anyway).
+    priceMinor: z.coerce.number().int().min(0),
+    currency: z.string().min(1).max(10).optional().or(z.literal("")),
+    priceUnit: z.string().max(20).optional().or(z.literal("")),
+    externalBookingUrl: z.string().url().max(300).optional().or(z.literal("")),
+    latitude: z.coerce.number().min(-90).max(90).optional().or(z.literal("")),
+    longitude: z.coerce.number().min(-180).max(180).optional().or(z.literal("")),
+    journeyIds: z.array(z.string().uuid()).default([]),
+    // Not required at the schema level (a charity has no "member offer")
+    // — required for every other type via superRefine below instead, same
+    // place the charity-field requirements are enforced.
+    discountText: z.string().max(200).optional().or(z.literal("")),
+    freebieText: z.string().max(200).optional().or(z.literal("")),
+    hotelRoomTypes: z.string().max(300).optional().or(z.literal("")),
+    hotelAmenities: z.string().max(300).optional().or(z.literal("")),
+    hotelCheckIn: z.string().max(20).optional().or(z.literal("")),
+    hotelCheckOut: z.string().max(20).optional().or(z.literal("")),
+    restaurantCuisine: z.string().max(100).optional().or(z.literal("")),
+    restaurantPriceRange: z.string().max(20).optional().or(z.literal("")),
+    restaurantHours: z.string().max(100).optional().or(z.literal("")),
+    // Gates whether the booking form offers a menu pre-order step — see
+    // restaurantDetails.allowsPreorder.
+    restaurantAllowsPreorder: z.boolean().optional().default(false),
+    experienceDuration: z.string().max(60).optional().or(z.literal("")),
+    experienceGroupSize: z.string().max(60).optional().or(z.literal("")),
+    experienceIncluded: z.string().max(300).optional().or(z.literal("")),
+    instagramUrl: z.string().url().max(300).optional().or(z.literal("")),
+    facebookUrl: z.string().url().max(300).optional().or(z.literal("")),
+    tiktokUrl: z.string().url().max(300).optional().or(z.literal("")),
+    websiteUrl: z.string().url().max(300).optional().or(z.literal("")),
+    // One perk per line, free text (late checkout, airport pickup) — split
+    // into listings.wanoOnlyExtras in applyListingContent below.
+    wanoOnlyExtras: z.string().max(2000).optional().or(z.literal("")),
+    charityLegalName: z.string().max(150).optional().or(z.literal("")),
+    charityOrgType: z.string().max(50).optional().or(z.literal("")),
+    charityRegistrationNumber: z.string().max(100).optional().or(z.literal("")),
+    charityContactName: z.string().max(100).optional().or(z.literal("")),
+    charityContactRole: z.string().max(100).optional().or(z.literal("")),
+    charityContactPhone: z.string().max(30).optional().or(z.literal("")),
+    charityMissionStatement: z.string().max(1000).optional().or(z.literal("")),
+    charityFocusArea: z.string().max(50).optional().or(z.literal("")),
+    charityPayoutAccountDetail: z.string().max(200).optional().or(z.literal("")),
+    // Only meaningful (and only required) on first creation — an edit to
+    // an existing charity listing doesn't re-show the checkbox, see
+    // applyListingContent's "only set agreementAcceptedAt once" handling.
+    charityAgreementAccepted: z.boolean().optional().default(false),
+  })
+  .superRefine((d, ctx) => {
+    if (d.type === "charity") {
+      const required: [string | undefined, string][] = [
+        [d.charityLegalName, "Legal name is required."],
+        [d.charityOrgType, "Organisation type is required."],
+        [d.charityRegistrationNumber, "Registration number is required."],
+        [d.charityContactName, "Contact person name is required."],
+        [d.charityContactRole, "Contact person role is required."],
+        [d.charityContactPhone, "Contact person phone is required."],
+        [d.charityMissionStatement, "Mission statement is required."],
+        [d.charityFocusArea, "Focus area is required."],
+        [d.charityPayoutAccountDetail, "A mobile money number or merchant code is required."],
+      ];
+      for (const [value, message] of required) {
+        if (!value) ctx.addIssue({ code: z.ZodIssueCode.custom, message });
+      }
+      // Required on every charity submission, not just the first — the
+      // form always submits it checked (disabled/pre-checked, "accepted
+      // on [date]") once a charity already has one on file, so this never
+      // actually blocks an edit in practice; it just closes the gap where
+      // a tampered or missing field would otherwise create/keep a charity
+      // listing with no agreement on record.
+      if (!d.charityAgreementAccepted) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "You must accept the charity vendor agreement.",
+          path: ["charityAgreementAccepted"],
+        });
+      }
+    } else if (!d.discountText) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Discount text is required.", path: ["discountText"] });
+    }
+  });
 
 export type ListingContent = z.infer<typeof listingContentSchema>;
 
@@ -76,7 +131,7 @@ export function parseListingContentFromFormData(formData: FormData) {
     latitude: formData.get("latitude") ?? "",
     longitude: formData.get("longitude") ?? "",
     journeyIds: formData.getAll("journeyIds"),
-    discountText: formData.get("discountText"),
+    discountText: formData.get("discountText") ?? "",
     freebieText: formData.get("freebieText") ?? "",
     hotelRoomTypes: formData.get("hotelRoomTypes") ?? "",
     hotelAmenities: formData.get("hotelAmenities") ?? "",
@@ -94,6 +149,16 @@ export function parseListingContentFromFormData(formData: FormData) {
     tiktokUrl: formData.get("tiktokUrl") ?? "",
     websiteUrl: formData.get("websiteUrl") ?? "",
     wanoOnlyExtras: formData.get("wanoOnlyExtras") ?? "",
+    charityLegalName: formData.get("charityLegalName") ?? "",
+    charityOrgType: formData.get("charityOrgType") ?? "",
+    charityRegistrationNumber: formData.get("charityRegistrationNumber") ?? "",
+    charityContactName: formData.get("charityContactName") ?? "",
+    charityContactRole: formData.get("charityContactRole") ?? "",
+    charityContactPhone: formData.get("charityContactPhone") ?? "",
+    charityMissionStatement: formData.get("charityMissionStatement") ?? "",
+    charityFocusArea: formData.get("charityFocusArea") ?? "",
+    charityPayoutAccountDetail: formData.get("charityPayoutAccountDetail") ?? "",
+    charityAgreementAccepted: formData.get("charityAgreementAccepted") === "on",
   });
 }
 
@@ -151,14 +216,19 @@ export async function applyListingContent(
     await tx.insert(listingJourneys).values(d.journeyIds.map((journeyId) => ({ listingId: id!, journeyId })));
   }
 
-  const [existingOffer] = await tx.select().from(offers).where(eq(offers.listingId, id)).limit(1);
-  if (existingOffer) {
-    await tx
-      .update(offers)
-      .set({ discountText: d.discountText, freebieText: d.freebieText || null, updatedAt: new Date() })
-      .where(eq(offers.listingId, id));
-  } else {
-    await tx.insert(offers).values({ listingId: id, discountText: d.discountText, freebieText: d.freebieText || null });
+  // A charity has no "member offer" concept at all — skip offers entirely
+  // rather than writing an empty discountText (which the schema no longer
+  // even requires for this type).
+  if (d.type !== "charity") {
+    const [existingOffer] = await tx.select().from(offers).where(eq(offers.listingId, id)).limit(1);
+    if (existingOffer) {
+      await tx
+        .update(offers)
+        .set({ discountText: d.discountText || "", freebieText: d.freebieText || null, updatedAt: new Date() })
+        .where(eq(offers.listingId, id));
+    } else {
+      await tx.insert(offers).values({ listingId: id, discountText: d.discountText || "", freebieText: d.freebieText || null });
+    }
   }
 
   if (d.type === "hotel") {
@@ -190,6 +260,33 @@ export async function applyListingContent(
     const [existing] = await tx.select().from(experienceDetails).where(eq(experienceDetails.listingId, id)).limit(1);
     if (existing) await tx.update(experienceDetails).set(values).where(eq(experienceDetails.listingId, id));
     else await tx.insert(experienceDetails).values({ listingId: id, ...values });
+  } else if (d.type === "charity") {
+    const values = {
+      legalName: d.charityLegalName || "",
+      orgType: d.charityOrgType || "",
+      registrationNumber: d.charityRegistrationNumber || "",
+      contactPersonName: d.charityContactName || "",
+      contactPersonRole: d.charityContactRole || "",
+      contactPersonPhone: d.charityContactPhone || "",
+      missionStatement: d.charityMissionStatement || "",
+      focusArea: d.charityFocusArea || "",
+      payoutAccountDetail: d.charityPayoutAccountDetail || "",
+    };
+    const [existing] = await tx.select().from(charityDetails).where(eq(charityDetails.listingId, id)).limit(1);
+    if (existing) {
+      // Editing never re-dates the agreement — it was accepted once, at
+      // creation, and an edit to (say) the mission statement doesn't mean
+      // accepting it again. The checkbox only matters the one time this
+      // branch creates the row, below.
+      await tx.update(charityDetails).set(values).where(eq(charityDetails.listingId, id));
+    } else {
+      await tx.insert(charityDetails).values({
+        listingId: id,
+        ...values,
+        agreementAcceptedAt: new Date(),
+        agreementVersion: CHARITY_AGREEMENT_VERSION,
+      });
+    }
   }
 
   return id;
