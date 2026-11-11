@@ -31,7 +31,7 @@ export async function notifyRewardClaimed(userRewardId: string) {
   await notifyUser(row.travellerEmail, "Reward claimed", [
     `You claimed <strong>${row.reward.title}</strong> — ${discount}.`,
     `It's in your Passport wallet, valid until ${row.userReward.expiresAt.toLocaleDateString()}.`,
-    `<a href="${APP_URL}/passport?tab=rewards">View your rewards</a>.`,
+    `<a href="${APP_URL}/rewards">View your rewards</a>.`,
   ]);
 
   await notifyAdmin("Reward claimed", [
@@ -46,7 +46,7 @@ export async function notifyRewardRedeemed(userRewardId: string) {
 
   await notifyUser(row.travellerEmail, "Reward redeemed", [
     `<strong>${row.reward.title}</strong> (${discount}) was just redeemed at the venue.`,
-    `<a href="${APP_URL}/passport?tab=rewards">View your rewards</a>.`,
+    `<a href="${APP_URL}/rewards">View your rewards</a>.`,
   ]);
 
   await notifyAdmin("Reward redeemed", [

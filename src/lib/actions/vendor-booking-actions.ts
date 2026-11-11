@@ -135,6 +135,7 @@ export async function vendorCancelConfirmedBookingAction(bookingId: string): Pro
   revalidatePath("/vendor/dashboard/bookings");
   revalidatePath("/admin/bookings");
   revalidatePath("/passport");
+  revalidatePath("/rewards");
 
   return {};
 }

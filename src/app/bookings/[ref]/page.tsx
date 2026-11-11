@@ -337,7 +337,7 @@ export default async function BookingConfirmationPage({
 
         <div className="mt-6 flex justify-center gap-3">
           <Link
-            href="/passport"
+            href="/rewards?tab=bookings"
             className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-ink/85"
           >
             View all your bookings

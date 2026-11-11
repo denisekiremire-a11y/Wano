@@ -94,6 +94,7 @@ export async function submitReviewAction(
   });
 
   revalidatePath("/passport");
+  revalidatePath("/rewards");
   revalidatePath("/explore");
   revalidatePath(`/explore/${booking.listingId}`);
 
