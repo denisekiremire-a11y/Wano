@@ -6,6 +6,9 @@ import { getVendorProfileByUserId } from "@/lib/data/vendor";
 import { formatRewardDiscount } from "@/lib/reward-format";
 import { PinForm } from "./pin-form";
 import { RedeemByCode } from "./redeem-by-code";
+import { StaffLinkPanel } from "./staff-link-panel";
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 export default async function VendorRedeemPage() {
   const session = await requireRole("vendor");
@@ -44,6 +47,16 @@ export default async function VendorRedeemPage() {
             Last set {vendorProfile.pinRotatedAt.toLocaleDateString()}.
           </p>
         )}
+      </section>
+
+      <section className="space-y-3 border border-ink/10 bg-white p-5">
+        <h2 className="font-serif-editorial text-lg text-ink">Staff link</h2>
+        <p className="text-sm text-ink/60">
+          Share this link with waiters instead of your login — they open it on their own phone, enter the venue
+          PIN above, and can check in tickets/bookings and redeem vouchers for the rest of their shift. Rotate it
+          any time (a lost phone, staff turnover) to instantly kill the old one.
+        </p>
+        <StaffLinkPanel staffUrl={vendorProfile.staffAccessToken ? `${APP_URL}/staff/${vendorProfile.staffAccessToken}` : null} />
       </section>
 
       <section className="space-y-3 border border-ink/10 bg-white p-5">

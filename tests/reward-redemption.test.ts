@@ -15,6 +15,21 @@ const session = vi.hoisted(() => ({ current: { userId: "", role: "vendor" as con
 vi.mock("@/lib/auth", () => ({
   requireRole: vi.fn(async () => session.current),
 }));
+// markRewardRedeemedAction resolves the vendor via requireVendorAccess
+// (login OR an unlocked staff-link session), not requireRole directly —
+// mocked here to the same "whichever vendor session.current points at"
+// shape the requireRole mock above used to provide, via the real
+// getVendorProfileByUserId lookup (not itself mocked).
+vi.mock("@/lib/vendor-access", async () => {
+  const { getVendorProfileByUserId } = await import("@/lib/data/vendor");
+  return {
+    requireVendorAccess: vi.fn(async () => {
+      const vendorProfile = await getVendorProfileByUserId(session.current.userId);
+      if (!vendorProfile) return null;
+      return { vendorProfile, userId: session.current.userId, via: "login" as const };
+    }),
+  };
+});
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/notify", () => ({ notifyUser: vi.fn(), notifyAdmin: vi.fn() }));
 
