@@ -25,6 +25,6 @@ export async function claimDealFormAction(formData: FormData) {
     await db.insert(dealClaims).values({ travellerId: travellerProfile.id, promoCodeId });
   }
 
-  revalidatePath("/passport");
+  revalidatePath("/rewards");
   revalidatePath("/explore");
 }

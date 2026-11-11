@@ -26,6 +26,7 @@ function revalidateDropPaths() {
   revalidatePath("/drops");
   revalidatePath("/admin/drops");
   revalidatePath("/passport");
+  revalidatePath("/rewards");
   revalidatePath("/vendor/dashboard");
 }
 
