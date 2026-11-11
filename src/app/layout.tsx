@@ -84,6 +84,12 @@ export const viewport: Viewport = {
   themeColor: "#1B3A5C",
   width: "device-width",
   initialScale: 1,
+  // Without this, iOS doesn't let the page draw into the safe-area insets
+  // at all when launched standalone from the home screen (appleWebApp.
+  // capable above) — env(safe-area-inset-bottom) resolves to 0, so
+  // BottomNav's bottom padding collapses and it can end up tucked under
+  // the home-indicator gesture area instead of sitting above it.
+  viewportFit: "cover",
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
@@ -127,7 +133,12 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${fraunces.variable} ${anton.variable} ${editorialBody.variable} ${jetBrainsMono.variable} h-full antialiased`}
     >
       <body
-        className="min-h-full flex flex-col bg-background text-foreground"
+        // viewport-fit=cover above means iOS no longer auto-avoids the
+        // notch/status bar for us — PreviewBanner is always the first
+        // thing on the page (see its own comment), so this is the one
+        // place that needs the top inset; BottomNav already handles its
+        // own bottom one the same way.
+        className="min-h-full flex flex-col bg-background pt-[env(safe-area-inset-top)] text-foreground"
         suppressHydrationWarning
       >
         <LiteModeInit />
