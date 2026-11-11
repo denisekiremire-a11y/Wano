@@ -18,6 +18,8 @@ import { logEvent } from "@/lib/analytics";
 import { finalizeFunzoneClaim } from "@/lib/actions/funzone-actions";
 import { sendVerificationEmail } from "@/lib/actions/email-verification-actions";
 import { withRlsContext } from "@/lib/db-context";
+import { awardPoints } from "@/lib/data/points";
+import { CHALLENGE_XP } from "@/lib/rewards-config";
 import { notifyAdmin } from "@/lib/notify";
 import { generateReferralCode } from "@/lib/referral";
 import { clearSessionCookie, createSessionCookie } from "@/lib/session";
@@ -234,11 +236,21 @@ export async function signupAction(_prev: ActionState, formData: FormData): Prom
           .limit(1);
 
         if (!alreadyCompleted) {
-          await db.insert(challengeCompletions).values({
+          const [completion] = await db
+            .insert(challengeCompletions)
+            .values({
+              travellerId: referrer.id,
+              challengeId: referChallenge.id,
+              status: "verified",
+              completedAt: new Date(),
+            })
+            .returning({ id: challengeCompletions.id });
+          await awardPoints({
             travellerId: referrer.id,
-            challengeId: referChallenge.id,
-            status: "verified",
-            completedAt: new Date(),
+            delta: CHALLENGE_XP,
+            sourceType: "challenge",
+            sourceId: completion.id,
+            reason: "Challenge completed",
           });
         }
       }

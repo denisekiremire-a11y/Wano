@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import {
   accreditationReviews,
+  bookingGuests,
   bookings,
   listingImages,
   listings,
@@ -24,6 +25,8 @@ import { applyListingContent, applyVendorSocialLinks, listingContentSchema } fro
 import { notifyTravellerOfBookingStatus } from "@/lib/booking-notifications";
 import { awardReferralCreditOnFirstBooking } from "@/lib/data/traveller";
 import { stampBookingGuests } from "@/lib/data/plans";
+import { awardPoints } from "@/lib/data/points";
+import { BOOKING_COMPLETION_XP, STAMP_XP } from "@/lib/rewards-config";
 import { notifyUser } from "@/lib/notify";
 import type { ActionState } from "@/lib/validation";
 
@@ -254,13 +257,37 @@ export async function adminSetBookingStatusAction(
         .limit(1);
 
       if (!existingStamp) {
-        await tx.insert(stamps).values({
-          travellerId: row.travellerId,
-          journeyId: row.journeyId,
-          bookingId: row.id,
-        });
+        const [stamp] = await tx
+          .insert(stamps)
+          .values({
+            travellerId: row.travellerId,
+            journeyId: row.journeyId,
+            bookingId: row.id,
+          })
+          .returning({ id: stamps.id });
+        await awardPoints(
+          { travellerId: row.travellerId, delta: STAMP_XP, sourceType: "stamp", sourceId: stamp.id, reason: "Passport stamp" },
+          tx,
+        );
       }
       await stampBookingGuests(tx, row);
+    }
+
+    // Booking-completion XP, for both the booker and any group-booking
+    // guests — guarded on the previous status so re-saving "completed"
+    // (the dropdown defaulting to its current value) never double-awards.
+    if (status === "completed" && row.status !== "completed") {
+      await awardPoints(
+        { travellerId: row.travellerId, delta: BOOKING_COMPLETION_XP, sourceType: "booking_completion_xp", sourceId: row.id, reason: "Booking completed" },
+        tx,
+      );
+      const guests = await tx.select({ travellerId: bookingGuests.travellerId }).from(bookingGuests).where(eq(bookingGuests.bookingId, row.id));
+      for (const guest of guests) {
+        await awardPoints(
+          { travellerId: guest.travellerId, delta: BOOKING_COMPLETION_XP, sourceType: "group_outing", sourceId: row.id, reason: "Group outing completed" },
+          tx,
+        );
+      }
     }
 
     return row;

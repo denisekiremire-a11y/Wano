@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { bookings, listings, trailCompletions, trailListings, trails } from "@/db/schema";
 import { withRlsContext } from "@/lib/db-context";
 import type { DbOrTx } from "@/lib/db-context";
+import { awardPoints } from "@/lib/data/points";
 
 export async function getAllTrailsForAdmin(client: DbOrTx = db) {
   return client.select().from(trails).orderBy(trails.name);
@@ -71,14 +72,15 @@ export async function getTrailProgressForTraveller(travellerId: string, client: 
  * race; this is a plain select-then-insert-if-missing, same style as
  * awardReferralCreditOnFirstBooking. */
 export async function checkAndAwardTrailCompletions(travellerId: string, listingId: string) {
-  const candidateTrailIds = await db
-    .select({ trailId: trailListings.trailId })
+  const candidateTrails = await db
+    .select({ trailId: trailListings.trailId, bonusXp: trails.bonusXp })
     .from(trailListings)
     .innerJoin(trails, eq(trailListings.trailId, trails.id))
     .where(and(eq(trailListings.listingId, listingId), eq(trails.active, true)));
-  if (candidateTrailIds.length === 0) return;
+  if (candidateTrails.length === 0) return;
 
-  const trailIds = [...new Set(candidateTrailIds.map((t) => t.trailId))];
+  const trailIds = [...new Set(candidateTrails.map((t) => t.trailId))];
+  const bonusXpByTrail = new Map(candidateTrails.map((t) => [t.trailId, t.bonusXp]));
 
   const [alreadyCompleted, allMembers, myQualifyingBookings] = await Promise.all([
     db
@@ -107,11 +109,21 @@ export async function checkAndAwardTrailCompletions(travellerId: string, listing
     const allVisited = members.length > 0 && members.every((m) => visitedListingIds.has(m.listingId));
     if (!allVisited) continue;
 
-    await withRlsContext({ role: "admin" }, (tx) =>
+    const [completion] = await withRlsContext({ role: "admin" }, (tx) =>
       tx
         .insert(trailCompletions)
         .values({ trailId, travellerId })
-        .onConflictDoNothing({ target: [trailCompletions.trailId, trailCompletions.travellerId] }),
+        .onConflictDoNothing({ target: [trailCompletions.trailId, trailCompletions.travellerId] })
+        .returning({ id: trailCompletions.id }),
     );
+    if (completion) {
+      await awardPoints({
+        travellerId,
+        delta: bonusXpByTrail.get(trailId) ?? 0,
+        sourceType: "trail_completion",
+        sourceId: completion.id,
+        reason: "Trail completed",
+      });
+    }
   }
 }
