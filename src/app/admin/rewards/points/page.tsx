@@ -29,9 +29,9 @@ export default async function AdminPointsPage({
         <Link href="/admin/rewards" className="eyebrow text-ink/40 hover:text-ink">
           ← Rewards
         </Link>
-        <h1 className="font-serif-editorial mt-2 text-2xl text-ink">Points &amp; tiers</h1>
+        <h1 className="font-serif-editorial mt-2 text-2xl text-ink">Wano Points &amp; tiers</h1>
         <p className="mt-1 text-sm text-ink/60">
-          Look up a traveller&apos;s Rewards points ledger and tier. Insider at {TIER_THRESHOLDS.insider.toLocaleString()}
+          Look up a traveller&apos;s Wano Points ledger and tier. Insider at {TIER_THRESHOLDS.insider.toLocaleString()}
           , Legend at {TIER_THRESHOLDS.legend.toLocaleString()} — based on points earned in the last 12 months.
         </p>
       </div>
@@ -82,18 +82,14 @@ export default async function AdminPointsPage({
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 gap-px overflow-hidden border border-ink/10 bg-ink/10 sm:grid-cols-4">
+          <div className="grid grid-cols-3 gap-px overflow-hidden border border-ink/10 bg-ink/10">
             <div className="bg-white p-4">
-              <p className="eyebrow text-ink/40">Points balance</p>
+              <p className="eyebrow text-ink/40">Wano Points balance</p>
               <p className="font-mono-data mt-1 text-2xl text-ink">{summary.balance.toLocaleString()}</p>
             </div>
             <div className="bg-white p-4">
-              <p className="eyebrow text-ink/40">Points (12mo)</p>
+              <p className="eyebrow text-ink/40">Earned (12mo)</p>
               <p className="font-mono-data mt-1 text-2xl text-ink">{summary.earnedLast12Months.toLocaleString()}</p>
-            </div>
-            <div className="bg-white p-4">
-              <p className="eyebrow text-ink/40">XP (12mo)</p>
-              <p className="font-mono-data mt-1 text-2xl text-ink">{tierStatus.xpEarnedLast12Months.toLocaleString()}</p>
             </div>
             <div className="flex items-center bg-white p-4">
               <TierBadge
@@ -111,7 +107,7 @@ export default async function AdminPointsPage({
           <div className="space-y-2">
             <h3 className="eyebrow text-ink/40">Ledger</h3>
             {summary.ledger.length === 0 ? (
-              <p className="text-sm text-ink/60">No points activity yet.</p>
+              <p className="text-sm text-ink/60">No Wano Points activity yet.</p>
             ) : (
               summary.ledger.map((entry) => (
                 <div key={entry.id} className="flex items-center justify-between border border-ink/10 bg-white p-3">

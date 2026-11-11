@@ -213,8 +213,8 @@ function DailyDropStrip({
     tomorrow && { drop: tomorrow, label: "Tomorrow's Drop · claim now" },
   ].filter((x): x is { drop: DropView; label: string } => Boolean(x));
   const xpItems = [
-    xpToday && { drop: xpToday, label: "Today's XP Drop" },
-    xpTomorrow && { drop: xpTomorrow, label: "Tomorrow's XP Drop" },
+    xpToday && { drop: xpToday, label: "Today's Points Drop" },
+    xpTomorrow && { drop: xpTomorrow, label: "Tomorrow's Points Drop" },
   ].filter((x): x is { drop: XpDropView; label: string } => Boolean(x));
   if (items.length === 0 && xpItems.length === 0) return null;
 
@@ -228,7 +228,7 @@ function DailyDropStrip({
         >
           <p className="eyebrow text-ember">{label}</p>
           <h3 className="font-serif-editorial mt-3 text-xl text-ink">
-            +{drop.xp} XP for a visit in {drop.area}
+            +{drop.xp} points for a visit in {drop.area}
           </h3>
           <p className="mt-2 text-sm text-ink/55">Any Wano partner there · show your QR</p>
         </Link>

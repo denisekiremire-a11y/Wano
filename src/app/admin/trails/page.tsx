@@ -16,7 +16,8 @@ export default async function AdminTrailsPage() {
       <div>
         <h1 className="font-serif-editorial text-2xl text-ink">Trails</h1>
         <p className="mt-1 text-sm text-ink/60">
-          A named set of listings that earns a traveller bonus XP once they have a booking at every one.
+          A named set of listings that earns a traveller bonus Wano Points once they have a booking at
+          every one.
           Shown as stamps on the Passport.
         </p>
       </div>
@@ -38,7 +39,7 @@ export default async function AdminTrailsPage() {
             <div>
               <p className="text-ink">{trail.name}</p>
               <p className="font-mono-data mt-0.5 text-xs text-ink/50">
-                {count} {count === 1 ? "listing" : "listings"} · {trail.bonusXp} bonus XP
+                {count} {count === 1 ? "listing" : "listings"} · {trail.bonusXp} bonus pts
               </p>
             </div>
             <span className={`eyebrow flex-none ${trail.active ? "text-ink" : "text-ink/30"}`}>

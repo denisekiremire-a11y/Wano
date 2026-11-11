@@ -95,7 +95,8 @@ export default async function EditCreatorListPage({ params }: { params: Promise<
         <section className="space-y-2">
           <SubmitListButton listId={list.id} />
           <p className="text-xs text-ink/50">
-            Needs a short intro and at least {LIST_MIN_ITEMS} picks. Lists earn no XP or payment for now.
+            Needs a short intro and at least {LIST_MIN_ITEMS} picks. Lists earn no Wano Points or payment
+            for now.
           </p>
         </section>
       )}

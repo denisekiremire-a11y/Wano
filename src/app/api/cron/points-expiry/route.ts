@@ -108,9 +108,9 @@ export async function GET(request: Request) {
     const remindSet = new Set(toRemind);
     for (const r of recipients) {
       if (!remindSet.has(r.travellerId)) continue;
-      await notifyUser(r.email, "Your points expire in 30 days", [
+      await notifyUser(r.email, "Your Wano Points expire in 30 days", [
         `Hi ${r.name},`,
-        `Your Wano Rewards points will expire in ${REMINDER_DAYS_BEFORE} days unless you book or earn more points before then.`,
+        `Your Wano Points will expire in ${REMINDER_DAYS_BEFORE} days unless you book or earn more before then.`,
         "Book a listing or claim a reward to keep them active.",
       ]);
     }

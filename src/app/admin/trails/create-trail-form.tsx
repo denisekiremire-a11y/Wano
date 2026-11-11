@@ -29,7 +29,7 @@ export function CreateTrailForm() {
         />
       </div>
       <div>
-        <label className="text-sm font-medium text-ink">Bonus XP</label>
+        <label className="text-sm font-medium text-ink">Bonus Wano Points</label>
         <input
           name="bonusXp"
           type="number"

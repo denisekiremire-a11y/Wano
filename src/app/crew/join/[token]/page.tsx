@@ -25,7 +25,8 @@ export default async function JoinCrewPage({ params }: { params: Promise<{ token
         {crew.members.length} of {CREW_MAX} · {crew.members.map((m) => m.name).join(", ")}
       </p>
       <p className="text-sm text-ink/70">
-        A crew shares one Passport. You&apos;ll see each other&apos;s XP, neighbourhood stamps and weekly challenges.
+        A crew shares one Passport. You&apos;ll see each other&apos;s Wano Points, neighbourhood stamps and weekly
+        challenges.
       </p>
       {crew.full ? (
         <p className="text-sm font-semibold text-ink">This crew is full.</p>

@@ -44,7 +44,7 @@ export function HowYouGotHereSection({ breakdown, pendingReferrals }: { breakdow
                   <p className="mt-1.5 text-sm font-medium text-forest-900">{row.label}</p>
                   <div className="mt-0.5 flex items-baseline justify-between">
                     <p className="text-xs text-forest-800/50">{row.count}</p>
-                    <span className="text-xs font-semibold text-forest-800">+{row.points} XP</span>
+                    <span className="text-xs font-semibold text-forest-800">+{row.points} pts</span>
                   </div>
                 </div>
               );
