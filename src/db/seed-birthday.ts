@@ -5,10 +5,10 @@ import { db } from "./index";
 import { birthdayPerks, events, listings, users, vendorProfiles } from "./schema";
 import { uniqueUsername } from "../lib/username";
 
-// One-time incremental seed adding two new venues (Izumi, 1420) and their
-// birthday perks. Both are added with clearly-placeholder business details —
-// real address/hours/etc. should be confirmed and edited by the business
-// owner via the vendor dashboard once they're onboarded for real.
+// One-time incremental seed adding two new demo venues (Sakura Table, The
+// Nightjar Lounge) and their birthday perks. Both are fictional — names,
+// contacts and details are made up for demo purposes only and don't
+// correspond to any real business.
 
 // Local dev only — see README.md and .env.example for the current value.
 const DEMO_PASSWORD = "WanoLocalDev-9214!";
@@ -60,36 +60,35 @@ async function ensureVendor(opts: {
 }
 
 async function main() {
-  console.log("Seeding birthday-perk venues (Izumi, 1420)...");
+  console.log("Seeding birthday-perk venues (Sakura Table, The Nightjar Lounge)...");
 
-  const izumiVendor = await ensureVendor({
-    email: "izumi@example.com",
-    contactName: "Izumi Management (placeholder)",
-    businessName: "Izumi",
-    description:
-      "Placeholder listing added for the Wano birthday-perks feature — address, hours and menu details are pending confirmation from the business.",
+  const sakuraVendor = await ensureVendor({
+    email: "sakura.table@example.com",
+    contactName: "Sakura Table Management (demo)",
+    businessName: "Sakura Table",
+    description: "Demo listing added for the Wano birthday-perks feature — fictional business, sample data only.",
   });
 
-  if (izumiVendor) {
+  if (sakuraVendor) {
     const [existingListing] = await db
       .select()
       .from(listings)
-      .where(eq(listings.vendorProfileId, izumiVendor.id))
+      .where(eq(listings.vendorProfileId, sakuraVendor.id))
       .limit(1);
 
-    const izumiListing =
+    const sakuraListing =
       existingListing ??
       (
         await db
           .insert(listings)
           .values({
-            vendorProfileId: izumiVendor.id,
+            vendorProfileId: sakuraVendor.id,
             type: "restaurant",
-            title: "Izumi",
-            description: "Placeholder details — to be confirmed by the business.",
-            // Not published — no confirmed price/details yet, see
-            // listingPublishConditions. Confirm with the business, then
-            // fill in a real price and flip isPublished via /admin/vendors.
+            title: "Sakura Table",
+            description: "Demo details — fictional business, sample data only.",
+            // Not published — no confirmed price/details, see
+            // listingPublishConditions. Fill in a real price and flip
+            // isPublished via /admin/vendors if this is ever made real.
             isPublished: false,
           })
           .returning()
@@ -98,49 +97,48 @@ async function main() {
     const [existingPerk] = await db
       .select()
       .from(birthdayPerks)
-      .where(eq(birthdayPerks.listingId, izumiListing.id))
+      .where(eq(birthdayPerks.listingId, sakuraListing.id))
       .limit(1);
 
     if (!existingPerk) {
       await db.insert(birthdayPerks).values({
-        listingId: izumiListing.id,
-        title: "Birthday at Izumi",
+        listingId: sakuraListing.id,
+        title: "Birthday at Sakura Table",
         minPartySize: 2,
         discountText: "10% off the bill",
         freebieText: "A birthday cake",
       });
-      console.log("Added Izumi birthday perk.");
+      console.log("Added Sakura Table birthday perk.");
     } else {
-      console.log("Izumi birthday perk already exists, skipping.");
+      console.log("Sakura Table birthday perk already exists, skipping.");
     }
   }
 
-  const venue1420Vendor = await ensureVendor({
-    email: "1420@example.com",
-    contactName: "1420 Management (placeholder)",
-    businessName: "1420",
-    description:
-      "Placeholder listing added for the Wano birthday-perks feature — address, hours and menu details are pending confirmation from the business.",
+  const nightjarVendor = await ensureVendor({
+    email: "nightjar.lounge@example.com",
+    contactName: "The Nightjar Lounge Management (demo)",
+    businessName: "The Nightjar Lounge",
+    description: "Demo listing added for the Wano birthday-perks feature — fictional business, sample data only.",
   });
 
-  if (venue1420Vendor) {
+  if (nightjarVendor) {
     const [existingListing] = await db
       .select()
       .from(listings)
-      .where(eq(listings.vendorProfileId, venue1420Vendor.id))
+      .where(eq(listings.vendorProfileId, nightjarVendor.id))
       .limit(1);
 
-    const venue1420Listing =
+    const nightjarListing =
       existingListing ??
       (
         await db
           .insert(listings)
           .values({
-            vendorProfileId: venue1420Vendor.id,
+            vendorProfileId: nightjarVendor.id,
             type: "restaurant",
-            title: "1420",
-            description: "Placeholder details — to be confirmed by the business.",
-            // Not published — see the same note on the Izumi listing above.
+            title: "The Nightjar Lounge",
+            description: "Demo details — fictional business, sample data only.",
+            // Not published — see the same note on the Sakura Table listing above.
             isPublished: false,
           })
           .returning()
@@ -149,26 +147,25 @@ async function main() {
     const [existingEvent] = await db
       .select()
       .from(events)
-      .where(eq(events.title, "Malfy Brunch"))
+      .where(eq(events.title, "Golden Hour Brunch"))
       .limit(1);
 
-    const malfyBrunch =
+    const goldenHourBrunch =
       existingEvent ??
       (
         await db
           .insert(events)
           .values({
-            title: "Malfy Brunch",
-            description:
-              "Weekly brunch at 1420 — details to be confirmed by the business.",
+            title: "Golden Hour Brunch",
+            description: "Weekly brunch at The Nightjar Lounge — fictional demo event, sample data only.",
             category: "food",
             startAt: hoursFromNow(96),
             endAt: hoursFromNow(99),
-            location: "1420, Kampala",
-            organizerVendorProfileId: venue1420Vendor.id,
+            location: "The Nightjar Lounge, Kampala",
+            organizerVendorProfileId: nightjarVendor.id,
             priceHint: "TBC",
-            // Tied to the not-yet-published 1420 listing above — don't show
-            // this publicly until the venue is confirmed and flipped on.
+            // Tied to the not-yet-published listing above — don't show this
+            // publicly until it's confirmed and flipped on.
             active: false,
           })
           .returning()
@@ -177,25 +174,27 @@ async function main() {
     const [existingPerk] = await db
       .select()
       .from(birthdayPerks)
-      .where(eq(birthdayPerks.listingId, venue1420Listing.id))
+      .where(eq(birthdayPerks.listingId, nightjarListing.id))
       .limit(1);
 
     if (!existingPerk) {
       await db.insert(birthdayPerks).values({
-        listingId: venue1420Listing.id,
-        eventId: malfyBrunch.id,
-        title: "Malfy Brunch birthday perk",
+        listingId: nightjarListing.id,
+        eventId: goldenHourBrunch.id,
+        title: "Golden Hour Brunch birthday perk",
         minPartySize: 5,
-        freebieText: "A free bottle of Malfy",
+        freebieText: "A free round of drinks",
       });
-      console.log("Added 1420 / Malfy Brunch birthday perk.");
+      console.log("Added The Nightjar Lounge / Golden Hour Brunch birthday perk.");
     } else {
-      console.log("1420 birthday perk already exists, skipping.");
+      console.log("The Nightjar Lounge birthday perk already exists, skipping.");
     }
   }
 
   console.log("Birthday-perk seed complete.");
-  console.log(`Demo login for both new venues: izumi@example.com / 1420@example.com — password ${DEMO_PASSWORD}`);
+  console.log(
+    `Demo login for both new venues: sakura.table@example.com / nightjar.lounge@example.com — password ${DEMO_PASSWORD}`,
+  );
   process.exit(0);
 }
 
