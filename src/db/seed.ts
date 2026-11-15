@@ -155,9 +155,9 @@ async function main() {
 
   const vendorSeed = [
     {
-      email: "jinja.nile.resort@example.com",
+      email: "nile.haven.resort@example.com",
       name: "Wanjiru Achieng",
-      businessName: "Jinja Nile Resort & Spa",
+      businessName: "Nile Haven Resort & Spa",
       accreditationStatus: "trusted" as const,
       location: "Jinja",
       description: "A riverside resort with spa treatments overlooking the source of the Nile.",
@@ -185,9 +185,9 @@ async function main() {
       },
     },
     {
-      email: "nalubale.rafting@example.com",
+      email: "source.rapids@example.com",
       name: "Peter Mugisha",
-      businessName: "Nalubale Rafting Co.",
+      businessName: "Source Rapids Co.",
       accreditationStatus: "trusted" as const,
       location: "Bujagali Falls, Jinja",
       description: "Grade 5 white-water rafting, bungee jumping, and quad bike trails.",
@@ -214,9 +214,9 @@ async function main() {
       },
     },
     {
-      email: "queens.trail.safaris@example.com",
+      email: "savannah.trail.safaris@example.com",
       name: "Sarah Nabatanzi",
-      businessName: "Queen's Trail Safaris",
+      businessName: "Savannah Trail Safaris",
       accreditationStatus: "trusted" as const,
       location: "Queen Elizabeth National Park",
       description: "Game drives and Kazinga Channel boat cruises with veteran guides.",
@@ -243,9 +243,9 @@ async function main() {
       },
     },
     {
-      email: "bwindi.trekkers.lodge@example.com",
+      email: "misty.ridge.lodge@example.com",
       name: "Moses Byaruhanga",
-      businessName: "Bwindi Trekkers Lodge",
+      businessName: "Misty Ridge Gorilla Lodge",
       accreditationStatus: "pending" as const,
       location: "Bwindi Impenetrable Forest",
       description: "Lodge and guided trekking permits for habituated gorilla families.",
@@ -273,13 +273,13 @@ async function main() {
       },
       pendingDocument: {
         docType: "business_registration" as const,
-        documentUrl: "https://drive.example.com/bwindi-trekkers-registration",
+        documentUrl: "https://drive.example.com/misty-ridge-lodge-registration",
       },
     },
     {
-      email: "kampala.culture.tours@example.com",
+      email: "seven.hills.tours@example.com",
       name: "Grace Kintu",
-      businessName: "Kampala Culture Tours",
+      businessName: "Seven Hills Culture Tours",
       accreditationStatus: "trusted" as const,
       location: "Kampala & Entebbe",
       description: "Museum, market, and UWEC wildlife centre tours with local guides.",
@@ -306,16 +306,16 @@ async function main() {
       },
     },
     {
-      email: "lechateau.brasserie@example.com",
+      email: "lapromenade.brasserie@example.com",
       name: "Daniel Okwir",
-      businessName: "Le Chateau Brasserie",
+      businessName: "La Promenade Brasserie",
       accreditationStatus: "trusted" as const,
       location: "Kampala",
-      description: "A Kampala institution serving Ugandan and continental dishes since 2005.",
+      description: "A relaxed courtyard brasserie serving Ugandan and continental dishes.",
       journeySlugs: ["kampala-city-experience"],
       listing: {
         type: "restaurant" as const,
-        title: "Le Chateau Brasserie",
+        title: "La Promenade Brasserie",
         description: "Ugandan and continental cuisine in a relaxed courtyard setting.",
         priceLabel: "Mains from",
         priceMinor: 30_000,
@@ -334,9 +334,9 @@ async function main() {
       },
     },
     {
-      email: "entebbe.transit.hotel@example.com",
+      email: "lakeside.transit.hotel@example.com",
       name: "Lydia Nansubuga",
-      businessName: "Entebbe Airport Transit Hotel",
+      businessName: "Lakeside Transit Hotel",
       accreditationStatus: "trusted" as const,
       location: "Entebbe",
       description:
@@ -365,9 +365,9 @@ async function main() {
       },
     },
     {
-      email: "nile.serenity.spa@example.com",
+      email: "riverside.serenity.spa@example.com",
       name: "Esther Nakato",
-      businessName: "Nile Serenity Spa",
+      businessName: "Riverside Serenity Spa",
       accreditationStatus: "trusted" as const,
       location: "Jinja",
       description: "A riverside spa and salon offering massages, facials, and braiding.",
@@ -389,25 +389,23 @@ async function main() {
       },
     },
     {
-      email: "safeboda.partnerships@example.com",
-      name: "SafeBoda Partnerships",
-      businessName: "SafeBoda",
+      email: "pamoja.rides.partnerships@example.com",
+      name: "Joseph Kato",
+      businessName: "Pamoja Rides",
       accreditationStatus: "trusted" as const,
       location: "Kampala & Entebbe",
       description:
-        "Uganda's ride-hailing app for boda and car rides — the fastest way from Entebbe Airport into Kampala, or around the city once you're there.",
+        "A fictional ride-hailing app for boda and car rides — the fastest way from Entebbe Airport into Kampala, or around the city once you're there.",
       journeySlugs: ["kampala-city-experience"],
       listing: {
         type: "transport" as const,
-        title: "Airport & City Rides with SafeBoda",
+        title: "Airport & City Rides with Pamoja Rides",
         description:
-          "Verified boda and car rides with fixed upfront fares — book straight from the SafeBoda app. Look for the Wano welcome stand in the Entebbe arrivals hall for pickup and a SIM card in one stop.",
+          "Verified boda and car rides with fixed upfront fares — book straight from the Pamoja Rides app. Look for the Wano welcome stand in the Entebbe arrivals hall for pickup and a SIM card in one stop.",
         priceLabel: "From",
         priceMinor: 25_000,
         priceUnit: "/ride",
-        // Booking happens on SafeBoda's own platform, not Wano's — see
-        // listings.externalBookingUrl.
-        externalBookingUrl: "https://safeboda.com",
+        externalBookingUrl: null,
         latitude: "0.042300",
         longitude: "32.443600",
       },
@@ -504,9 +502,9 @@ async function main() {
     const relaxJourney = journeyBySlug.get("relax-unwind")!;
     const safariJourney = journeyBySlug.get("big-five-safari")!;
     const bookJourneyId =
-      v.businessName === "Jinja Nile Resort & Spa"
+      v.businessName === "Nile Haven Resort & Spa"
         ? relaxJourney.id
-        : v.businessName === "Queen's Trail Safaris"
+        : v.businessName === "Savannah Trail Safaris"
           ? safariJourney.id
           : null;
 
