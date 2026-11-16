@@ -1,0 +1,14 @@
+import Link from "next/link";
+
+export default function NotFound() {
+  return (
+    <main className="mx-auto flex min-h-[70dvh] max-w-xl flex-col items-center justify-center px-6 text-center">
+      <p className="eyebrow">Not found</p>
+      <h1 className="mt-2 text-4xl">We couldn’t find that page</h1>
+      <p className="mt-3 text-ink-soft">The gift or reservation may have been removed, or the link may be incomplete.</p>
+      <Link href="/registry" className="btn-primary mt-6">
+        Browse the wishlist
+      </Link>
+    </main>
+  );
+}
