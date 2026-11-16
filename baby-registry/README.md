@@ -1,0 +1,95 @@
+# Baby Gift Registry
+
+A private, shareable baby gift registry built from **Baby_List.pdf**. Guests open one link, browse
+the wishlist (AED, plus UGX once you set a rate), reserve a gift without an account, and buy it
+online or in a Dubai store. Reservations are atomic and appear live for every visitor. The family
+manages everything from a private admin dashboard.
+
+**Stack:** Next.js 16 (App Router, TypeScript) · Tailwind CSS v4 · Supabase (Postgres, Auth,
+Realtime, Storage) · Lucide icons · Vercel.
+
+| Guide | What's in it |
+| --- | --- |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Step-by-step: Supabase project, migrations, admin account, env vars, exchange rate, Vercel, custom domain, launch checks |
+| [docs/ADMIN_GUIDE.md](docs/ADMIN_GUIDE.md) | Day-to-day use of the dashboard: reservations, products, shops, currency, exports |
+| [docs/DATA_NOTES.md](docs/DATA_NOTES.md) | Exactly how the PDF was imported, what was missing, and how totals are calculated |
+| [docs/TESTING.md](docs/TESTING.md) | Running the unit, database/security and end-to-end tests locally |
+
+## Pages
+
+| URL | Who | Purpose |
+| --- | --- | --- |
+| `/` | Everyone | Welcome, live progress, categories, featured gifts, full collection with search/filters |
+| `/registry` | Everyone | The full wishlist (`?q=` pre-fills the search) |
+| `/registry/[category]` | Everyone | One category, e.g. `/registry/travel` |
+| `/gift/[id]` | Everyone | A gift by slug (`/gift/doona-plus-grey-hound`) or UUID, with Where to buy |
+| `/reservation/[reference]` | Guest with the link | Confirmation: reference, price, where to buy, reminder to purchase |
+| `/budget` | Everyone | The PDF's original budget estimates (verbatim) next to live totals |
+| `/admin/login` | Family | Sign in |
+| `/admin` | Admin | Overview: counts, value, activity |
+| `/admin/reservations` | Admin | All reservations with guest details; purchase / cancel / release; history; search; CSV |
+| `/admin/gifts`, `/admin/gifts/new`, `/admin/gifts/[id]` | Admin | Product management, image upload, shopping links |
+| `/admin/retailers` | Admin | Shops: verified websites, store addresses, phone numbers, map links |
+| `/admin/settings` | Admin | AED→UGX rate, welcome text, price notice, optional expiry, spam limits |
+| `/admin/export/reservations`, `/admin/export/gifts` | Admin | CSV downloads |
+
+## How the important parts work
+
+- **Atomic reservations.** Guests submit to a server action, which calls the Postgres function
+  `reserve_gift()` with the server-only secret key. The function locks the gift row
+  (`SELECT … FOR UPDATE`), re-checks that it is still available at that exact moment, inserts the
+  reservation and flips the status in one transaction. A partial unique index
+  (`one live reservation per gift`) is a second, independent guarantee. Tests fire 30 simultaneous
+  API calls and 25 parallel open transactions at one gift: exactly one wins every time.
+- **Real time.** Every open registry page subscribes to Supabase Realtime `postgres_changes` on
+  `gifts` (and `registry_settings` for the exchange rate). It catches up on reconnect or when a
+  phone wakes up. It does not poll.
+- **Privacy.** Row Level Security: guests can read only catalogue tables. Reservations, guest
+  names, emails, phones, messages, activity history and spam-throttle data are readable only by
+  admins (users listed in `admin_profiles`). Realtime respects the same rules: anonymous
+  subscribers receive no reservation data. The confirmation page shows only the guest's first name.
+- **Admin security** is enforced in three layers: the Next.js proxy redirects signed-out
+  visitors, every admin page, action and export re-checks `is_admin()` on the server, and RLS
+  enforces it again in the database. Gift status can only change through the reservation-aware
+  functions, so reservations and availability can't drift apart.
+- **Spam protection.** A honeypot field, a minimum fill time, server and database input
+  validation, and database throttles per salted IP hash (raw IPs are never stored). The throttles
+  default to 15 attempts per 10 minutes and 5 reservations per day, and are adjustable in Settings.
+- **No invented shopping data.** The PDF contains no product URLs, store addresses or phone
+  numbers, so the registry generates clearly labelled Google / Google Maps *search* links until
+  you add verified ones in the admin.
+
+## Quick start (local)
+
+```bash
+cd baby-registry
+npm install
+npx supabase start              # needs Docker; applies migrations incl. the 77-product import
+cp .env.example .env.local      # fill with the values `npx supabase status` prints
+npm run create-admin -- you@example.com
+npm run dev                     # http://localhost:3000
+```
+
+## Project layout
+
+```
+baby-registry/
+├─ data/wishlist.ts                 # source of truth for the PDF import (77 options, 7 categories)
+├─ public/gifts/                    # photos cropped from the PDF's collages
+├─ scripts/
+│  ├─ generate-seed.ts              # data/wishlist.ts → supabase/migrations/…_import_wishlist.sql
+│  ├─ extract-pdf-images.py         # crops the photos out of the PDF's collage images
+│  └─ create-admin.ts               # creates/promotes an administrator
+├─ supabase/migrations/
+│  ├─ 20261116000100_registry_schema.sql   # tables, RLS, reservation functions, realtime, storage
+│  └─ 20261116000200_import_wishlist.sql   # generated product import (idempotent)
+├─ src/
+│  ├─ app/(public)/…                # registry pages
+│  ├─ app/admin/…                   # login, dashboard, exports
+│  ├─ app/actions/                  # server actions (reserve, admin)
+│  ├─ app/api/cron/…                # optional reservation-expiry job (off by default)
+│  ├─ components/{registry,admin,site,ui}/
+│  ├─ lib/                          # pricing, currency, filters, totals, links, validation, data access
+│  └─ proxy.ts                      # Next 16 "proxy" (formerly middleware): admin session gate
+└─ tests/{unit,db,e2e}/
+```
