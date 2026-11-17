@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/admin";
 import { getServerSupabase } from "@/lib/supabase/server";
+import { getServiceSupabase } from "@/lib/supabase/service";
 import {
   firstError,
   giftRetailerSchema,
@@ -83,6 +84,34 @@ export async function closeReservationAction(
   if (error) return { ok: false, message: dbMessage(error.message) };
   refreshAll();
   return { ok: true, message: newStatus === "cancelled" ? "Reservation cancelled; the gift is available again." : "Gift released back to available." };
+}
+
+/** Only reservations that no longer hold a gift can be deleted. Active/purchased must be released first. */
+const CLOSED_STATUSES = ["cancelled", "released", "expired"] as const;
+
+/**
+ * Permanently deletes closed reservations (and, by cascade, their history). Signed-in admins have
+ * no DELETE grant on reservations, so after the admin check this uses the server-only secret-key
+ * client, and the status filter guarantees a live reservation is never removed.
+ */
+async function deleteClosedReservations(ids: string[] | null): Promise<ActionResult> {
+  await requireAdmin();
+  let query = getServiceSupabase().from("reservations").delete({ count: "exact" }).in("status", [...CLOSED_STATUSES]);
+  if (ids) query = query.in("id", ids);
+  const { error, count } = await query;
+  if (error) return { ok: false, message: dbMessage(error.message) };
+  refreshAll();
+  if (ids && !count) return { ok: false, message: "Only cancelled or released reservations can be deleted. Release it first." };
+  return { ok: true, message: count === 1 ? "Reservation deleted." : `${count ?? 0} reservations deleted.` };
+}
+
+export async function deleteReservationAction(reservationId: string): Promise<ActionResult> {
+  if (typeof reservationId !== "string" || !/^[0-9a-f-]{36}$/i.test(reservationId)) return { ok: false, message: "Invalid reservation." };
+  return deleteClosedReservations([reservationId]);
+}
+
+export async function deleteAllClosedReservationsAction(): Promise<ActionResult> {
+  return deleteClosedReservations(null);
 }
 
 export async function setGiftStatusAction(giftId: string, status: GiftStatus, note?: string): Promise<ActionResult> {

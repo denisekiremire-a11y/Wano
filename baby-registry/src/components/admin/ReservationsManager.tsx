@@ -1,8 +1,14 @@
 "use client";
 
 import { Fragment, useMemo, useState, useTransition } from "react";
-import { Check, ChevronDown, Download, RotateCcw, Search, X } from "lucide-react";
-import { closeReservationAction, markReservationPurchasedAction, type ActionResult } from "@/app/actions/admin";
+import { Check, ChevronDown, Download, RotateCcw, Search, Trash2, X } from "lucide-react";
+import {
+  closeReservationAction,
+  deleteAllClosedReservationsAction,
+  deleteReservationAction,
+  markReservationPurchasedAction,
+  type ActionResult,
+} from "@/app/actions/admin";
 import { normalise } from "@/lib/filters";
 import { formatAED } from "@/lib/currency";
 import { formatDateTime } from "@/lib/format";
@@ -17,6 +23,8 @@ const STATUS_STYLE: Record<ReservationStatus, string> = {
 };
 
 type Filter = "all" | ReservationStatus;
+
+const isClosed = (s: ReservationStatus) => s === "cancelled" || s === "released" || s === "expired";
 
 export function ReservationsManager({ reservations, events }: { reservations: Reservation[]; events: ReservationEvent[] }) {
   const [q, setQ] = useState("");
@@ -40,6 +48,7 @@ export function ReservationsManager({ reservations, events }: { reservations: Re
     for (const r of reservations) m[r.status] = (m[r.status] ?? 0) + 1;
     return m;
   }, [reservations]);
+  const closedCount = useMemo(() => reservations.filter((r) => isClosed(r.status)).length, [reservations]);
 
   const run = (fn: () => Promise<ActionResult>, confirmText: string) => {
     if (!window.confirm(confirmText)) return;
@@ -61,6 +70,22 @@ export function ReservationsManager({ reservations, events }: { reservations: Re
             </button>
           ))}
         </div>
+        {closedCount > 0 && (
+          <button
+            type="button"
+            className="btn-ghost text-xs text-rose-700"
+            disabled={pending}
+            onClick={() =>
+              run(
+                deleteAllClosedReservationsAction,
+                `Delete all ${closedCount} cancelled and released reservations for good? Active and purchased ones are kept. Tip: download the CSV first if you want a record. This can’t be undone.`,
+              )
+            }
+            data-testid="delete-all-closed"
+          >
+            <Trash2 className="size-3.5" aria-hidden /> Delete cancelled &amp; released ({closedCount})
+          </button>
+        )}
         <a download href="/admin/export/reservations" className="btn-secondary text-xs">
           <Download className="size-3.5" aria-hidden /> CSV
         </a>
@@ -160,6 +185,22 @@ export function ReservationsManager({ reservations, events }: { reservations: Re
                               <X className="size-3.5" aria-hidden /> Cancel
                             </button>
                           </>
+                        )}
+                        {isClosed(r.status) && (
+                          <button
+                            type="button"
+                            className="btn-danger px-3 py-1.5 text-xs"
+                            disabled={pending}
+                            onClick={() =>
+                              run(
+                                () => deleteReservationAction(r.id),
+                                `Delete ${r.guest_name}’s ${r.status} reservation of “${r.gift_name_snapshot}” for good? It disappears from this list, the exports and the guest’s My gifts. This can’t be undone.`,
+                              )
+                            }
+                            data-testid="delete-reservation"
+                          >
+                            <Trash2 className="size-3.5" aria-hidden /> Delete
+                          </button>
                         )}
                         <button type="button" className="btn-ghost px-2 py-1.5 text-xs" onClick={() => setOpen(isOpen ? null : r.id)} aria-expanded={isOpen}>
                           History <ChevronDown className={`size-3.5 transition-transform ${isOpen ? "rotate-180" : ""}`} aria-hidden />

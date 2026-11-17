@@ -371,6 +371,22 @@ try {
     assert.equal(g.trim().split("\r\n").length, 78); // header + 77
   });
 
+  await test("admin deletes a cancelled reservation; live ones have no Delete button", async () => {
+    const r = await serverReserve("lulujo-muslin-swaddles", "Cousin Delete Me");
+    await admin.reload();
+    const row = () => admin.locator(`[data-testid=reservation-row][data-reference="${r.reference}"]`);
+    assert.equal(await row().getByTestId("delete-reservation").count(), 0, "active reservation must not be deletable");
+    admin.once("dialog", (d) => d.accept());
+    await row().getByTestId("cancel").click();
+    await waitFor(async () => (await row().getByTestId("delete-reservation").count()) === 1, 8000, "delete button after cancel");
+    admin.once("dialog", (d) => d.accept());
+    await row().getByTestId("delete-reservation").click();
+    await waitFor(async () => (await row().count()) === 0, 8000, "row removed");
+    // Gone from the database too; the purchased reservation is untouched.
+    assert.equal((await svc.from("reservations").select("id").eq("reference", r.reference)).data.length, 0);
+    assert.equal((await svc.from("reservations").select("id").eq("status", "purchased")).data.length >= 1, true);
+  });
+
   await test("admin sets the AED→UGX rate → UGX prices appear for guests", async () => {
     await admin.goto(BASE + "/admin/settings");
     await admin.getByLabel("1 AED = ? UGX").fill("1000");
