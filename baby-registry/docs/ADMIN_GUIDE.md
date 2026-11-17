@@ -25,12 +25,16 @@ estimates next to the live totals; gifts waiting to be purchased; and recent res
 
 Each row shows the guest's name, email, phone, gift, price at reservation, date and time (Dubai
 time), reference and status. Search by name, email, phone, gift or reference, and filter by status.
+**Click a guest's name** to see everything that person has reserved (matched by email), with a
+count and an estimated total. A "*N* gifts" tag next to a name shows who has pledged more than one.
+**Show everyone** goes back to the full list.
 
 | Action | What it does |
 | --- | --- |
 | **Purchased** | The guest has bought the gift. Gift → PURCHASED; the reservation is kept as purchased. |
 | **Release** | Puts the gift back to AVAILABLE (e.g. the guest changed their mind). The reservation is kept in history as *released*. |
 | **Cancel** | Same effect as Release, recorded as *cancelled* (e.g. a mistaken or duplicate reservation). |
+| **Delete** | Only on *cancelled* or *released* reservations. Removes it **for good**: from this list, the CSV exports and the guest's My gifts. Active or purchased ones must be released first. **Delete cancelled & released (N)** at the top clears them all at once. Download the CSV first if you want a record. |
 | **History** | Every event for that reservation: reserved, purchased, released, with who did it and when, plus the guest's message. |
 
 Reservations are **never released automatically** unless you turn on expiry in Settings.

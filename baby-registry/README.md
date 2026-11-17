@@ -27,7 +27,7 @@ Realtime, Storage) · Lucide icons · Vercel.
 | `/my-gifts` | Guest | Everything this guest has pledged, with a count, status and a private link to open it on other devices |
 | `/admin/login` | Family | Sign in |
 | `/admin` | Admin | Overview: counts, value, activity |
-| `/admin/reservations` | Admin | All reservations with guest details; purchase / cancel / release; history; search; CSV |
+| `/admin/reservations` | Admin | All reservations with guest details; purchase / cancel / release / delete; history; search; CSV |
 | `/admin/gifts`, `/admin/gifts/new`, `/admin/gifts/[id]` | Admin | Product management, image upload, shopping links |
 | `/admin/retailers` | Admin | Shops: verified websites, store addresses, phone numbers, map links |
 | `/admin/settings` | Admin | AED→UGX rate, welcome text, price notice, optional expiry, spam limits |

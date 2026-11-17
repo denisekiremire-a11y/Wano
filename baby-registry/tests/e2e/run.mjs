@@ -54,8 +54,8 @@ const waitFor = async (fn, ms = 8000, label = "condition") => {
 };
 const card = (page, slug) => page.locator(`[data-testid=gift-card][data-gift-slug="${slug}"]`).first();
 const giftId = async (slug) => (await svc.from("gifts").select("id").eq("slug", slug).single()).data.id;
-const serverReserve = async (slug, name) =>
-  (await svc.rpc("reserve_gift", { p_gift_id: await giftId(slug), p_guest_name: name, p_client_hash: `e2e-${randomUUID()}` })).data;
+const serverReserve = async (slug, name, email = null) =>
+  (await svc.rpc("reserve_gift", { p_gift_id: await giftId(slug), p_guest_name: name, p_guest_email: email, p_client_hash: `e2e-${randomUUID()}` })).data;
 
 async function reserveViaUi(page, slug, { name, email = "", phone = "" }) {
   await card(page, slug).getByTestId("reserve-button").click();
@@ -369,6 +369,35 @@ try {
     assert.match(csv, /grace@example\.test/);
     const g = await (await fetch(BASE + "/admin/export/gifts", { headers: { cookie: cookies } })).text();
     assert.equal(g.trim().split("\r\n").length, 78); // header + 77
+  });
+
+  await test("admin clicks a guest's name → sees only that guest's pledges, with a count", async () => {
+    const a = await serverReserve("clevasleep-swaddle", "Cousin Two Gifts", "two.gifts@example.test");
+    const b = await serverReserve("kenva-dresser", "Cousin Two Gifts", "Two.Gifts@example.test");
+    await admin.reload();
+    await admin.locator(`[data-testid=reservation-row][data-reference="${a.reference}"]`).getByTestId("guest-name").click();
+    await admin.getByTestId("guest-filter").waitFor();
+    assert.match(await admin.getByTestId("guest-pledge-count").textContent(), /2 gifts/);
+    const refs = await admin.getByTestId("reservation-row").evaluateAll((els) => els.map((e) => e.dataset.reference).sort());
+    assert.deepEqual(refs, [a.reference, b.reference].sort());
+    await admin.getByTestId("clear-guest-filter").click();
+    assert.ok((await admin.getByTestId("reservation-row").count()) > 2);
+  });
+
+  await test("admin deletes a cancelled reservation; live ones have no Delete button", async () => {
+    const r = await serverReserve("lulujo-muslin-swaddles", "Cousin Delete Me");
+    await admin.reload();
+    const row = () => admin.locator(`[data-testid=reservation-row][data-reference="${r.reference}"]`);
+    assert.equal(await row().getByTestId("delete-reservation").count(), 0, "active reservation must not be deletable");
+    admin.once("dialog", (d) => d.accept());
+    await row().getByTestId("cancel").click();
+    await waitFor(async () => (await row().getByTestId("delete-reservation").count()) === 1, 8000, "delete button after cancel");
+    admin.once("dialog", (d) => d.accept());
+    await row().getByTestId("delete-reservation").click();
+    await waitFor(async () => (await row().count()) === 0, 8000, "row removed");
+    // Gone from the database too; the purchased reservation is untouched.
+    assert.equal((await svc.from("reservations").select("id").eq("reference", r.reference)).data.length, 0);
+    assert.equal((await svc.from("reservations").select("id").eq("status", "purchased")).data.length >= 1, true);
   });
 
   await test("admin sets the AED→UGX rate → UGX prices appear for guests", async () => {
