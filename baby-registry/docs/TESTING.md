@@ -1,6 +1,6 @@
 # Testing
 
-Three layers. The database and end-to-end suites run against real services (Postgres, PostgREST, Auth, Realtime, the built app in real browsers). The email unit tests stub the network call to Resend, which this test environment cannot reach; no live email was sent.
+Three layers. The database and end-to-end suites run against real services (Postgres, PostgREST, Auth, Realtime, the built app in real browsers). The email unit tests simulate Gmail/Resend, which this test environment cannot reach; no live email was sent.
 
 | Suite | Command | Needs | Covers |
 | --- | --- | --- | --- |
@@ -33,13 +33,13 @@ Notes:
 
 ## Last verified results
 
-- Unit: 51 passed (including email notifications, and the product-link data: every link points
-  at a real gift and shop over https, only unchecked links are marked so, migration in sync)
+- Unit: 57 passed (including signed email links — forged, altered and expired links refused — and
+  Gmail sending with Google's connection simulated, plus the product-link data checks)
 - Database & security: 40 passed (including "My gifts": own pledges only, no contact details,
   only a hash of the key stored)
-- End-to-end, against the production build (`next build && next start`): 28 passed on three
-  consecutive runs (including My gifts across devices, Buy buttons going to the exact product
-  page, and a gift reserved by someone else disappearing live from the "Still available" list)
+- End-to-end, against the production build (`next build && next start`): 32 passed on three
+  consecutive runs (including the email-linked My gifts list on another device, forged/expired
+  links refused, Buy buttons, the autofill-safe anti-spam field, and live updates)
 - The build also succeeds with no Supabase settings at all; pages then say the registry is being
   set up, instead of the deployment failing
 - `next build`, `eslint` and `tsc --noEmit`: clean

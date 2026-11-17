@@ -58,9 +58,10 @@ Realtime, Storage) · Lucide icons · Vercel.
 - **"My gifts" without accounts.** Each browser gets a random private key (cookie). Reservations
   store only a SHA-256 hash of it, and `/my-gifts` lists that guest's pledges. A personal link
   (`/my-gifts/<key>`) lets them open the list on another device.
-- **Email notifications (optional).** With a free [Resend](https://resend.com) API key, the family
-  gets an email for every new reservation, and guests can get a confirmation with their My gifts
-  link. Emails are sent after the response, so they never slow down or undo a reservation.
+- **Emails (optional, via your Gmail).** The family gets an email for every reservation; guests who
+  give their email get a confirmation with a signed link to every gift they reserved with that
+  address (any device), and can request it again from My gifts. Emails are sent after the response,
+  so they never slow down or undo a reservation.
 - **Direct "Buy" links.** 37 gifts link straight to the exact product page at Mom Store, Mamas &
   Papas UAE, Mumzworld or Carrefour UAE (35 opened and checked; see docs/DATA_NOTES.md). Others
   open a search on the shop's own website. Nothing is invented: unchecked links say so.

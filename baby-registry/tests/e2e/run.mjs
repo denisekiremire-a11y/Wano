@@ -8,7 +8,7 @@
  * service key from .env.local. Expects a freshly reset database (all 77 gifts available).
  */
 import { createRequire } from "node:module";
-import { randomUUID } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 
@@ -23,6 +23,11 @@ const env = Object.fromEntries(
     .map((l) => [l.slice(0, l.indexOf("=")), l.slice(l.indexOf("=") + 1)]),
 );
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
+/** Same format as src/lib/email-link.ts, signed with the app's local secret. */
+const emailToken = (email, days = 30, secret = env.LINK_SIGNING_SECRET || env.RESERVATION_HASH_SALT) => {
+  const payload = Buffer.from(JSON.stringify({ e: email, x: Math.floor(Date.now() / 1000) + days * 86400 })).toString("base64url");
+  return `${payload}.${createHmac("sha256", `my-gifts-link:${secret}`).update(payload).digest("base64url")}`;
+};
 const svc = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SECRET_KEY || env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 
 let passed = 0;
@@ -56,9 +61,11 @@ async function reserveViaUi(page, slug, { name, email = "", phone = "" }) {
   await card(page, slug).getByTestId("reserve-button").click();
   const dialog = page.locator("dialog[open]");
   await dialog.getByLabel(/Your name/).fill(name);
-  if (email || phone) await dialog.getByText(/Add a message or contact details/).click();
-  if (email) await dialog.getByLabel("Email").fill(email);
-  if (phone) await dialog.getByLabel("Phone").fill(phone);
+  if (email) await dialog.getByLabel(/Your email/).fill(email);
+  if (phone) {
+    await dialog.getByText(/Add a message or phone number/).click();
+    await dialog.getByLabel("Phone").fill(phone);
+  }
   await page.waitForTimeout(1600); // humans take a moment; the anti-bot timer requires it
   await dialog.getByTestId("confirm-checkbox").check();
   await dialog.getByTestId("confirm-reserve").click();
@@ -158,7 +165,8 @@ try {
   await test("category page /registry/clothing lists only that category; unknown category is not found", async () => {
     const p = await newPage();
     await p.goto(BASE + "/registry/clothing");
-    assert.equal(await p.getByTestId("gift-card").count(), 16);
+    await p.locator("[data-testid=gift-card]:visible").first().waitFor();
+    assert.equal(await p.locator("[data-testid=gift-card]:visible").count(), 16);
     await p.goto(BASE + "/registry/not-a-category");
     assert.match(await p.locator("h1").textContent(), /couldn’t find/);
     await p.context().close();
@@ -473,6 +481,45 @@ try {
     await stranger.goto(BASE + "/my-gifts/not-a-real-key");
     assert.match(await stranger.locator("main").textContent(), /isn’t complete/);
     await stranger.context().close();
+  });
+
+  await test("reserving with an email links this device to that email's list", async () => {
+    const x = await newPage();
+    await x.goto(BASE + "/registry/feeding");
+    await reserveViaUi(x, "mam-easy-start-starter-set", { name: "Email Guest", email: "Email.Guest@Example.test" });
+    await x.goto(BASE + "/my-gifts");
+    await x.locator("[data-testid=pledge]:visible").first().waitFor();
+    assert.match(await x.locator("[data-testid=linked-email]:visible").first().textContent(), /email\.guest@example\.test/);
+    await x.getByText("MAM Easy Start starter set").first().waitFor();
+    await x.context().close();
+  });
+
+  await test("the emailed link shows that email's gifts on any other device; forged links are refused", async () => {
+    const y = await newPage({ ...devices["iPhone 13"] });
+    await y.goto(`${BASE}/my-gifts/e/${emailToken("email.guest@example.test")}`);
+    await y.waitForURL(/\/my-gifts$/); // token moved into a cookie, out of the address bar
+    await y.getByText("MAM Easy Start starter set").first().waitFor();
+    await y.context().close();
+
+    const z = await newPage();
+    await z.goto(`${BASE}/my-gifts/e/${emailToken("email.guest@example.test", 30, "wrong-secret")}`);
+    await z.getByText(/expired or isn’t complete/).first().waitFor();
+    assert.equal(await z.locator("[data-testid=pledge]:visible").count(), 0);
+    await z.goto(`${BASE}/my-gifts/e/${emailToken("email.guest@example.test", -1)}`); // expired yesterday
+    await z.getByText(/expired or isn’t complete/).first().waitFor();
+    await z.context().close();
+  });
+
+  await test("'Email me my list' explains when emailing isn't switched on", async () => {
+    const w = await newPage();
+    await w.goto(BASE + "/my-gifts");
+    const form = w.locator("[data-testid=email-list-form]:visible").first();
+    await form.getByLabel("Your email").fill("someone@example.test");
+    await form.getByRole("button", { name: /Email me my list/ }).click();
+    await w.locator("[data-testid=email-list-status]:visible").first().waitFor();
+    // Local test runs have no Gmail configured, so the page says so instead of pretending to send.
+    assert.match(await w.locator("[data-testid=email-list-status]:visible").first().textContent(), /isn’t switched on yet/);
+    await w.context().close();
   });
 
   await test("My gifts follows the family's updates (purchased)", async () => {

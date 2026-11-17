@@ -2,7 +2,8 @@
 
 import { createHash } from "node:crypto";
 import { after } from "next/server";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { EMAIL_COOKIE, createEmailToken, emailCookieOptions } from "@/lib/email-link";
 import { formatAED } from "@/lib/currency";
 import { ensureGuestKey } from "@/lib/guest-key";
 import { notifyReservation } from "@/lib/notify";
@@ -94,6 +95,15 @@ export async function reserveGiftAction(formData: FormData): Promise<ReserveResu
         giftStatus: res.status,
       };
     }
+    // A guest who gave an email can always get back to their list with it: remember it on this
+    // device, and use an email-based link (works on any device) in their confirmation.
+    let myGiftsPath = `/my-gifts/${guestKey}`;
+    if (input.email) {
+      const token = createEmailToken(input.email);
+      (await cookies()).set(EMAIL_COOKIE, token, emailCookieOptions);
+      myGiftsPath = `/my-gifts/e/${token}`;
+    }
+
     // Email the family (and the guest, if configured) after the response is sent, so the
     // guest never waits on email and an email failure can never undo a reservation.
     const origin = await siteUrl();
@@ -108,7 +118,7 @@ export async function reserveGiftAction(formData: FormData): Promise<ReserveResu
         guestPhone: input.phone,
         message: input.message,
         siteUrl: origin,
-        myGiftsUrl: `${origin}/my-gifts/${guestKey}`,
+        myGiftsUrl: `${origin}${myGiftsPath}`,
       }).catch((e) => console.error("notifyReservation", e)),
     );
     return {

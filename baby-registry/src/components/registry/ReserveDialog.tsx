@@ -133,9 +133,27 @@ export function ReserveDialog({ gift, onClose }: { gift: Gift | null; onClose: (
             />
           </div>
 
+          <div>
+            <label htmlFor="r-email" className="field-label">
+              Your email <span className="font-normal text-muted">(recommended)</span>
+            </label>
+            <input
+              id="r-email"
+              type="email"
+              className="field-input text-base"
+              value={form.email}
+              onChange={set("email")}
+              maxLength={254}
+              autoComplete="email"
+              inputMode="email"
+              placeholder="you@example.com"
+            />
+            <p className="field-hint">So you can get your list of gifts back any time, on any device. Only the family sees it.</p>
+          </div>
+
           <details className="group rounded-2xl border border-linen bg-white/60 px-4 py-3" open={showMore || undefined} onToggle={(e) => setShowMore(e.currentTarget.open)}>
             <summary className="cursor-pointer list-none text-sm font-medium text-sage-700 [&::-webkit-details-marker]:hidden">
-              <span className="group-open:hidden">+ Add a message or contact details (optional)</span>
+              <span className="group-open:hidden">+ Add a message or phone number (optional)</span>
               <span className="hidden group-open:inline">Optional details</span>
             </summary>
             <div className="mt-3 space-y-4">
@@ -146,12 +164,7 @@ export function ReserveDialog({ gift, onClose }: { gift: Gift | null; onClose: (
                 <textarea id="r-message" className="field-input min-h-20" value={form.message} onChange={set("message")} maxLength={1000} />
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label htmlFor="r-email" className="field-label">
-                    Email
-                  </label>
-                  <input id="r-email" type="email" className="field-input" value={form.email} onChange={set("email")} maxLength={254} autoComplete="email" inputMode="email" />
-                </div>
+
                 <div>
                   <label htmlFor="r-phone" className="field-label">
                     Phone

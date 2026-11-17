@@ -56,3 +56,31 @@ export async function getGuestPledges(guestKey: string): Promise<GuestPledge[]> 
   if (error) throw new DataError(error.message);
   return ((data as GuestPledge[] | null) ?? []).map((p) => ({ ...p, price_aed: p.price_aed === null ? null : Number(p.price_aed) }));
 }
+
+/**
+ * Pledges made with a given (already verified) email address. Server-only, via the service role;
+ * returns only the fields a guest needs — never names, phone numbers or messages.
+ */
+export async function getPledgesByEmail(email: string): Promise<GuestPledge[]> {
+  const { getServiceSupabase } = await import("./supabase/service");
+  const sb = getServiceSupabase();
+  const { data, error } = await sb
+    .from("reservations")
+    .select("reference, status, created_at, gift_id, gift_name_snapshot, price_aed_snapshot, gifts(slug, name)")
+    .eq("guest_email", email.trim().toLowerCase())
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (error) throw new DataError(error.message);
+  return (data ?? []).map((r) => {
+    const g = (Array.isArray(r.gifts) ? r.gifts[0] : r.gifts) as { slug: string; name: string } | null;
+    return {
+      reference: r.reference,
+      status: r.status,
+      created_at: r.created_at,
+      gift_id: r.gift_id,
+      gift_slug: g?.slug ?? null,
+      gift_name: g?.name ?? r.gift_name_snapshot,
+      price_aed: r.price_aed_snapshot === null ? null : Number(r.price_aed_snapshot),
+    } as GuestPledge;
+  });
+}
