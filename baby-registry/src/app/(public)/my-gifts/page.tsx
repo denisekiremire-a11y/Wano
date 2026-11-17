@@ -6,7 +6,11 @@ import { CopyButton } from "@/components/registry/CopyButton";
 import { GiftImage } from "@/components/registry/GiftImage";
 import { PriceNotice } from "@/components/site/Notices";
 import { formatAED, formatUGX } from "@/lib/currency";
-import { getGuestPledges } from "@/lib/data";
+import { getGuestPledges, getPledgesByEmail } from "@/lib/data";
+import { EmailListForm } from "@/components/registry/EmailListForm";
+import { cookies } from "next/headers";
+import { EMAIL_COOKIE, verifyEmailToken } from "@/lib/email-link";
+import type { GuestPledge } from "@/lib/types";
 import { formatDateTime } from "@/lib/format";
 import { readGuestKey } from "@/lib/guest-key";
 import { getRegistry } from "@/lib/registry-cache";
@@ -26,8 +30,14 @@ const STATUS: Record<ReservationStatus, { label: string; cls: string }> = {
 type Props = { searchParams: Promise<{ link?: string }> };
 
 export default async function MyGiftsPage({ searchParams }: Props) {
-  const [sp, key, data] = await Promise.all([searchParams, readGuestKey(), getRegistry()]);
-  const pledges = key ? await getGuestPledges(key) : [];
+  const [sp, key, data, jar] = await Promise.all([searchParams, readGuestKey(), getRegistry(), cookies()]);
+  const email = verifyEmailToken(jar.get(EMAIL_COOKIE)?.value);
+  const [byDevice, byEmail] = await Promise.all([
+    key ? getGuestPledges(key) : Promise.resolve([] as GuestPledge[]),
+    email ? getPledgesByEmail(email).catch(() => [] as GuestPledge[]) : Promise.resolve([] as GuestPledge[]),
+  ]);
+  // Same reservation can be found both ways: merge by reference, newest first.
+  const pledges = [...new Map([...byDevice, ...byEmail].map((p) => [p.reference, p])).values()].sort((a, b) => b.created_at.localeCompare(a.created_at));
   const live = pledges.filter((p) => p.status === "active" || p.status === "purchased");
   const closed = pledges.filter((p) => !(p.status === "active" || p.status === "purchased"));
   const toBuy = live.filter((p) => p.status === "active").length;
@@ -43,6 +53,16 @@ export default async function MyGiftsPage({ searchParams }: Props) {
         {live.length === 0 ? "You haven’t pledged any gifts yet" : `You’ve pledged ${live.length} ${live.length === 1 ? "gift" : "gifts"}`}
       </h1>
 
+      {email && (
+        <p className="mt-2 text-sm text-muted" data-testid="linked-email">
+          Showing gifts reserved on this device and with <strong className="font-medium text-ink-soft">{email}</strong>.
+        </p>
+      )}
+      {sp.link === "expired" && (
+        <p className="mt-4 rounded-xl bg-rose-50 p-3 text-sm text-rose-700" role="alert">
+          That email link has expired or isn’t complete. Enter your email below to get a new one.
+        </p>
+      )}
       {sp.link === "invalid" && (
         <p className="mt-4 rounded-xl bg-rose-50 p-3 text-sm text-rose-700" role="alert">
           That link isn’t complete. Please open it again from your confirmation email or page.
@@ -60,8 +80,7 @@ export default async function MyGiftsPage({ searchParams }: Props) {
         <div className="card mt-6 flex flex-col items-center px-6 py-12 text-center">
           <GiftIcon className="size-8 text-sand" strokeWidth={1.25} aria-hidden />
           <p className="mt-3 max-w-md text-sm text-ink-soft">
-            Gifts you reserve on this device appear here. If you reserved on another phone or computer, open your personal “My gifts”
-            link from that device’s confirmation page or your confirmation email.
+            Gifts you reserve on this device appear here. Reserved on another phone or computer, or with your email? Get your list below.
           </p>
           <Link href="/registry" className="btn-primary mt-5">
             Browse the wishlist
@@ -140,6 +159,12 @@ export default async function MyGiftsPage({ searchParams }: Props) {
             <CopyButton text={personalLink} label="Copy link" />
           </div>
         </section>
+      )}
+
+      {!email && (
+        <div className="mt-8">
+          <EmailListForm />
+        </div>
       )}
 
       <div className="mt-8">

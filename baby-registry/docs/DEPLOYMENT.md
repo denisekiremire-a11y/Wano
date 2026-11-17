@@ -92,19 +92,35 @@ Confirm User*), then in the SQL Editor run
 The secret key is used in exactly one place, the server-side reservation action. The code imports
 it from a `server-only` module, so the build fails if it is ever pulled into browser code.
 
-### Optional: email notifications
+### Optional: emails from your Gmail (recommended)
 
-To get an email whenever someone reserves a gift:
+With email switched on:
+- **You** get an email for every reservation: gift, guest, contact details, message.
+- **Guests who give their email** get a confirmation with a private link to *all* the gifts they've
+  reserved with that address. It works on any phone or computer.
+- **"Email me my list"** on the My gifts page sends a guest a fresh link to their list.
 
-1. Create a free account at <https://resend.com> and open **API Keys → Create API key**
-   (permission: *Sending access*).
-2. Add to Vercel's environment variables: `RESEND_API_KEY` (the key, type **Secret**) and
-   `NOTIFY_OWNER_EMAIL`. Use the **same email you signed up to Resend with**: Resend's free test
-   sender can only deliver to that address.
-3. *(Optional)* To also email guests a confirmation with their "My gifts" link, verify your own
-   domain in Resend (**Domains → Add domain**, then add the DNS records it shows) and set
-   `NOTIFY_FROM_EMAIL`, e.g. `Baby Registry <registry@yourfamily.com>`.
-4. Redeploy. Without these variables nothing is emailed and everything else works the same.
+Setup (about 10 minutes) — use the Gmail account you want emails to come from:
+
+1. Turn on **2-Step Verification**: <https://myaccount.google.com/security> → *2-Step Verification*.
+2. Create an **App Password**: <https://myaccount.google.com/apppasswords> → name it
+   "Baby registry" → **Create**. Google shows a 16-letter password — copy it.
+3. In **Vercel → your registry project → Settings → Environment Variables**, add (Production):
+   - `SMTP_USER` = your Gmail address (e.g. `ourfamily@gmail.com`)
+   - `SMTP_PASS` = the 16-letter App Password (type **Secret**)
+   - *(optional)* `NOTIFY_OWNER_EMAIL` = where reservation alerts go, if not that Gmail
+   - *(optional)* `EMAIL_FROM_NAME` = sender name, default "Baby Peaches Registry"
+4. **Redeploy the newest Production deployment** so it picks up the new settings: **Deployments**
+   → **⋯** on the *top* row → **Redeploy**. (Environment-variable changes only take effect after a
+   deploy. Never redeploy an *older* row — that brings old code back.)
+5. Test: reserve a gift with your own email. You should get two emails (the alert and the guest
+   confirmation). Then release the test reservation in the admin.
+
+Gmail allows roughly 500 emails a day, which is plenty for a family registry. To revoke access at
+any time, delete the App Password in your Google account.
+
+*Alternative:* [Resend](https://resend.com) — set `RESEND_API_KEY`; to email guests also verify
+your own domain in Resend and set `NOTIFY_FROM_EMAIL`, e.g. `Baby Registry <registry@yourfamily.com>`.
 
 ## 6. Deploy to Vercel
 

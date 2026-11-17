@@ -1,17 +1,21 @@
 import "server-only";
+import nodemailer, { type Transporter } from "nodemailer";
 
 /**
- * Email notifications via Resend (https://resend.com). Entirely optional: when RESEND_API_KEY
- * is not set, nothing is sent and reservations work exactly the same. Failures are logged and
- * never affect a guest's reservation.
+ * Email notifications. Entirely optional — when nothing is configured, nothing is sent and
+ * reservations work exactly the same. Failures are logged and never affect a reservation.
  *
- *   RESEND_API_KEY      – API key from resend.com
- *   NOTIFY_OWNER_EMAIL  – where to send "new reservation" emails (comma-separated for several)
- *   NOTIFY_FROM_EMAIL   – optional sender, e.g. "Baby Registry <registry@yourdomain.com>" on a
- *                         domain verified in Resend. Without it Resend's test sender is used,
- *                         which can only deliver to the Resend account's own email address — fine
- *                         for owner notifications, so guest confirmation emails are only sent
- *                         when this is set.
+ * Option A — Gmail (recommended for a family registry; no domain needed):
+ *   SMTP_USER            – the Gmail address, e.g. ourfamily@gmail.com
+ *   SMTP_PASS            – a Gmail "App Password" (16 characters), NOT the normal password
+ *   SMTP_HOST / SMTP_PORT – optional; default smtp.gmail.com / 465
+ *   EMAIL_FROM_NAME      – optional display name, default "Baby Peaches Registry"
+ *
+ * Option B — Resend (https://resend.com):
+ *   RESEND_API_KEY, and NOTIFY_FROM_EMAIL on a domain verified in Resend to email guests.
+ *
+ * NOTIFY_OWNER_EMAIL – where "new reservation" emails go (comma-separated). With Gmail it
+ *                      defaults to SMTP_USER.
  */
 
 const TEST_SENDER = "Baby Registry <onboarding@resend.dev>";
@@ -100,23 +104,60 @@ ${button(d.myGiftsUrl, "See all my gifts")}
 }
 
 export function emailConfig() {
+  const smtpUser = process.env.SMTP_USER?.trim() || "";
+  const smtpPass = (process.env.SMTP_PASS || "").replace(/\s+/g, ""); // Google shows app passwords with spaces
+  const smtp = smtpUser && smtpPass
+    ? {
+        host: process.env.SMTP_HOST?.trim() || "smtp.gmail.com",
+        port: Number(process.env.SMTP_PORT || 465),
+        user: smtpUser,
+        pass: smtpPass,
+      }
+    : null;
   const apiKey = process.env.RESEND_API_KEY || "";
-  const owners = (process.env.NOTIFY_OWNER_EMAIL || "")
+  const isEmail = (x: string) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x);
+  const owners = (process.env.NOTIFY_OWNER_EMAIL || (smtp ? smtp.user : ""))
     .split(",")
-    .map((s) => s.trim())
-    .filter((s) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s));
-  const from = process.env.NOTIFY_FROM_EMAIL?.trim() || "";
-  return { apiKey, owners, from: from || TEST_SENDER, canEmailGuests: Boolean(apiKey && from) };
+    .map((x) => x.trim())
+    .filter(isEmail);
+  const name = (process.env.EMAIL_FROM_NAME || "Baby Peaches Registry").replace(/["<>\r\n]/g, "");
+  const resendFrom = process.env.NOTIFY_FROM_EMAIL?.trim() || "";
+  const provider: "smtp" | "resend" | null = smtp ? "smtp" : apiKey ? "resend" : null;
+  const from = smtp ? `"${name}" <${smtp.user}>` : resendFrom || TEST_SENDER;
+  return {
+    provider,
+    smtp,
+    apiKey,
+    owners,
+    from,
+    replyTo: owners[0] ?? null,
+    // Resend's test sender can only reach the account owner, so guests need a verified domain there.
+    canEmailGuests: provider === "smtp" || Boolean(apiKey && resendFrom),
+  };
 }
 
+let transport: Transporter | null = null;
+
 export async function sendEmail(msg: { to: string[]; subject: string; html: string; text: string }): Promise<"sent" | "skipped" | "failed"> {
-  const { apiKey, from } = emailConfig();
-  if (!apiKey || msg.to.length === 0) return "skipped";
+  const cfg = emailConfig();
+  if (!cfg.provider || msg.to.length === 0) return "skipped";
   try {
+    if (cfg.provider === "smtp" && cfg.smtp) {
+      transport ??= nodemailer.createTransport({
+        host: cfg.smtp.host,
+        port: cfg.smtp.port,
+        secure: cfg.smtp.port === 465,
+        auth: { user: cfg.smtp.user, pass: cfg.smtp.pass },
+        connectionTimeout: 10_000,
+        socketTimeout: 15_000,
+      });
+      await transport.sendMail({ from: cfg.from, to: msg.to, replyTo: cfg.replyTo ?? undefined, subject: msg.subject, html: msg.html, text: msg.text });
+      return "sent";
+    }
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to: msg.to, subject: msg.subject, html: msg.html, text: msg.text }),
+      headers: { Authorization: `Bearer ${cfg.apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: cfg.from, to: msg.to, subject: msg.subject, html: msg.html, text: msg.text }),
       signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) {
@@ -128,6 +169,22 @@ export async function sendEmail(msg: { to: string[]; subject: string; html: stri
     console.error("Email send error", e instanceof Error ? e.message : e);
     return "failed";
   }
+}
+
+/** Testing hook: forget the cached SMTP connection (e.g. after env changes). */
+export function resetEmailTransport() {
+  transport = null;
+}
+
+export function listLinkEmail(d: { siteUrl: string; link: string; count: number }) {
+  const footer = `<p style="margin:0 0 16px;color:#5b5148">Here's your private link to the ${d.count === 1 ? "gift" : `${d.count} gifts`} you've reserved on the registry. It works on any phone or computer.</p>
+${button(d.link, "See my gifts")}
+<p style="margin:16px 0 0;font-size:13px;color:#7d7266">If you didn't ask for this, you can ignore this email.</p>`;
+  return {
+    subject: "Your gifts on the Baby Peaches registry",
+    html: layout("Your gift list", [], footer),
+    text: `Your private link to the gifts you've reserved: ${d.link}\nIf you didn't ask for this, you can ignore this email.`,
+  };
 }
 
 /** Send the owner notification and (when possible) the guest's confirmation. Never throws. */

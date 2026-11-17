@@ -12,12 +12,13 @@ estimates next to the live totals; gifts waiting to be purchased; and recent res
 
 ## Knowing when someone reserves
 
-- **Email:** if you've set up Resend (see DEPLOYMENT.md, "Optional: email notifications"), you get
-  an email for every reservation with the gift, the guest's name, contact details, message and a
-  button to the reservations page.
+- **Email:** once Gmail sending is set up (see DEPLOYMENT.md, "Optional: emails from your Gmail"),
+  you get an email for every reservation with the gift, the guest's name, contact details, message
+  and a button to the reservations page.
 - **Live dashboard:** any open admin page updates by itself the moment a guest reserves.
-- Guests see everything they've pledged under **My gifts** (`/my-gifts`), so they rarely need to
-  ask you what they promised to buy.
+- Guests see everything they've pledged under **My gifts** (`/my-gifts`): on the device they used,
+  and — if they gave their email — on any device via the link in their confirmation email or the
+  "Email me my list" box. So they rarely need to ask you what they promised to buy.
 
 ## Reservations (`/admin/reservations`)
 
