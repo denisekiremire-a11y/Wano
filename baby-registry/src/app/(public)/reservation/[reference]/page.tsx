@@ -7,7 +7,8 @@ import { GiftImage } from "@/components/registry/GiftImage";
 import { PriceBlock } from "@/components/registry/PriceBlock";
 import { WhereToBuyPanel } from "@/components/registry/WhereToBuyPanel";
 import { CurrencyNote, PriceNotice } from "@/components/site/Notices";
-import { getPublicReservation } from "@/lib/data";
+import { getGuestPledges, getPublicReservation } from "@/lib/data";
+import { readGuestKey } from "@/lib/guest-key";
 import { formatDateTime } from "@/lib/format";
 import { getRegistry } from "@/lib/registry-cache";
 
@@ -28,8 +29,10 @@ export default async function ReservationPage({ params, searchParams }: Props) {
   const ref = decodeURIComponent(reference).trim().toUpperCase();
   if (!/^[A-Z0-9-]{8,40}$/.test(ref)) notFound();
 
-  const [reservation, data] = await Promise.all([getPublicReservation(ref), getRegistry()]);
+  const [reservation, data, guestKey] = await Promise.all([getPublicReservation(ref), getRegistry(), readGuestKey()]);
   if (!reservation) notFound();
+  const myPledges = guestKey ? (await getGuestPledges(guestKey)).filter((p) => p.status === "active" || p.status === "purchased") : [];
+  const isMine = myPledges.some((p) => p.reference === reservation.reference);
   const gift = data.gifts.find((g) => g.id === reservation.gift_id);
   const isNew = sp.new === "1";
   const live = reservation.status === "active" || reservation.status === "purchased";
@@ -44,6 +47,20 @@ export default async function ReservationPage({ params, searchParams }: Props) {
             <p className="mt-1 text-sm">Everyone else will now see it as reserved, so nobody buys the same thing.</p>
           </div>
         </div>
+      )}
+
+      {isMine && (
+        <Link
+          href="/my-gifts"
+          className="mb-8 flex items-center justify-between gap-3 rounded-2xl border border-linen bg-white p-4 text-sm hover:border-sand print:hidden"
+          data-testid="my-gifts-banner"
+        >
+          <span>
+            You’ve pledged <strong>{myPledges.length}</strong> {myPledges.length === 1 ? "gift" : "gifts"} so far. See them all, any time, in{" "}
+            <strong>My gifts</strong>.
+          </span>
+          <span className="btn-secondary shrink-0 px-3.5 py-1.5 text-xs">My gifts →</span>
+        </Link>
       )}
 
       <p className="eyebrow">Reservation confirmation</p>
@@ -115,7 +132,10 @@ export default async function ReservationPage({ params, searchParams }: Props) {
           Back to the wishlist
         </Link>
       </div>
-      <p className="mt-6 text-xs text-muted">Bookmark this page — its address is your link back to this reservation.</p>
+      <p className="mt-6 text-xs text-muted">
+        You can always find this reservation again under <Link href="/my-gifts" className="underline">My gifts</Link> on this device, or by
+        bookmarking this page.
+      </p>
     </main>
   );
 }

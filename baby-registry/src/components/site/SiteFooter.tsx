@@ -9,8 +9,8 @@ export function SiteFooter() {
           <Link href="/registry" className="hover:text-ink">
             Full wishlist
           </Link>
-          <Link href="/budget" className="hover:text-ink">
-            Budget summary
+          <Link href="/my-gifts" className="hover:text-ink">
+            My gifts
           </Link>
           <Link href="/admin" className="hover:text-ink" prefetch={false}>
             Family login

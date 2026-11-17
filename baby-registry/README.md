@@ -24,7 +24,7 @@ Realtime, Storage) · Lucide icons · Vercel.
 | `/registry/[category]` | Everyone | One category, e.g. `/registry/travel` |
 | `/gift/[id]` | Everyone | A gift by slug (`/gift/doona-plus-grey-hound`) or UUID, with Where to buy |
 | `/reservation/[reference]` | Guest with the link | Confirmation: reference, price, where to buy, reminder to purchase |
-| `/budget` | Everyone | The PDF's original budget estimates (verbatim) next to live totals |
+| `/my-gifts` | Guest | Everything this guest has pledged, with a count, status and a private link to open it on other devices |
 | `/admin/login` | Family | Sign in |
 | `/admin` | Admin | Overview: counts, value, activity |
 | `/admin/reservations` | Admin | All reservations with guest details; purchase / cancel / release; history; search; CSV |
@@ -55,6 +55,12 @@ Realtime, Storage) · Lucide icons · Vercel.
 - **Spam protection.** A honeypot field, a minimum fill time, server and database input
   validation, and database throttles per salted IP hash (raw IPs are never stored). The throttles
   default to 15 attempts per 10 minutes and 5 reservations per day, and are adjustable in Settings.
+- **"My gifts" without accounts.** Each browser gets a random private key (cookie). Reservations
+  store only a SHA-256 hash of it, and `/my-gifts` lists that guest's pledges. A personal link
+  (`/my-gifts/<key>`) lets them open the list on another device.
+- **Email notifications (optional).** With a free [Resend](https://resend.com) API key, the family
+  gets an email for every new reservation, and guests can get a confirmation with their My gifts
+  link. Emails are sent after the response, so they never slow down or undo a reservation.
 - **No invented shopping data.** The PDF contains no product URLs, store addresses or phone
   numbers, so the registry generates clearly labelled Google / Google Maps *search* links until
   you add verified ones in the admin.
@@ -82,7 +88,8 @@ baby-registry/
 │  └─ create-admin.ts               # creates/promotes an administrator
 ├─ supabase/migrations/
 │  ├─ 20261116000100_registry_schema.sql   # tables, RLS, reservation functions, realtime, storage
-│  └─ 20261116000200_import_wishlist.sql   # generated product import (idempotent)
+│  ├─ 20261116000200_import_wishlist.sql   # generated product import (idempotent)
+│  └─ 20261117000100_guest_pledges.sql     # "My gifts": guest keys + get_guest_pledges()
 ├─ src/
 │  ├─ app/(public)/…                # registry pages
 │  ├─ app/admin/…                   # login, dashboard, exports

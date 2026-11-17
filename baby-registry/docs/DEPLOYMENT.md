@@ -38,9 +38,14 @@ npx supabase link --project-ref <project-ref>   # asks for the database password
 npx supabase db push                       # applies supabase/migrations/*.sql in order
 ```
 
-**Option B, dashboard only:** open **SQL Editor**, paste the full contents of
-`supabase/migrations/20261116000100_registry_schema.sql`, run it, then do the same with
-`supabase/migrations/20261116000200_import_wishlist.sql`.
+**Option B, dashboard only:** open **SQL Editor** and run each file in `supabase/migrations/`
+**in order**, pasting the full contents into a new query each time:
+`20261116000100_registry_schema.sql`, `20261116000200_import_wishlist.sql`,
+`20261117000100_guest_pledges.sql`.
+
+> **Already deployed before "My gifts" was added?** Run only
+> `20261117000100_guest_pledges.sql` in the SQL Editor. Until you do, reservations keep working;
+> they just won't appear under My gifts.
 
 ## 3. Check the wishlist import
 
@@ -85,6 +90,20 @@ Confirm User*), then in the SQL Editor run
 The secret key is used in exactly one place, the server-side reservation action. The code imports
 it from a `server-only` module, so the build fails if it is ever pulled into browser code.
 
+### Optional: email notifications
+
+To get an email whenever someone reserves a gift:
+
+1. Create a free account at <https://resend.com> and open **API Keys → Create API key**
+   (permission: *Sending access*).
+2. Add to Vercel's environment variables: `RESEND_API_KEY` (the key, type **Secret**) and
+   `NOTIFY_OWNER_EMAIL`. Use the **same email you signed up to Resend with**: Resend's free test
+   sender can only deliver to that address.
+3. *(Optional)* To also email guests a confirmation with their "My gifts" link, verify your own
+   domain in Resend (**Domains → Add domain**, then add the DNS records it shows) and set
+   `NOTIFY_FROM_EMAIL`, e.g. `Baby Registry <registry@yourfamily.com>`.
+4. Redeploy. Without these variables nothing is emailed and everything else works the same.
+
 ## 6. Deploy to Vercel
 
 This app lives in the `baby-registry/` folder of the `Wano` repository, so it gets **its own**
@@ -92,7 +111,7 @@ Vercel project, separate from any existing Wano deployment.
 
 1. <https://vercel.com/new> → **Import** the `Wano` GitHub repository.
 2. **Root Directory → `baby-registry`** (important). Framework preset: **Next.js** (auto-detected).
-3. **Environment Variables:** add all five variables from step 5 (Production, and Preview if you
+3. **Environment Variables:** add all five variables from step 5 (plus the optional email ones) (Production, and Preview if you
    use preview deployments).
 4. **Deploy.** When it finishes you get a URL like `https://baby-registry-xyz.vercel.app`.
 5. *(Optional)* `vercel.json` schedules a daily call to `/api/cron/expire-reservations`. It does

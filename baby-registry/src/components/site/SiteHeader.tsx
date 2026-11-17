@@ -15,8 +15,8 @@ export function SiteHeader({ title }: { title: string }) {
           <Link href="/registry" className="rounded-full px-3 py-2 text-ink-soft hover:bg-cream hover:text-ink">
             Wishlist
           </Link>
-          <Link href="/budget" className="hidden rounded-full px-3 py-2 text-ink-soft hover:bg-cream hover:text-ink sm:inline-block">
-            Budget summary
+          <Link href="/my-gifts" className="rounded-full px-3 py-2 text-ink-soft hover:bg-cream hover:text-ink" data-testid="nav-my-gifts">
+            My gifts
           </Link>
         </nav>
       </div>

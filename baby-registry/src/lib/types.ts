@@ -135,6 +135,16 @@ export interface PublicReservation {
   price_aed: number | null;
 }
 
+export interface GuestPledge {
+  reference: string;
+  status: ReservationStatus;
+  created_at: string;
+  gift_id: string | null;
+  gift_slug: string | null;
+  gift_name: string;
+  price_aed: number | null;
+}
+
 /** Everything the public registry needs, fetched in one go. */
 export interface RegistryData {
   gifts: Gift[];

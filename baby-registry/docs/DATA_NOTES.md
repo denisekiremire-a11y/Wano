@@ -50,8 +50,8 @@ price text** from the PDF, the parsed numbers, the **price type** and notes. Cat
 ## Budget totals
 
 The PDF's figures are preserved **exactly as written**: budget **~AED 7,860**, full wishlist
-**~AED 25,500**, the per-category table, and its explanation. They appear on `/budget` and in the
-admin overview.
+**~AED 25,500**, the per-category table, and its explanation. They appear in the admin overview
+(the public budget page was removed at the family's request).
 
 The PDF does not list which items make up each scenario, so membership (`in_doc_budget`,
 `in_doc_full`) was **reconstructed from the per-category subtotals**:

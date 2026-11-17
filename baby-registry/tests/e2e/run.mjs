@@ -90,6 +90,8 @@ const adminPassword = `pw-${randomUUID()}`;
 const { data: au, error: aerr } = await svc.auth.admin.createUser({ email: adminEmail, password: adminPassword, email_confirm: true });
 if (aerr) throw aerr;
 await svc.from("admin_profiles").insert({ user_id: au.user.id });
+const { data: limits } = await svc.from("registry_settings").select("max_reservations_per_client_per_day").eq("id", 1).single();
+await svc.from("registry_settings").update({ max_reservations_per_client_per_day: 50 }).eq("id", 1);
 
 try {
   console.log("\nPublic registry");
@@ -97,7 +99,8 @@ try {
   const B = await newPage();
   await A.goto(BASE + "/");
   await B.goto(BASE + "/");
-  globalThis.__diag = async () => `B realtime: ${await B.getByTestId("live-indicator").getAttribute("data-live").catch(() => "?")}`;
+  globalThis.__diag = async () =>
+    `B url=${B.url()} indicators=${JSON.stringify(await B.$$eval("[data-testid=live-indicator]", (els) => els.map((e) => e.dataset.live + (e.offsetParent ? "" : "(hidden)"))).catch((e) => e.message))} cards=${await B.locator("[data-testid=gift-card]").count()}`;
   B.on("console", (m) => { if (/realtime|websocket|channel/i.test(m.text())) console.log("    [B console]", m.text().slice(0, 200)); });
 
   await test("homepage shows welcome, progress and 77 gifts with no login", async () => {
@@ -234,6 +237,11 @@ try {
     assert.equal(winners, 1, "exactly one browser reached a confirmation page");
     const { count } = await svc.from("reservations").select("*", { count: "exact", head: true }).eq("gift_id", await giftId(slug));
     assert.equal(count, 1);
+    // Whichever browser won is now on its confirmation page; later tests watch both registries.
+    for (const page of [A, B]) {
+      await page.goto(BASE + "/");
+      await page.locator("[data-testid=live-indicator][data-live=live]").first().waitFor({ timeout: 10000 });
+    }
   });
 
   console.log("\nAdministration");
@@ -363,7 +371,7 @@ try {
   console.log("\nMobile");
   await test("mobile: no horizontal scrolling on key pages, and reserving works on a phone", async () => {
     const m = await newPage({ ...devices["iPhone 13"] });
-    for (const path of ["/", "/registry", "/registry/travel", "/gift/maxi-cosi-iora-air", "/budget", `/reservation/${reference}`, "/admin/login"]) {
+    for (const path of ["/", "/registry", "/registry/travel", "/gift/maxi-cosi-iora-air", "/my-gifts", `/reservation/${reference}`, "/admin/login"]) {
       await m.goto(BASE + path);
       const over = await m.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       assert.ok(over <= 0, `${path} overflows by ${over}px`);
@@ -374,15 +382,71 @@ try {
     await m.context().close();
   });
 
-  await test("budget page preserves the original estimates and shows live totals", async () => {
+  console.log("\nMy gifts");
+  await test("the budget summary is gone: no page and no links", async () => {
     const p = await newPage();
+    await p.goto(BASE + "/");
+    assert.equal(await p.getByText("Budget summary").count(), 0);
+    assert.equal(await p.locator('a[href="/budget"]').count(), 0);
     await p.goto(BASE + "/budget");
-    assert.equal(await p.getByTestId("doc-budget-total").textContent(), "~7,860 AED");
-    assert.equal(await p.getByTestId("doc-full-total").textContent(), "~25,500 AED");
-    assert.match(await p.getByTestId("live-budget-total").textContent(), /AED/);
+    assert.match(await p.locator("h1").first().textContent(), /couldn’t find/);
     await p.context().close();
   });
+
+  let personalLink;
+  await test("a guest who reserves two gifts sees both, with a count, under My gifts", async () => {
+    const g = await newPage();
+    await g.goto(BASE + "/registry/clothing");
+    await reserveViaUi(g, "hats", { name: "Pledging Guest" });
+    await g.goto(BASE + "/registry/clothing");
+    await reserveViaUi(g, "socks", { name: "Pledging Guest" });
+    const banner = g.locator("[data-testid=my-gifts-banner]:visible").first();
+    await banner.waitFor();
+    assert.match(await banner.textContent(), /pledged 2 gifts/);
+    await g.getByTestId("nav-my-gifts").click();
+    await g.waitForURL(/\/my-gifts$/);
+    assert.match(await g.locator("h1").first().textContent(), /You’ve pledged 2 gifts/);
+    const names = await g.locator("[data-testid=pledge] p.font-display").allTextContents();
+    assert.deepEqual(names, ["Socks", "Hats"]);
+    assert.match(await g.getByTestId("pledge-summary").textContent(), /2 still to buy/);
+    personalLink = (await g.locator("[data-testid=personal-link] code").textContent()).trim();
+    assert.match(personalLink, /^http:\/\/localhost:3000\/my-gifts\/[A-Za-z0-9_-]{32}$/);
+    await g.context().close();
+  });
+
+  await test("the personal link shows the same gifts on another device; strangers see none", async () => {
+    const other = await newPage({ ...devices["iPhone 13"] });
+    await other.goto(personalLink);
+    await other.waitForURL(/\/my-gifts$/); // key moved into a cookie, out of the address bar
+    assert.equal(await other.getByTestId("pledge").count(), 2);
+    await other.reload();
+    assert.equal(await other.getByTestId("pledge").count(), 2, "remembered after reload");
+    await other.context().close();
+
+    const stranger = await newPage();
+    await stranger.goto(BASE + "/my-gifts");
+    assert.match(await stranger.locator("h1").first().textContent(), /haven’t pledged/);
+    await stranger.goto(BASE + "/my-gifts/not-a-real-key");
+    assert.match(await stranger.locator("main").textContent(), /isn’t complete/);
+    await stranger.context().close();
+  });
+
+  await test("My gifts follows the family's updates (purchased)", async () => {
+    const ref = (await svc.from("reservations").select("id, reference").eq("gift_name_snapshot", "Hats").eq("status", "active").single()).data;
+    const c = await (await browser.newContext()).newPage();
+    await c.goto(personalLink);
+    await c.waitForURL(/\/my-gifts$/);
+    await admin.goto(BASE + "/admin/reservations");
+    admin.once("dialog", (d) => d.accept());
+    await admin.locator(`[data-testid=reservation-row][data-reference="${ref.reference}"]`).getByTestId("mark-purchased").click();
+    await admin.getByTestId("flash").waitFor();
+    await c.reload();
+    assert.equal(await c.locator('[data-testid=pledge][data-status="purchased"]').count(), 1);
+    assert.match(await c.getByTestId("pledge-summary").textContent(), /1 still to buy/);
+    await c.context().close();
+  });
 } finally {
+  await svc.from("registry_settings").update({ max_reservations_per_client_per_day: limits.max_reservations_per_client_per_day }).eq("id", 1);
   await browser.close();
   await svc.auth.admin.deleteUser(au.user.id);
 }

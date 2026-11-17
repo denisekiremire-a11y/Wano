@@ -1,7 +1,12 @@
 "use server";
 
 import { createHash } from "node:crypto";
+import { after } from "next/server";
 import { headers } from "next/headers";
+import { formatAED } from "@/lib/currency";
+import { ensureGuestKey } from "@/lib/guest-key";
+import { notifyReservation } from "@/lib/notify";
+import { siteUrl } from "@/lib/site-url";
 import { getServiceSupabase } from "@/lib/supabase/service";
 import { firstError, reservationSchema } from "@/lib/validation";
 
@@ -48,15 +53,23 @@ export async function reserveGiftAction(formData: FormData): Promise<ReserveResu
   const input = parsed.data;
 
   try {
+    const guestKey = await ensureGuestKey();
     const sb = getServiceSupabase();
-    const { data, error } = await sb.rpc("reserve_gift", {
+    const args = {
       p_gift_id: input.giftId,
       p_guest_name: input.name,
       p_guest_email: input.email,
       p_guest_phone: input.phone,
       p_message: input.message,
       p_client_hash: await clientHash(),
-    });
+    };
+    let { data, error } = await sb.rpc("reserve_gift", { ...args, p_guest_key: guestKey });
+    if (error?.code === "PGRST202") {
+      // The "My gifts" database update (20261117000100_guest_pledges.sql) hasn't been applied
+      // yet: still take the reservation, just without linking it to the guest's list.
+      console.warn("reserve_gift without guest key — apply the guest_pledges migration");
+      ({ data, error } = await sb.rpc("reserve_gift", args));
+    }
     if (error) {
       console.error("reserve_gift failed", error.message);
       return { ok: false, code: "server", message: "We couldn't save your reservation just now. Please try again in a moment." };
@@ -69,6 +82,7 @@ export async function reserveGiftAction(formData: FormData): Promise<ReserveResu
       reference?: string;
       gift_id?: string;
       gift_name?: string;
+      gift_slug?: string;
       price_aed?: number | string | null;
     };
     if (!res.ok) {
@@ -79,6 +93,23 @@ export async function reserveGiftAction(formData: FormData): Promise<ReserveResu
         giftStatus: res.status,
       };
     }
+    // Email the family (and the guest, if configured) after the response is sent, so the
+    // guest never waits on email and an email failure can never undo a reservation.
+    const origin = await siteUrl();
+    after(() =>
+      notifyReservation({
+        reference: res.reference!,
+        giftName: res.gift_name!,
+        giftSlug: res.gift_slug ?? null,
+        priceText: formatAED(res.price_aed),
+        guestName: input.name,
+        guestEmail: input.email,
+        guestPhone: input.phone,
+        message: input.message,
+        siteUrl: origin,
+        myGiftsUrl: `${origin}/my-gifts/${guestKey}`,
+      }).catch((e) => console.error("notifyReservation", e)),
+    );
     return {
       ok: true,
       reference: res.reference!,

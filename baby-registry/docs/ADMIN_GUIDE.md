@@ -10,6 +10,15 @@ Total, available, reserved and purchased counts; the estimated value of the wish
 alternatives) in AED and UGX; the value already reserved or purchased; the original document's
 estimates next to the live totals; gifts waiting to be purchased; and recent reservation activity.
 
+## Knowing when someone reserves
+
+- **Email:** if you've set up Resend (see DEPLOYMENT.md, "Optional: email notifications"), you get
+  an email for every reservation with the gift, the guest's name, contact details, message and a
+  button to the reservations page.
+- **Live dashboard:** any open admin page updates by itself the moment a guest reserves.
+- Guests see everything they've pledged under **My gifts** (`/my-gifts`), so they rarely need to
+  ask you what they promised to buy.
+
 ## Reservations (`/admin/reservations`)
 
 Each row shows the guest's name, email, phone, gift, price at reservation, date and time (Dubai

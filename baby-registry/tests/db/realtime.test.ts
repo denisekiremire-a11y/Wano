@@ -1,6 +1,6 @@
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import { anon, cleanupGifts, makeGift, reserve } from "./helpers";
+import { anon, cleanupGifts, makeGift, pool, reserve } from "./helpers";
 
 afterAll(async () => {
   await cleanupGifts();
@@ -18,6 +18,30 @@ function subscribe(table: string, onEvent: (p: Record<string, unknown>) => void)
       });
   });
 }
+
+// Right after `supabase db reset` the Realtime service needs a few seconds before it delivers
+// changes. Wait until it demonstrably does, so the tests measure behaviour, not startup.
+beforeAll(async () => {
+  const probe = await makeGift("Realtime probe");
+  let seen = false;
+  const start = Date.now();
+  let s: Awaited<ReturnType<typeof subscribe>> | null = null;
+  while (!s && Date.now() - start < 45_000) {
+    s = await subscribe("gifts", (p) => {
+      if ((p.new as { id?: string })?.id === probe) seen = true;
+    }).catch(async () => {
+      await new Promise((r) => setTimeout(r, 1000)); // service still starting — retry
+      return null;
+    });
+  }
+  if (!s) throw new Error("Could not subscribe to Realtime within 45s");
+  for (let i = 0; !seen && Date.now() - start < 45_000; i++) {
+    await pool.query("update gifts set notes = $1 where id = $2", [`probe ${i}`, probe]);
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  await s.client.removeChannel(s.channel);
+  if (!seen) throw new Error("Realtime did not start delivering events within 45s");
+}, 60_000);
 
 describe("Supabase Realtime", () => {
   it("pushes a gift's change to RESERVED to every open (anonymous) registry session", async () => {

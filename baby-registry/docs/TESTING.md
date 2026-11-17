@@ -1,12 +1,12 @@
 # Testing
 
-Three layers, all run against real services, with nothing mocked:
+Three layers. The database and end-to-end suites run against real services (Postgres, PostgREST, Auth, Realtime, the built app in real browsers). The email unit tests stub the network call to Resend, which this test environment cannot reach; no live email was sent.
 
 | Suite | Command | Needs | Covers |
 | --- | --- | --- | --- |
 | Unit | `npm test` | nothing | PDF import completeness (all 77 rows, verbatim prices, no invented prices, alternatives, images present, migration in sync), currency conversion, price display, search/filter/sort, totals vs the PDF, where-to-buy links, CSV formula-injection safety, input validation |
 | Database & security | `npm run test:db` | local Supabase | `reserve_gift` atomicity (**30 concurrent API calls** and **25 parallel open transactions** on one gift → exactly one succeeds), unique-index backstop, DB-side validation and sanitising, rate limits, public confirmation lookup reveals no contact details, RLS for anonymous / signed-in non-admin / admin users, admin purchase / cancel / release / status flows, status-change guard, delete guard, exchange-rate history, optional expiry (off by default), **Realtime** delivery to multiple sessions, and **no reservation data over Realtime** to guests |
-| End-to-end | `npm run test:e2e` | local Supabase + running app | Real browsers: browsing, search, filters, sorting, category pages, Where-to-buy links, reserving without an account, confirmation page without PII, **a second browser updating live**, a guest told politely when someone else reserves first, **two browsers reserving simultaneously → one wins**, admin redirects/login/refusal of non-admins, guest details visible to the admin only, release & purchased propagating live, CSV export, setting the UGX rate (live), creating/editing/deleting a gift, adding a verified shopping link, mobile layout (no horizontal scroll) and reserving on a phone, budget page |
+| End-to-end | `npm run test:e2e` | local Supabase + running app | Real browsers: browsing, search, filters, sorting, category pages, Where-to-buy links, reserving without an account, confirmation page without PII, **a second browser updating live**, a guest told politely when someone else reserves first, **two browsers reserving simultaneously → one wins**, admin redirects/login/refusal of non-admins, guest details visible to the admin only, release & purchased propagating live, CSV export, setting the UGX rate (live), creating/editing/deleting a gift, adding a verified shopping link, mobile layout (no horizontal scroll) and reserving on a phone, My gifts |
 
 ## Running locally
 
@@ -33,8 +33,11 @@ Notes:
 
 ## Last verified results
 
-- Unit: 37 passed
-- Database & security: 34 passed
-- End-to-end, against the production build (`next build && next start`): 24 passed, and passing
-  on repeated runs
+- Unit: 44 passed (including email notification content, escaping and opt-in behaviour)
+- Database & security: 40 passed (including "My gifts": own pledges only, no contact details,
+  only a hash of the key stored)
+- End-to-end, against the production build (`next build && next start`): 27 passed (including
+  My gifts on the same device, via the personal link on another device, and empty for strangers)
+- The build also succeeds with no Supabase settings at all; pages then say the registry is being
+  set up, instead of the deployment failing
 - `next build`, `eslint` and `tsc --noEmit`: clean
