@@ -33,7 +33,8 @@ async function clientHash(): Promise<string> {
 
 export async function reserveGiftAction(formData: FormData): Promise<ReserveResult> {
   // Honeypot: real visitors never see or fill this field.
-  if (String(formData.get("company") ?? "") !== "") {
+  if (String(formData.get("hp_x") ?? "") !== "") {
+    console.warn("reservation blocked by honeypot");
     return { ok: false, code: "spam", message: "Something went wrong. Please refresh the page and try again." };
   }
   const openedAt = Number(formData.get("openedAt"));

@@ -51,7 +51,7 @@ export function ReserveDialog({ gift, onClose }: { gift: Gift | null; onClose: (
     fd.set("message", form.message);
     fd.set("confirm", confirmed ? "yes" : "");
     fd.set("openedAt", String(openedAt));
-    fd.set("company", honeypot.current?.value ?? "");
+    fd.set("hp_x", honeypot.current?.value ?? "");
     startTransition(async () => {
       const res = await reserveGiftAction(fd);
       if (res.ok) {
@@ -165,8 +165,21 @@ export function ReserveDialog({ gift, onClose }: { gift: Gift | null; onClose: (
 
           {/* Honeypot — hidden from people, irresistible to bots. */}
           <div aria-hidden="true" className="absolute -left-[9999px] h-px w-px overflow-hidden">
-            <label htmlFor="r-company">Company</label>
-            <input id="r-company" ref={honeypot} name="company" tabIndex={-1} autoComplete="off" defaultValue="" />
+            {/* Deliberately meaningless name/label so browser autofill and password managers never fill it
+                (a field called "company" got autofilled and blocked real guests). */}
+            <label htmlFor="r-hp">Leave this field empty</label>
+            <input
+              id="r-hp"
+              ref={honeypot}
+              name="hp_x"
+              tabIndex={-1}
+              autoComplete="off"
+              data-lpignore="true"
+              data-1p-ignore="true"
+              data-form-type="other"
+              data-testid="honeypot"
+              defaultValue=""
+            />
           </div>
 
           <label className="flex cursor-pointer items-start gap-3 rounded-2xl bg-sage-50 p-4 text-sm text-ink">
