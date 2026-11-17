@@ -33,11 +33,13 @@ Notes:
 
 ## Last verified results
 
-- Unit: 44 passed (including email notification content, escaping and opt-in behaviour)
+- Unit: 51 passed (including email notifications, and the product-link data: every link points
+  at a real gift and shop over https, only unchecked links are marked so, migration in sync)
 - Database & security: 40 passed (including "My gifts": own pledges only, no contact details,
   only a hash of the key stored)
-- End-to-end, against the production build (`next build && next start`): 27 passed (including
-  My gifts on the same device, via the personal link on another device, and empty for strangers)
+- End-to-end, against the production build (`next build && next start`): 28 passed on three
+  consecutive runs (including My gifts across devices, Buy buttons going to the exact product
+  page, and a gift reserved by someone else disappearing live from the "Still available" list)
 - The build also succeeds with no Supabase settings at all; pages then say the registry is being
   set up, instead of the deployment failing
 - `next build`, `eslint` and `tsc --noEmit`: clean

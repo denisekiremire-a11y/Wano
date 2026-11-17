@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, ArrowLeft, Heart, Loader2 } from "lucide-react";
+import { AlertCircle, Heart, Loader2 } from "lucide-react";
 import { reserveGiftAction } from "@/app/actions/reserve";
 import { Modal } from "@/components/ui/Modal";
 import type { Gift } from "@/lib/types";
@@ -10,8 +10,6 @@ import { useRegistry } from "./context";
 import { GiftImage } from "./GiftImage";
 import { PriceBlock } from "./PriceBlock";
 import { StatusBadge } from "./StatusBadge";
-
-type Step = "details" | "confirm";
 
 interface FormState {
   name: string;
@@ -25,7 +23,7 @@ const EMPTY: FormState = { name: "", email: "", phone: "", message: "" };
 export function ReserveDialog({ gift, onClose }: { gift: Gift | null; onClose: () => void }) {
   const { rate, setGiftStatus } = useRegistry();
   const router = useRouter();
-  const [step, setStep] = useState<Step>("details");
+  const [showMore, setShowMore] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY);
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,16 +40,6 @@ export function ReserveDialog({ gift, onClose }: { gift: Gift | null; onClose: (
 
   const set = (k: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
-
-  const goToConfirm = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    if (form.name.trim().length < 2) {
-      setError("Please enter your name.");
-      return;
-    }
-    setStep("confirm");
-  };
 
   const submit = () => {
     setError(null);
@@ -114,105 +102,102 @@ export function ReserveDialog({ gift, onClose }: { gift: Gift | null; onClose: (
             </button>
           </div>
         </div>
-      ) : step === "details" ? (
-        <form onSubmit={goToConfirm} className="space-y-4" noValidate>
+      ) : (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (form.name.trim().length < 2) return setError("Please enter your name.");
+            if (!confirmed) return setError("Please tick the box to confirm.");
+            submit();
+          }}
+          className="space-y-4"
+          noValidate
+        >
           <p className="text-sm text-ink-soft">
-            Reserving lets everyone else know this gift is taken, so nobody buys the same thing. You then buy it yourself from any shop
-            you like.
+            Add your name so everyone else sees this gift is taken. You then buy it yourself, from any shop you like.
           </p>
           <div>
             <label htmlFor="r-name" className="field-label">
-              Your name <span className="text-clay">*</span>
+              Your name
             </label>
-            <input id="r-name" className="field-input" value={form.name} onChange={set("name")} required maxLength={100} autoComplete="name" autoFocus />
+            <input
+              id="r-name"
+              className="field-input text-base"
+              value={form.name}
+              onChange={set("name")}
+              required
+              maxLength={100}
+              autoComplete="name"
+              autoFocus
+              placeholder="e.g. Auntie Grace"
+            />
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label htmlFor="r-email" className="field-label">
-                Email <span className="font-normal text-muted">(optional)</span>
-              </label>
-              <input id="r-email" type="email" className="field-input" value={form.email} onChange={set("email")} maxLength={254} autoComplete="email" inputMode="email" />
+
+          <details className="group rounded-2xl border border-linen bg-white/60 px-4 py-3" open={showMore || undefined} onToggle={(e) => setShowMore(e.currentTarget.open)}>
+            <summary className="cursor-pointer list-none text-sm font-medium text-sage-700 [&::-webkit-details-marker]:hidden">
+              <span className="group-open:hidden">+ Add a message or contact details (optional)</span>
+              <span className="hidden group-open:inline">Optional details</span>
+            </summary>
+            <div className="mt-3 space-y-4">
+              <div>
+                <label htmlFor="r-message" className="field-label">
+                  A message for the family
+                </label>
+                <textarea id="r-message" className="field-input min-h-20" value={form.message} onChange={set("message")} maxLength={1000} />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="r-email" className="field-label">
+                    Email
+                  </label>
+                  <input id="r-email" type="email" className="field-input" value={form.email} onChange={set("email")} maxLength={254} autoComplete="email" inputMode="email" />
+                </div>
+                <div>
+                  <label htmlFor="r-phone" className="field-label">
+                    Phone
+                  </label>
+                  <input id="r-phone" type="tel" className="field-input" value={form.phone} onChange={set("phone")} maxLength={32} autoComplete="tel" inputMode="tel" />
+                </div>
+              </div>
+              <p className="text-xs text-muted">Only the family can see these — never other guests.</p>
             </div>
-            <div>
-              <label htmlFor="r-phone" className="field-label">
-                Phone <span className="font-normal text-muted">(optional)</span>
-              </label>
-              <input id="r-phone" type="tel" className="field-input" value={form.phone} onChange={set("phone")} maxLength={32} autoComplete="tel" inputMode="tel" />
-            </div>
-          </div>
-          <div>
-            <label htmlFor="r-message" className="field-label">
-              A message for the family <span className="font-normal text-muted">(optional)</span>
-            </label>
-            <textarea id="r-message" className="field-input min-h-24" value={form.message} onChange={set("message")} maxLength={1000} />
-          </div>
+          </details>
+
           {/* Honeypot — hidden from people, irresistible to bots. */}
           <div aria-hidden="true" className="absolute -left-[9999px] h-px w-px overflow-hidden">
             <label htmlFor="r-company">Company</label>
             <input id="r-company" ref={honeypot} name="company" tabIndex={-1} autoComplete="off" defaultValue="" />
           </div>
-          <p className="text-xs text-muted">Your contact details are only visible to the family, never to other guests.</p>
-          {error && (
-            <p className="text-sm text-rose-700" role="alert">
-              {error}
-            </p>
-          )}
-          <div className="flex justify-end gap-2 pt-1">
-            <button type="button" className="btn-ghost" onClick={onClose}>
-              Cancel
-            </button>
-            <button type="submit" className="btn-primary">
-              Continue
-            </button>
-          </div>
-        </form>
-      ) : (
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-linen bg-white p-4 text-sm">
-            <p className="eyebrow mb-2">Please confirm</p>
-            <dl className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1.5">
-              <dt className="text-muted">Gift</dt>
-              <dd className="font-medium">{gift.name}</dd>
-              <dt className="text-muted">Reserved by</dt>
-              <dd>{form.name}</dd>
-              {form.email && (
-                <>
-                  <dt className="text-muted">Email</dt>
-                  <dd className="break-all">{form.email}</dd>
-                </>
-              )}
-              {form.phone && (
-                <>
-                  <dt className="text-muted">Phone</dt>
-                  <dd>{form.phone}</dd>
-                </>
-              )}
-            </dl>
-          </div>
+
           <label className="flex cursor-pointer items-start gap-3 rounded-2xl bg-sage-50 p-4 text-sm text-ink">
             <input
               type="checkbox"
-              className="mt-0.5 size-4 accent-[var(--color-sage-700)]"
+              className="mt-0.5 size-5 shrink-0 accent-[var(--color-sage-700)]"
               checked={confirmed}
-              onChange={(e) => setConfirmed(e.target.checked)}
+              onChange={(e) => {
+                setConfirmed(e.target.checked);
+                setError(null);
+              }}
+              data-testid="confirm-checkbox"
             />
-            <span>I&apos;m reserving this gift and will purchase it myself. Prices may have changed since the list was made.</span>
+            <span>I’ll buy this gift myself. (Prices may have changed since the list was made.)</span>
           </label>
+
           {error && (
             <p className="text-sm text-rose-700" role="alert">
               {error}
             </p>
           )}
-          <div className="flex items-center justify-between gap-2 pt-1">
-            <button type="button" className="btn-ghost" onClick={() => setStep("details")} disabled={pending}>
-              <ArrowLeft className="size-4" aria-hidden /> Back
+          <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
+            <button type="button" className="btn-ghost" onClick={onClose} disabled={pending}>
+              Cancel
             </button>
-            <button type="button" className="btn-primary" onClick={submit} disabled={!confirmed || pending} data-testid="confirm-reserve">
+            <button type="submit" className="btn-primary py-3 text-[15px] sm:px-7" disabled={pending} data-testid="confirm-reserve">
               {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Heart className="size-4" aria-hidden />}
               {pending ? "Reserving…" : "Reserve this gift"}
             </button>
           </div>
-        </div>
+        </form>
       )}
     </Modal>
   );

@@ -41,11 +41,13 @@ npx supabase db push                       # applies supabase/migrations/*.sql i
 **Option B, dashboard only:** open **SQL Editor** and run each file in `supabase/migrations/`
 **in order**, pasting the full contents into a new query each time:
 `20261116000100_registry_schema.sql`, `20261116000200_import_wishlist.sql`,
-`20261117000100_guest_pledges.sql`.
+`20261117000100_guest_pledges.sql`, `20261117000200_product_links_and_peaches.sql`.
 
-> **Already deployed before "My gifts" was added?** Run only
-> `20261117000100_guest_pledges.sql` in the SQL Editor. Until you do, reservations keep working;
-> they just won't appear under My gifts.
+> **Already deployed with only the first two files?** Run the other two, in this order:
+> `20261117000100_guest_pledges.sql` ("My gifts"), then
+> `20261117000200_product_links_and_peaches.sql` (direct product links, shop search pages and the
+> "Baby Peaches" name). Until you do, reservations keep working; they just won't appear under My
+> gifts, and Buy buttons fall back to searches.
 
 ## 3. Check the wishlist import
 

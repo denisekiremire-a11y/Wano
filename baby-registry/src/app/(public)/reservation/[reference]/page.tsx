@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CheckCircle2, ShoppingBag } from "lucide-react";
+import { CheckCircle2, ExternalLink, ShoppingBag } from "lucide-react";
+import { primaryBuyLink } from "@/lib/links";
 import { CopyButton, PrintButton } from "@/components/registry/CopyButton";
 import { GiftImage } from "@/components/registry/GiftImage";
 import { PriceBlock } from "@/components/registry/PriceBlock";
@@ -35,6 +36,7 @@ export default async function ReservationPage({ params, searchParams }: Props) {
   const isMine = myPledges.some((p) => p.reference === reservation.reference);
   const gift = data.gifts.find((g) => g.id === reservation.gift_id);
   const isNew = sp.new === "1";
+  const buy = gift ? primaryBuyLink(gift, data.giftRetailers, data.retailers) : null;
   const live = reservation.status === "active" || reservation.status === "purchased";
 
   return (
@@ -110,6 +112,11 @@ export default async function ReservationPage({ params, searchParams }: Props) {
             family.
           </p>
         </div>
+      )}
+      {reservation.status === "active" && buy && (
+        <a href={buy.href} target="_blank" rel="noopener noreferrer" className="btn-primary mt-4 w-full py-3 text-[15px] sm:w-auto sm:px-8" data-testid="buy-link">
+          <ExternalLink className="size-4" aria-hidden /> Buy it now at {buy.retailer}
+        </a>
       )}
 
       <div className="mt-6 space-y-2">

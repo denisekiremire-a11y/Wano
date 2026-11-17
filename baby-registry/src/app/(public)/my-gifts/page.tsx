@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Gift as GiftIcon, KeyRound } from "lucide-react";
+import { ArrowRight, ExternalLink, Gift as GiftIcon, KeyRound } from "lucide-react";
+import { primaryBuyLink } from "@/lib/links";
 import { CopyButton } from "@/components/registry/CopyButton";
 import { GiftImage } from "@/components/registry/GiftImage";
 import { PriceNotice } from "@/components/site/Notices";
@@ -88,6 +89,14 @@ export default async function MyGiftsPage({ searchParams }: Props) {
                     <span className="font-mono text-xs text-muted">{p.reference}</span>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
+                    {(() => {
+                      const buy = p.status === "active" && gift ? primaryBuyLink(gift, data.giftRetailers, data.retailers) : null;
+                      return buy ? (
+                        <a href={buy.href} target="_blank" rel="noopener noreferrer" className="btn-primary px-3.5 py-1.5 text-xs" data-testid="buy-link">
+                          <ExternalLink className="size-3.5" aria-hidden /> Buy at {buy.retailer}
+                        </a>
+                      ) : null;
+                    })()}
                     <Link href={`/reservation/${p.reference}`} className="btn-secondary px-3.5 py-1.5 text-xs">
                       Details <ArrowRight className="size-3.5" aria-hidden />
                     </Link>

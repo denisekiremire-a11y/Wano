@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Heart, MapPin } from "lucide-react";
+import { ExternalLink, Heart, MapPin } from "lucide-react";
+import { primaryBuyLink } from "@/lib/links";
 import type { Gift } from "@/lib/types";
 import { useRegistry } from "./context";
 import { GiftImage } from "./GiftImage";
@@ -9,7 +10,8 @@ import { PriceBlock } from "./PriceBlock";
 import { StatusBadge } from "./StatusBadge";
 
 export function GiftCard({ gift, priority }: { gift: Gift; priority?: boolean }) {
-  const { categories, rate, openReserve, openWhereToBuy } = useRegistry();
+  const { categories, rate, openReserve, openWhereToBuy, giftRetailers, retailers } = useRegistry();
+  const buy = primaryBuyLink(gift, giftRetailers, retailers);
   const category = categories.find((c) => c.id === gift.category_id);
   const available = gift.status === "available";
 
@@ -47,19 +49,43 @@ export function GiftCard({ gift, priority }: { gift: Gift; priority?: boolean })
         <div className="mt-3">
           <PriceBlock gift={gift} rate={rate} />
         </div>
-        <div className="mt-auto flex flex-wrap gap-2 pt-4">
+        <div className="mt-auto space-y-2 pt-4">
           {available ? (
-            <button type="button" className="btn-primary flex-1 px-4" onClick={() => openReserve(gift)} data-testid="reserve-button">
+            <button type="button" className="btn-primary w-full py-3" onClick={() => openReserve(gift)} data-testid="reserve-button">
               <Heart className="size-4" aria-hidden /> Reserve this gift
             </button>
           ) : (
-            <span className="btn flex-1 cursor-default border border-linen bg-cream px-4 text-muted" aria-disabled="true">
+            <span className="btn w-full cursor-default border border-linen bg-cream py-3 text-muted" aria-disabled="true">
               {gift.status === "reserved" ? "Already reserved" : "Already purchased"}
             </span>
           )}
-          <button type="button" className="btn-secondary px-4" onClick={() => openWhereToBuy(gift)} data-testid="where-button">
-            <MapPin className="size-4" aria-hidden /> Where to buy
-          </button>
+          {buy ? (
+            <>
+              <a
+                href={buy.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-secondary w-full px-3 text-[13px]"
+                data-testid="buy-link"
+                title={buy.note ?? undefined}
+              >
+                <ExternalLink className="size-3.5 shrink-0" aria-hidden />
+                <span className="truncate">Buy at {buy.retailer}</span>
+              </a>
+              <button
+                type="button"
+                className="w-full py-1 text-center text-xs text-muted underline-offset-2 hover:text-ink hover:underline"
+                onClick={() => openWhereToBuy(gift)}
+                data-testid="where-button"
+              >
+                Other shops & stores
+              </button>
+            </>
+          ) : (
+            <button type="button" className="btn-secondary w-full px-3 text-[13px]" onClick={() => openWhereToBuy(gift)} data-testid="where-button">
+              <MapPin className="size-3.5" aria-hidden /> Where to buy
+            </button>
+          )}
         </div>
       </div>
     </article>

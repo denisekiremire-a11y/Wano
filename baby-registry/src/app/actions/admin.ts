@@ -191,6 +191,7 @@ export async function saveGiftRetailerAction(giftId: string, fd: FormData): Prom
   const parsed = giftRetailerSchema.safeParse({
     retailerId: fd.get("retailerId"),
     productUrl: fd.get("productUrl"),
+    productNote: fd.get("productNote"),
     urlVerified: bool(fd, "urlVerified"),
     sourceNote: fd.get("sourceNote"),
     isPrimary: bool(fd, "isPrimary"),
@@ -202,6 +203,7 @@ export async function saveGiftRetailerAction(giftId: string, fd: FormData): Prom
       gift_id: giftId,
       retailer_id: v.retailerId,
       product_url: v.productUrl,
+      product_note: v.productNote,
       url_verified: v.productUrl ? v.urlVerified : false,
       source_note: v.sourceNote,
       is_primary: v.isPrimary,
@@ -228,12 +230,13 @@ export async function saveRetailerAction(_prev: ActionResult | null, fd: FormDat
   const parsed = retailerSchema.safeParse({
     name: fd.get("name"),
     websiteUrl: fd.get("websiteUrl"),
+    searchUrlTemplate: fd.get("searchUrlTemplate"),
     phone: fd.get("phone"),
     notes: fd.get("notes"),
   });
   if (!parsed.success) return { ok: false, message: firstError(parsed.error) };
   const v = parsed.data;
-  const row = { name: v.name, website_url: v.websiteUrl, phone: v.phone, notes: v.notes };
+  const row = { name: v.name, website_url: v.websiteUrl, search_url_template: v.searchUrlTemplate, phone: v.phone, notes: v.notes };
   const id = Number(fd.get("id") || 0);
   const { error } = id
     ? await supabase.from("retailers").update(row).eq("id", id)

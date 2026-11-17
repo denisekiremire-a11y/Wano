@@ -95,12 +95,39 @@ caption, e.g. “In-store photo from the original wishlist (photo 9207–9210)�
 - Photos 9177 and 9178 (general store displays) don't correspond to a single product and weren't
   used. Photos 9196–9197 aren't in the PDF.
 
+## Direct product links (researched 17 November 2026)
+
+The PDF has no web links, so the exact products were looked up on UAE retailers' websites:
+**Mom Store** (momstore.com, the store most photos were taken in), **Mamas & Papas UAE**,
+**Mumzworld** and **Carrefour UAE**. The links are in [`data/product-links.ts`](../data/product-links.ts),
+with a note for each saying exactly what the page is.
+
+- **37 gifts have a direct "Buy" link.** 35 were opened during research: each returned HTTP 200 and
+  its page title named the product. Several are listed at exactly the PDF's prices (for example the
+  Iora Air at AED 1,691, and the Stokke Flexi Bath bundle, bath stand, Skip Hop Moby and Cuddledry
+  at AED 299 / 359 / 299 / 225 at Mamas & Papas UAE).
+- **2 Carrefour links** (eufy E21 monitor, Momcozy KleanPal Pro) came from search results with
+  matching titles and prices, but Carrefour blocks automated visits, so they show to guests as
+  "link not yet checked". Please open them once and tick "I've checked this link works" in the
+  admin.
+- **Where the exact colour or model differs**, the note says so: Doona+ in Grey Hound is only at
+  Mamas & Papas; the Bugaboo stroller's model (Butterfly 2) was identified from the photo and is
+  listed online in Forest Green; the Pluto dresser is listed online in Clay.
+- **Rejected while checking:** a Mumzworld Doona link from search results was dead (404), and Mom
+  Store's BabyBjörn Bliss page now redirects to a category. Neither was used.
+- **No direct link (40 gifts):** most Carter's clothing (the exact items can't be identified from
+  the photos and stock rotates), the generic inspiration extras (e.g. "Play gym"), and a few branded
+  items with no UAE product page found (e.g. MAM Feel Good, MAM Newborn Essentials, Luma bath set,
+  Kikka Boo towel and grooming set). Guests get a search **on the retailer's own website** (Mom
+  Store, Carter's UAE, Mumzworld), with Google only as a last resort.
+
+Prices and stock change; the registry never claims an item is in stock.
+
 ## Information the PDF does not contain (fill in via the admin when verified)
 
-- **No direct product URLs.** Guests see labelled Google search links instead.
-- **No retailer websites, store addresses or phone numbers.** Guests see Google Maps searches such
-  as “Mom Store Dubai”. These were not looked up or guessed, and the build environment had no web
-  access to verify any.
+- **No direct product URLs** in the PDF — see "Direct product links" above for what was found.
+- **No store addresses or phone numbers.** Guests see Google Maps searches such as “Mom Store
+  Dubai”. Add verified stores under Admin → Shops.
 - **Retailer per item:** the PDF names Mom Store and Carter's as the shortlist's sources and
   Carrefour UAE / Centrepoint for Momcozy prices. Items are linked accordingly (Carter's-branded
   items and clothing to Carter's, Momcozy to Carrefour UAE and Centrepoint, other photographed items

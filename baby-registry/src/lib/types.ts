@@ -20,6 +20,8 @@ export interface Retailer {
   slug: string;
   name: string;
   website_url: string | null;
+  /** e.g. https://www.momstore.com/ae-en/catalogsearch/result/?q={q} */
+  search_url_template?: string | null;
   phone: string | null;
   notes: string | null;
 }
@@ -41,6 +43,8 @@ export interface GiftRetailer {
   retailer_id: number;
   product_url: string | null;
   url_verified: boolean;
+  /** What exactly the linked page is, e.g. "Iora Air co-sleeper, Beyond Grey". */
+  product_note?: string | null;
   source_note: string | null;
   is_primary: boolean;
 }

@@ -18,6 +18,18 @@ export const service = (): SupabaseClient => createClient(URL, SECRET_KEY, opts)
 
 export const pool = new pg.Pool({ connectionString: DB_URL, max: 40 });
 
+/** After `supabase db reset` the API needs a few seconds to reconnect; wait until it answers. */
+async function waitForApi(timeoutMs = 60_000) {
+  const start = Date.now();
+  for (;;) {
+    const { error } = await anon().from("categories").select("id").limit(1);
+    if (!error) return;
+    if (Date.now() - start > timeoutMs) throw new Error(`Supabase API not ready: ${error.message}`);
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+}
+await waitForApi();
+
 /** Create a Supabase Auth user and return a client signed in as them. */
 export async function signedInUser(opts2: { admin: boolean }): Promise<{ client: SupabaseClient; userId: string; email: string }> {
   const email = `test-${randomUUID().slice(0, 8)}@example.test`;

@@ -7,8 +7,8 @@ import "@fontsource-variable/inter";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "Our Baby Registry", template: "%s · Our Baby Registry" },
-  description: "A little wishlist of things we’re excited to welcome our baby with.",
+  title: { default: "Baby Peaches", template: "%s · Baby Peaches" },
+  description: "A little wishlist of things we’re excited to welcome Baby Peaches with.",
   robots: { index: false, follow: false }, // a private family registry: shared by link, not search
 };
 

@@ -21,7 +21,7 @@ export default async function PublicLayout({ children }: { children: React.React
     <LiveRegistryProvider initial={data} supabaseUrl={supabaseUrl()!} supabaseKey={supabasePublicKey()!}>
       <SiteHeader title={data.settings.registry_title} />
       {children}
-      <SiteFooter />
+      <SiteFooter tagline={data.settings.welcome_heading} />
     </LiveRegistryProvider>
   );
 }

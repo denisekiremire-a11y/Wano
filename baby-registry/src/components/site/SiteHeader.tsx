@@ -1,13 +1,13 @@
 import Link from "next/link";
-import { Heart } from "lucide-react";
+import { PeachMark } from "./PeachMark";
 
 export function SiteHeader({ title }: { title: string }) {
   return (
     <header className="sticky top-0 z-30 border-b border-linen/80 bg-ivory/85 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
         <Link href="/" className="group flex items-center gap-2.5">
-          <span className="flex size-8 items-center justify-center rounded-full bg-sage-100 text-sage-700">
-            <Heart className="size-4" strokeWidth={1.75} aria-hidden />
+          <span className="flex size-9 items-center justify-center rounded-full bg-linen text-taupe">
+            <PeachMark className="size-5 text-clay-dark" />
           </span>
           <span className="font-display text-xl font-medium tracking-tight text-ink sm:text-2xl">{title}</span>
         </Link>
