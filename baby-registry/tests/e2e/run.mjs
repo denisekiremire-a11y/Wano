@@ -200,6 +200,18 @@ try {
 
   console.log("\nReservations & real time");
   let reference;
+  await test("the anti-spam field can't be mistaken for an autofill field (regression)", async () => {
+    await card(A, "skip-hop-moby").getByTestId("reserve-button").click();
+    const hp = A.locator("dialog[open] [data-testid=honeypot]");
+    const name = await hp.getAttribute("name");
+    const label = await A.locator("dialog[open] label[for=r-hp]").textContent();
+    // Words browsers use to decide what to autofill must not appear in the trap's name, id or label.
+    const autofillWords = /company|organi[sz]ation|org|name|email|mail|phone|tel|fax|address|street|city|zip|postal|country|website|url|card|user/i;
+    for (const v of [name, await hp.getAttribute("id"), label]) assert.ok(!autofillWords.test(v), `honeypot uses autofill-like text: ${v}`);
+    assert.equal(await hp.getAttribute("autocomplete"), "off");
+    await A.keyboard.press("Escape");
+  });
+
   await test("guest reserves without an account and gets a confirmation with reference", async () => {
     await reserveViaUi(A, "doona-plus-grey-hound", { name: "Aunt Grace Example", email: "grace@example.test", phone: "+971 50 123 4567" });
     await A.locator("[data-testid=reservation-reference]:visible").first().waitFor();
@@ -438,7 +450,7 @@ try {
     assert.match(await g.locator("h1").first().textContent(), /You’ve pledged 2 gifts/);
     const names = await g.locator("[data-testid=pledge] p.font-display").allTextContents();
     assert.deepEqual(names, ["Socks", "Hats"]);
-    assert.match(await g.getByTestId("pledge-summary").textContent(), /2 still to buy/);
+    assert.match(await g.locator("[data-testid=pledge-summary]:visible").first().textContent(), /2 still to buy/);
     personalLink = (await g.locator("[data-testid=personal-link] code").textContent()).trim();
     assert.match(personalLink, /^http:\/\/localhost:3000\/my-gifts\/[A-Za-z0-9_-]{32}$/);
     await g.context().close();
@@ -475,7 +487,7 @@ try {
     await c.reload();
     await c.locator("[data-testid=pledge]:visible").first().waitFor();
     assert.equal(await c.locator('[data-testid=pledge][data-status="purchased"]:visible').count(), 1);
-    assert.match(await c.getByTestId("pledge-summary").textContent(), /1 still to buy/);
+    assert.match(await c.locator("[data-testid=pledge-summary]:visible").first().textContent(), /1 still to buy/);
     await c.context().close();
   });
 } finally {
