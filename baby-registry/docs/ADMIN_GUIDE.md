@@ -16,9 +16,10 @@ estimates next to the live totals; gifts waiting to be purchased; and recent res
   you get an email for every reservation with the gift, the guest's name, contact details, message
   and a button to the reservations page.
 - **Live dashboard:** any open admin page updates by itself the moment a guest reserves.
-- Guests see everything they've pledged under **My gifts** (`/my-gifts`): on the device they used,
-  and — if they gave their email — on any device via the link in their confirmation email or the
-  "Email me my list" box. So they rarely need to ask you what they promised to buy.
+- Guests see everything they've pledged under **My gifts** (`/my-gifts`): they just type the email
+  they reserved with, on any phone or computer. So they rarely need to ask you what they promised
+  to buy. (Anyone who knows a guest's email could see which gifts they reserved — but never their
+  contact details, and nothing can be changed there.)
 
 ## Reservations (`/admin/reservations`)
 

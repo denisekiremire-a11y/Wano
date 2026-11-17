@@ -98,7 +98,8 @@ With email switched on:
 - **You** get an email for every reservation: gift, guest, contact details, message.
 - **Guests who give their email** get a confirmation with a private link to *all* the gifts they've
   reserved with that address. It works on any phone or computer.
-- **"Email me my list"** on the My gifts page sends a guest a fresh link to their list.
+- (Guests can always see their list by typing their email on the My gifts page — that works
+  even without email set up.)
 
 Setup (about 10 minutes) — use the Gmail account you want emails to come from:
 

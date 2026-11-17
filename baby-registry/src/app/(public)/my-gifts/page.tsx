@@ -1,20 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, ExternalLink, Gift as GiftIcon, KeyRound } from "lucide-react";
+import { ArrowRight, ExternalLink, Gift as GiftIcon } from "lucide-react";
+import { signOutEmailAction } from "@/app/actions/my-gifts";
 import { primaryBuyLink } from "@/lib/links";
-import { CopyButton } from "@/components/registry/CopyButton";
 import { GiftImage } from "@/components/registry/GiftImage";
 import { PriceNotice } from "@/components/site/Notices";
 import { formatAED, formatUGX } from "@/lib/currency";
 import { getGuestPledges, getPledgesByEmail } from "@/lib/data";
-import { EmailListForm } from "@/components/registry/EmailListForm";
+import { EmailSignInForm } from "@/components/registry/EmailSignInForm";
 import { cookies } from "next/headers";
 import { EMAIL_COOKIE, verifyEmailToken } from "@/lib/email-link";
 import type { GuestPledge } from "@/lib/types";
 import { formatDateTime } from "@/lib/format";
 import { readGuestKey } from "@/lib/guest-key";
 import { getRegistry } from "@/lib/registry-cache";
-import { siteUrl } from "@/lib/site-url";
 import type { ReservationStatus } from "@/lib/types";
 
 export const metadata: Metadata = { title: "My gifts", robots: { index: false, follow: false } };
@@ -43,25 +42,39 @@ export default async function MyGiftsPage({ searchParams }: Props) {
   const toBuy = live.filter((p) => p.status === "active").length;
   const total = live.reduce((a, p) => a + (p.price_aed ?? 0), 0);
   const rate = data.settings.aed_to_ugx_rate;
-  const personalLink = key ? `${await siteUrl()}/my-gifts/${key}` : null;
   const giftById = new Map(data.gifts.map((g) => [g.id, g]));
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6" data-testid="my-gifts">
       <p className="eyebrow">My gifts</p>
       <h1 className="mt-1 text-4xl sm:text-5xl">
-        {live.length === 0 ? "You haven’t pledged any gifts yet" : `You’ve pledged ${live.length} ${live.length === 1 ? "gift" : "gifts"}`}
+        {live.length > 0
+          ? `You’ve pledged ${live.length} ${live.length === 1 ? "gift" : "gifts"}`
+          : email
+            ? "No gifts reserved with this email yet"
+            : "Your gifts"}
       </h1>
 
       {email && (
-        <p className="mt-2 text-sm text-muted" data-testid="linked-email">
-          Showing gifts reserved on this device and with <strong className="font-medium text-ink-soft">{email}</strong>.
-        </p>
+        <form action={signOutEmailAction} className="mt-2 flex flex-wrap items-center gap-x-2 text-sm text-muted" data-testid="linked-email">
+          <span>
+            Signed in as <strong className="font-medium text-ink-soft">{email}</strong>
+          </span>
+          <span aria-hidden>·</span>
+          <button type="submit" className="text-sage-700 underline-offset-2 hover:underline" data-testid="signout">
+            Use a different email
+          </button>
+        </form>
       )}
       {sp.link === "expired" && (
         <p className="mt-4 rounded-xl bg-rose-50 p-3 text-sm text-rose-700" role="alert">
-          That email link has expired or isn’t complete. Enter your email below to get a new one.
+          That email link has expired or isn’t complete. Just enter your email below instead.
         </p>
+      )}
+      {!email && (
+        <div className="mt-6">
+          <EmailSignInForm />
+        </div>
       )}
       {sp.link === "invalid" && (
         <p className="mt-4 rounded-xl bg-rose-50 p-3 text-sm text-rose-700" role="alert">
@@ -76,11 +89,11 @@ export default async function MyGiftsPage({ searchParams }: Props) {
         </p>
       )}
 
-      {live.length === 0 && (
+      {live.length === 0 && email && (
         <div className="card mt-6 flex flex-col items-center px-6 py-12 text-center">
           <GiftIcon className="size-8 text-sand" strokeWidth={1.25} aria-hidden />
           <p className="mt-3 max-w-md text-sm text-ink-soft">
-            Gifts you reserve on this device appear here. Reserved on another phone or computer, or with your email? Get your list below.
+            We couldn’t find any gifts reserved with this email. If you used a different email, tap “Use a different email” above.
           </p>
           <Link href="/registry" className="btn-primary mt-5">
             Browse the wishlist
@@ -142,28 +155,6 @@ export default async function MyGiftsPage({ searchParams }: Props) {
               </li>
             ))}
           </ul>
-        </div>
-      )}
-
-      {personalLink && live.length > 0 && (
-        <section className="mt-8 rounded-2xl border border-sage-200 bg-sage-50 p-5" aria-labelledby="link-heading" data-testid="personal-link">
-          <h2 id="link-heading" className="flex items-center gap-2 font-sans text-sm font-semibold text-sage-800">
-            <KeyRound className="size-4" aria-hidden /> Your personal link
-          </h2>
-          <p className="mt-1 text-sm text-sage-800">
-            This page is remembered on this device. To see your gifts on another phone or computer, save this link (for example, email
-            it to yourself). Keep it private — anyone with it can see which gifts you pledged.
-          </p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <code className="max-w-full truncate rounded-lg bg-white px-3 py-1.5 text-xs text-ink">{personalLink}</code>
-            <CopyButton text={personalLink} label="Copy link" />
-          </div>
-        </section>
-      )}
-
-      {!email && (
-        <div className="mt-8">
-          <EmailListForm />
         </div>
       )}
 

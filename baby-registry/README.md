@@ -55,12 +55,14 @@ Realtime, Storage) · Lucide icons · Vercel.
 - **Spam protection.** A honeypot field, a minimum fill time, server and database input
   validation, and database throttles per salted IP hash (raw IPs are never stored). The throttles
   default to 15 attempts per 10 minutes and 5 reservations per day, and are adjustable in Settings.
-- **"My gifts" without accounts.** Each browser gets a random private key (cookie). Reservations
-  store only a SHA-256 hash of it, and `/my-gifts` lists that guest's pledges. A personal link
-  (`/my-gifts/<key>`) lets them open the list on another device.
+- **"My gifts" — sign in with just your email.** Guests type the email they reserved with (no
+  password, no code — the family's choice) and see every gift reserved with it, on any device; the
+  device stays signed in, and reserving with an email signs you in automatically. It only ever
+  shows gift, status and reference — never contact details — and nothing can be changed from it.
+  Reservations made without an email still show on the device used (random device key, stored
+  only as a SHA-256 hash).
 - **Emails (optional, via your Gmail).** The family gets an email for every reservation; guests who
-  give their email get a confirmation with a signed link to every gift they reserved with that
-  address (any device), and can request it again from My gifts. Emails are sent after the response,
+  give their email get a confirmation with a signed link that signs them in to My gifts. Emails are sent after the response,
   so they never slow down or undo a reservation.
 - **Direct "Buy" links.** 37 gifts link straight to the exact product page at Mom Store, Mamas &
   Papas UAE, Mumzworld or Carrefour UAE (35 opened and checked; see docs/DATA_NOTES.md). Others

@@ -30,10 +30,11 @@ interface Props {
   initial: RegistryData;
   supabaseUrl: string;
   supabaseKey: string;
+  signedInEmail?: string | null;
   children: ReactNode;
 }
 
-export function LiveRegistryProvider({ initial, supabaseUrl, supabaseKey, children }: Props) {
+export function LiveRegistryProvider({ initial, supabaseUrl, supabaseKey, signedInEmail = null, children }: Props) {
   const [gifts, setGifts] = useState<Gift[]>(initial.gifts);
   const [settings, setSettings] = useState<RegistrySettings>(initial.settings);
   const [liveStatus, setLiveStatus] = useState<LiveStatus>(supabaseUrl && supabaseKey ? "connecting" : "disabled");
@@ -118,6 +119,7 @@ export function LiveRegistryProvider({ initial, supabaseUrl, supabaseKey, childr
     gifts,
     settings,
     liveStatus,
+    signedInEmail,
     rate,
     giftById,
     setGiftStatus,

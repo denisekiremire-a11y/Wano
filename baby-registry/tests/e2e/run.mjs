@@ -337,7 +337,8 @@ try {
     await admin.goto(BASE + "/admin/reservations");
     const row = admin.locator(`[data-testid=reservation-row][data-reference="${reference}"]`);
     assert.match(await row.textContent(), /Aunt Grace Example.*grace@example\.test.*\+971 50 123 4567.*Doona/s);
-    await admin.getByTestId("res-search").fill("grace");
+    // Full name: the same browser later reserves again with the remembered email, by design.
+    await admin.getByTestId("res-search").fill("aunt grace");
     assert.equal(await admin.getByTestId("reservation-row").count(), 1);
     await admin.getByTestId("res-search").fill("");
   });
@@ -443,90 +444,104 @@ try {
     await p.context().close();
   });
 
-  let personalLink;
-  await test("a guest who reserves two gifts sees both, with a count, under My gifts", async () => {
+  const PLEDGER = "pledging.guest@example.test";
+  const signIn = async (page, email) => {
+    await page.goto(BASE + "/my-gifts");
+    const form = page.locator("[data-testid=email-signin-form]:visible").first();
+    await form.getByLabel("Your email").fill(email);
+    await form.getByTestId("signin-submit").click();
+    await page.locator("[data-testid=linked-email]:visible").first().waitFor();
+  };
+
+  await test("a guest who reserves two gifts with their email sees both under My gifts; the form remembers them", async () => {
     const g = await newPage();
     await g.goto(BASE + "/registry/clothing");
-    await reserveViaUi(g, "hats", { name: "Pledging Guest" });
+    await reserveViaUi(g, "hats", { name: "Pledging Guest", email: PLEDGER });
     await g.goto(BASE + "/registry/clothing");
-    await reserveViaUi(g, "socks", { name: "Pledging Guest" });
+    // Second time round, name and email are already filled in.
+    await card(g, "socks").getByTestId("reserve-button").click();
+    const d = g.locator("dialog[open]");
+    assert.equal(await d.getByLabel(/Your name/).inputValue(), "Pledging Guest");
+    assert.equal(await d.getByLabel(/Your email/).inputValue(), PLEDGER);
+    await g.waitForTimeout(1600);
+    await d.getByTestId("confirm-checkbox").check();
+    await d.getByTestId("confirm-reserve").click();
+    await g.waitForURL(/\/reservation\/GIFT-/);
     const banner = g.locator("[data-testid=my-gifts-banner]:visible").first();
     await banner.waitFor();
     assert.match(await banner.textContent(), /pledged 2 gifts/);
     await g.getByTestId("nav-my-gifts").click();
     await g.waitForURL(/\/my-gifts$/);
+    await g.locator("[data-testid=pledge]:visible").first().waitFor();
     assert.match(await g.locator("h1").first().textContent(), /You’ve pledged 2 gifts/);
-    const names = await g.locator("[data-testid=pledge] p.font-display").allTextContents();
+    assert.match(await g.locator("[data-testid=linked-email]:visible").first().textContent(), /Signed in as pledging\.guest@example\.test/);
+    const names = await g.locator("[data-testid=pledge]:visible p.font-display").allTextContents();
     assert.deepEqual(names, ["Socks", "Hats"]);
     assert.match(await g.locator("[data-testid=pledge-summary]:visible").first().textContent(), /2 still to buy/);
-    personalLink = (await g.locator("[data-testid=personal-link] code").textContent()).trim();
-    assert.match(personalLink, /^http:\/\/localhost:3000\/my-gifts\/[A-Za-z0-9_-]{32}$/);
+    assert.equal(await g.locator("[data-testid=personal-link]").count(), 0, "no confusing personal-link box");
     await g.context().close();
   });
 
-  await test("the personal link shows the same gifts on another device; strangers see none", async () => {
+  await test("on any other device, signing in with just the email shows the same gifts; 'Use a different email' signs out", async () => {
     const other = await newPage({ ...devices["iPhone 13"] });
-    await other.goto(personalLink);
-    await other.waitForURL(/\/my-gifts$/); // key moved into a cookie, out of the address bar
+    await signIn(other, "  Pledging.Guest@Example.TEST ");
     await other.locator("[data-testid=pledge]:visible").first().waitFor();
     assert.equal(await other.locator("[data-testid=pledge]:visible").count(), 2);
     await other.reload();
     await other.locator("[data-testid=pledge]:visible").first().waitFor();
-    assert.equal(await other.locator("[data-testid=pledge]:visible").count(), 2, "remembered after reload");
+    assert.equal(await other.locator("[data-testid=pledge]:visible").count(), 2, "still signed in after reload");
+    // The reservation form on this device is prefilled with the signed-in email.
+    await other.goto(BASE + "/registry/bath-and-changing");
+    await card(other, "kikka-boo-hooded-towel").getByTestId("reserve-button").click();
+    assert.equal(await other.locator("dialog[open]").getByLabel(/Your email/).inputValue(), PLEDGER);
+    await other.keyboard.press("Escape");
+    await other.goto(BASE + "/my-gifts");
+    await other.locator("[data-testid=signout]:visible").first().click();
+    await other.locator("[data-testid=email-signin-form]:visible").first().waitFor();
+    assert.equal(await other.locator("[data-testid=pledge]:visible").count(), 0);
     await other.context().close();
 
     const stranger = await newPage();
     await stranger.goto(BASE + "/my-gifts");
-    assert.match(await stranger.locator("h1").first().textContent(), /haven’t pledged/);
+    await stranger.locator("[data-testid=email-signin-form]:visible").first().waitFor();
+    assert.match(await stranger.locator("h1").first().textContent(), /Your gifts/);
+    await signIn(stranger, "nobody@example.test");
+    await stranger.getByText(/couldn’t find any gifts reserved with this email/).first().waitFor();
     await stranger.goto(BASE + "/my-gifts/not-a-real-key");
-    assert.match(await stranger.locator("main").textContent(), /isn’t complete/);
+    await stranger.getByText(/isn’t complete/).first().waitFor();
     await stranger.context().close();
   });
 
-  await test("reserving with an email links this device to that email's list", async () => {
+  await test("a reservation made without an email still shows on that device", async () => {
     const x = await newPage();
     await x.goto(BASE + "/registry/feeding");
-    await reserveViaUi(x, "mam-easy-start-starter-set", { name: "Email Guest", email: "Email.Guest@Example.test" });
+    await reserveViaUi(x, "mam-easy-start-starter-set", { name: "No Email Guest" });
     await x.goto(BASE + "/my-gifts");
-    await x.locator("[data-testid=pledge]:visible").first().waitFor();
-    assert.match(await x.locator("[data-testid=linked-email]:visible").first().textContent(), /email\.guest@example\.test/);
     await x.getByText("MAM Easy Start starter set").first().waitFor();
+    await x.locator("[data-testid=email-signin-form]:visible").first().waitFor(); // can still sign in to see more
     await x.context().close();
   });
 
-  await test("the emailed link shows that email's gifts on any other device; forged links are refused", async () => {
+  await test("the emailed link signs you in on any device; forged and expired links are refused", async () => {
     const y = await newPage({ ...devices["iPhone 13"] });
-    await y.goto(`${BASE}/my-gifts/e/${emailToken("email.guest@example.test")}`);
+    await y.goto(`${BASE}/my-gifts/e/${emailToken(PLEDGER)}`);
     await y.waitForURL(/\/my-gifts$/); // token moved into a cookie, out of the address bar
-    await y.getByText("MAM Easy Start starter set").first().waitFor();
+    await y.getByText("Hats").first().waitFor();
     await y.context().close();
 
     const z = await newPage();
-    await z.goto(`${BASE}/my-gifts/e/${emailToken("email.guest@example.test", 30, "wrong-secret")}`);
+    await z.goto(`${BASE}/my-gifts/e/${emailToken(PLEDGER, 30, "wrong-secret")}`);
     await z.getByText(/expired or isn’t complete/).first().waitFor();
     assert.equal(await z.locator("[data-testid=pledge]:visible").count(), 0);
-    await z.goto(`${BASE}/my-gifts/e/${emailToken("email.guest@example.test", -1)}`); // expired yesterday
+    await z.goto(`${BASE}/my-gifts/e/${emailToken(PLEDGER, -1)}`); // expired yesterday
     await z.getByText(/expired or isn’t complete/).first().waitFor();
     await z.context().close();
-  });
-
-  await test("'Email me my list' explains when emailing isn't switched on", async () => {
-    const w = await newPage();
-    await w.goto(BASE + "/my-gifts");
-    const form = w.locator("[data-testid=email-list-form]:visible").first();
-    await form.getByLabel("Your email").fill("someone@example.test");
-    await form.getByRole("button", { name: /Email me my list/ }).click();
-    await w.locator("[data-testid=email-list-status]:visible").first().waitFor();
-    // Local test runs have no Gmail configured, so the page says so instead of pretending to send.
-    assert.match(await w.locator("[data-testid=email-list-status]:visible").first().textContent(), /isn’t switched on yet/);
-    await w.context().close();
   });
 
   await test("My gifts follows the family's updates (purchased)", async () => {
     const ref = (await svc.from("reservations").select("id, reference").eq("gift_name_snapshot", "Hats").eq("status", "active").single()).data;
     const c = await (await browser.newContext()).newPage();
-    await c.goto(personalLink);
-    await c.waitForURL(/\/my-gifts$/);
+    await signIn(c, PLEDGER);
     await admin.goto(BASE + "/admin/reservations");
     admin.once("dialog", (d) => d.accept());
     await admin.locator(`[data-testid=reservation-row][data-reference="${ref.reference}"]`).getByTestId("mark-purchased").click();

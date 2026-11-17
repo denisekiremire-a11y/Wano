@@ -176,17 +176,6 @@ export function resetEmailTransport() {
   transport = null;
 }
 
-export function listLinkEmail(d: { siteUrl: string; link: string; count: number }) {
-  const footer = `<p style="margin:0 0 16px;color:#5b5148">Here's your private link to the ${d.count === 1 ? "gift" : `${d.count} gifts`} you've reserved on the registry. It works on any phone or computer.</p>
-${button(d.link, "See my gifts")}
-<p style="margin:16px 0 0;font-size:13px;color:#7d7266">If you didn't ask for this, you can ignore this email.</p>`;
-  return {
-    subject: "Your gifts on the Baby Peaches registry",
-    html: layout("Your gift list", [], footer),
-    text: `Your private link to the gifts you've reserved: ${d.link}\nIf you didn't ask for this, you can ignore this email.`,
-  };
-}
-
 /** Send the owner notification and (when possible) the guest's confirmation. Never throws. */
 export async function notifyReservation(d: ReservationEmailData): Promise<{ owner: string; guest: string }> {
   const cfg = emailConfig();
