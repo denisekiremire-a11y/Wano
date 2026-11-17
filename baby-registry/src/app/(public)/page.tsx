@@ -4,6 +4,7 @@ import { CategoryGrid } from "@/components/registry/CategoryGrid";
 import { FeaturedGifts } from "@/components/registry/FeaturedGifts";
 import { ProgressStats } from "@/components/registry/ProgressStats";
 import { RegistryBrowser } from "@/components/registry/RegistryBrowser";
+import { PeachMark } from "@/components/site/PeachMark";
 import { CurrencyNote, PriceNotice } from "@/components/site/Notices";
 import { getRegistry } from "@/lib/registry-cache";
 
@@ -13,9 +14,11 @@ export default async function HomePage() {
     <main>
       <section className="relative overflow-hidden border-b border-linen bg-gradient-to-b from-cream via-ivory to-ivory">
         <div aria-hidden className="pointer-events-none absolute -right-24 -top-24 size-96 rounded-full bg-sage-100/70 blur-3xl" />
-        <div aria-hidden className="pointer-events-none absolute -left-32 top-40 size-80 rounded-full bg-blush/70 blur-3xl" />
+        <div aria-hidden className="pointer-events-none absolute -left-32 top-40 size-80 rounded-full bg-linen blur-3xl" />
         <div className="relative mx-auto max-w-4xl px-4 py-16 text-center sm:px-6 sm:py-24">
-          <p className="eyebrow">Our baby registry</p>
+          <p className="eyebrow inline-flex items-center gap-2">
+            <PeachMark className="size-4 text-clay" /> {settings.registry_title}
+          </p>
           <h1 className="mt-4 text-[2.6rem] font-medium leading-[1.05] text-ink sm:text-6xl md:text-7xl">{settings.welcome_heading}</h1>
           {settings.welcome_text && <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-ink-soft">{settings.welcome_text}</p>}
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -39,7 +42,7 @@ export default async function HomePage() {
           {[
             ["1", "Choose a gift", "Browse the list and pick something you love. No account needed."],
             ["2", "Reserve it", "Add your name so nobody else picks the same gift. It disappears from the list for everyone instantly."],
-            ["3", "Buy it your way", "Shop online or in store using the “Where to buy” links, then give it to the family."],
+            ["3", "Buy it your way", "Tap “Buy” to go straight to the product in a UAE shop — or buy it anywhere you like."],
           ].map(([n, t, d]) => (
             <div key={n} className="rounded-2xl border border-linen bg-white/60 p-5">
               <span className="font-display text-3xl text-sage-600">{n}</span>

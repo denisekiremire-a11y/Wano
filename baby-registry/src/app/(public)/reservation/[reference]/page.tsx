@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CheckCircle2, ShoppingBag } from "lucide-react";
+import { CheckCircle2, ExternalLink, ShoppingBag } from "lucide-react";
+import { primaryBuyLink } from "@/lib/links";
 import { CopyButton, PrintButton } from "@/components/registry/CopyButton";
 import { GiftImage } from "@/components/registry/GiftImage";
 import { PriceBlock } from "@/components/registry/PriceBlock";
 import { WhereToBuyPanel } from "@/components/registry/WhereToBuyPanel";
 import { CurrencyNote, PriceNotice } from "@/components/site/Notices";
-import { getPublicReservation } from "@/lib/data";
+import { getGuestPledges, getPublicReservation } from "@/lib/data";
+import { readGuestKey } from "@/lib/guest-key";
 import { formatDateTime } from "@/lib/format";
 import { getRegistry } from "@/lib/registry-cache";
 
@@ -28,10 +30,13 @@ export default async function ReservationPage({ params, searchParams }: Props) {
   const ref = decodeURIComponent(reference).trim().toUpperCase();
   if (!/^[A-Z0-9-]{8,40}$/.test(ref)) notFound();
 
-  const [reservation, data] = await Promise.all([getPublicReservation(ref), getRegistry()]);
+  const [reservation, data, guestKey] = await Promise.all([getPublicReservation(ref), getRegistry(), readGuestKey()]);
   if (!reservation) notFound();
+  const myPledges = guestKey ? (await getGuestPledges(guestKey)).filter((p) => p.status === "active" || p.status === "purchased") : [];
+  const isMine = myPledges.some((p) => p.reference === reservation.reference);
   const gift = data.gifts.find((g) => g.id === reservation.gift_id);
   const isNew = sp.new === "1";
+  const buy = gift ? primaryBuyLink(gift, data.giftRetailers, data.retailers) : null;
   const live = reservation.status === "active" || reservation.status === "purchased";
 
   return (
@@ -44,6 +49,20 @@ export default async function ReservationPage({ params, searchParams }: Props) {
             <p className="mt-1 text-sm">Everyone else will now see it as reserved, so nobody buys the same thing.</p>
           </div>
         </div>
+      )}
+
+      {isMine && (
+        <Link
+          href="/my-gifts"
+          className="mb-8 flex items-center justify-between gap-3 rounded-2xl border border-linen bg-white p-4 text-sm hover:border-sand print:hidden"
+          data-testid="my-gifts-banner"
+        >
+          <span>
+            You’ve pledged <strong>{myPledges.length}</strong> {myPledges.length === 1 ? "gift" : "gifts"} so far. See them all, any time, in{" "}
+            <strong>My gifts</strong>.
+          </span>
+          <span className="btn-secondary shrink-0 px-3.5 py-1.5 text-xs">My gifts →</span>
+        </Link>
       )}
 
       <p className="eyebrow">Reservation confirmation</p>
@@ -94,6 +113,11 @@ export default async function ReservationPage({ params, searchParams }: Props) {
           </p>
         </div>
       )}
+      {reservation.status === "active" && buy && (
+        <a href={buy.href} target="_blank" rel="noopener noreferrer" className="btn-primary mt-4 w-full py-3 text-[15px] sm:w-auto sm:px-8" data-testid="buy-link">
+          <ExternalLink className="size-4" aria-hidden /> Buy it now at {buy.retailer}
+        </a>
+      )}
 
       <div className="mt-6 space-y-2">
         <PriceNotice settings={data.settings} compact />
@@ -115,7 +139,10 @@ export default async function ReservationPage({ params, searchParams }: Props) {
           Back to the wishlist
         </Link>
       </div>
-      <p className="mt-6 text-xs text-muted">Bookmark this page — its address is your link back to this reservation.</p>
+      <p className="mt-6 text-xs text-muted">
+        You can always find this reservation again under <Link href="/my-gifts" className="underline">My gifts</Link> on this device, or by
+        bookmarking this page.
+      </p>
     </main>
   );
 }

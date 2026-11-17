@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Heart, Info } from "lucide-react";
+import { ArrowLeft, ExternalLink, Heart, Info } from "lucide-react";
+import { primaryBuyLink } from "@/lib/links";
 import { BASIS_EXPLANATION } from "@/lib/pricing";
 import { useRegistry } from "./context";
 import { GiftImage } from "./GiftImage";
@@ -24,6 +25,7 @@ export function GiftDetail({ giftId }: { giftId: string }) {
     );
   }
   const category = categories.find((c) => c.id === gift.category_id);
+  const buy = primaryBuyLink(gift, giftRetailers, retailers);
 
   return (
     <article data-testid="gift-detail" data-status={gift.status}>
@@ -62,7 +64,7 @@ export function GiftDetail({ giftId }: { giftId: string }) {
 
           {gift.notes && <p className="mt-4 rounded-2xl bg-cream/60 p-4 text-sm text-ink-soft">{gift.notes}</p>}
 
-          <div className="mt-6">
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             {gift.status === "available" ? (
               <button type="button" className="btn-primary w-full py-3 text-[15px] sm:w-auto sm:px-8" onClick={() => openReserve(gift)} data-testid="reserve-button">
                 <Heart className="size-4" aria-hidden /> Reserve this gift
@@ -74,7 +76,18 @@ export function GiftDetail({ giftId }: { giftId: string }) {
                   : "This gift has already been purchased. Thank you for thinking of it!"}
               </p>
             )}
+            {buy && (
+              <a href={buy.href} target="_blank" rel="noopener noreferrer" className="btn-secondary w-full py-3 text-[15px] sm:w-auto sm:px-8" data-testid="buy-link">
+                <ExternalLink className="size-4" aria-hidden /> Buy at {buy.retailer}
+              </a>
+            )}
           </div>
+          {buy?.note && (
+            <p className="mt-2 text-xs text-muted">
+              Links to: {buy.note}
+              {buy.verified ? "" : " (link not yet checked)"}
+            </p>
+          )}
 
           <section className="mt-10" aria-labelledby="wtb">
             <h2 id="wtb" className="mb-4 text-3xl">

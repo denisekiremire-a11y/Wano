@@ -9,8 +9,10 @@ import { requirePublicConfig } from "../env";
  * RLS applies: non-admins cannot read private data even if they reach this code.
  */
 export async function getServerSupabase(): Promise<SupabaseClient> {
-  const { url, key } = requirePublicConfig();
+  // Read cookies first: this marks the route as per-request, so a missing configuration
+  // surfaces at request time (as a friendly message) instead of failing the build.
   const cookieStore = await cookies();
+  const { url, key } = requirePublicConfig();
   return createServerClient(url, key, {
     cookies: {
       getAll() {

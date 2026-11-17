@@ -38,7 +38,8 @@ export function WhereToBuyPanel({ gift, giftRetailers, retailers, locations }: P
                 href={o.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-between gap-3 rounded-2xl border border-linen bg-white px-4 py-3 transition-colors hover:border-sand"
+                className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 transition-colors ${o.kind === "product" ? "border-sage-200 bg-sage-50 hover:border-sage-400" : "border-linen bg-white hover:border-sand"}`}
+                data-kind={o.kind}
               >
                 <span>
                   <span className="block font-medium text-ink">{o.label}</span>

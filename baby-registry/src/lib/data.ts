@@ -1,6 +1,6 @@
 import "server-only";
 import { getPublicSupabase } from "./supabase/server";
-import type { Category, Gift, GiftRetailer, PublicReservation, RegistryData, RegistrySettings, Retailer, StoreLocation } from "./types";
+import type { Category, Gift, GiftRetailer, GuestPledge, PublicReservation, RegistryData, RegistrySettings, Retailer, StoreLocation } from "./types";
 
 /** Supabase returns numeric columns as strings in some drivers; normalise to numbers. */
 const NUMERIC_GIFT_FIELDS = ["price_aed", "sale_price_aed", "price_min_aed", "price_max_aed", "reference_price_aed"] as const;
@@ -47,4 +47,12 @@ export async function getPublicReservation(reference: string): Promise<PublicRes
   const { data, error } = await sb.rpc("get_reservation_public", { p_reference: reference });
   if (error) throw new DataError(error.message);
   return (data as PublicReservation | null) ?? null;
+}
+
+export async function getGuestPledges(guestKey: string): Promise<GuestPledge[]> {
+  const sb = getPublicSupabase();
+  const { data, error } = await sb.rpc("get_guest_pledges", { p_guest_key: guestKey });
+  if (error?.code === "PGRST202") return []; // "My gifts" migration not applied yet
+  if (error) throw new DataError(error.message);
+  return ((data as GuestPledge[] | null) ?? []).map((p) => ({ ...p, price_aed: p.price_aed === null ? null : Number(p.price_aed) }));
 }

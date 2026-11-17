@@ -1,4 +1,4 @@
-# Baby Gift Registry
+# Baby Gift Registry — “Baby Peaches”
 
 A private, shareable baby gift registry built from **Baby_List.pdf**. Guests open one link, browse
 the wishlist (AED, plus UGX once you set a rate), reserve a gift without an account, and buy it
@@ -24,7 +24,7 @@ Realtime, Storage) · Lucide icons · Vercel.
 | `/registry/[category]` | Everyone | One category, e.g. `/registry/travel` |
 | `/gift/[id]` | Everyone | A gift by slug (`/gift/doona-plus-grey-hound`) or UUID, with Where to buy |
 | `/reservation/[reference]` | Guest with the link | Confirmation: reference, price, where to buy, reminder to purchase |
-| `/budget` | Everyone | The PDF's original budget estimates (verbatim) next to live totals |
+| `/my-gifts` | Guest | Everything this guest has pledged, with a count, status and a private link to open it on other devices |
 | `/admin/login` | Family | Sign in |
 | `/admin` | Admin | Overview: counts, value, activity |
 | `/admin/reservations` | Admin | All reservations with guest details; purchase / cancel / release; history; search; CSV |
@@ -55,9 +55,17 @@ Realtime, Storage) · Lucide icons · Vercel.
 - **Spam protection.** A honeypot field, a minimum fill time, server and database input
   validation, and database throttles per salted IP hash (raw IPs are never stored). The throttles
   default to 15 attempts per 10 minutes and 5 reservations per day, and are adjustable in Settings.
-- **No invented shopping data.** The PDF contains no product URLs, store addresses or phone
-  numbers, so the registry generates clearly labelled Google / Google Maps *search* links until
-  you add verified ones in the admin.
+- **"My gifts" without accounts.** Each browser gets a random private key (cookie). Reservations
+  store only a SHA-256 hash of it, and `/my-gifts` lists that guest's pledges. A personal link
+  (`/my-gifts/<key>`) lets them open the list on another device.
+- **Email notifications (optional).** With a free [Resend](https://resend.com) API key, the family
+  gets an email for every new reservation, and guests can get a confirmation with their My gifts
+  link. Emails are sent after the response, so they never slow down or undo a reservation.
+- **Direct "Buy" links.** 37 gifts link straight to the exact product page at Mom Store, Mamas &
+  Papas UAE, Mumzworld or Carrefour UAE (35 opened and checked; see docs/DATA_NOTES.md). Others
+  open a search on the shop's own website. Nothing is invented: unchecked links say so.
+- **Easy to use.** One-screen reservation form; the list shows gifts that are still available by
+  default (with a live count), and price/sort/type filters live under "More filters".
 
 ## Quick start (local)
 
@@ -75,6 +83,7 @@ npm run dev                     # http://localhost:3000
 ```
 baby-registry/
 ├─ data/wishlist.ts                 # source of truth for the PDF import (77 options, 7 categories)
+├─ data/product-links.ts            # researched direct product links (source for the links migration)
 ├─ public/gifts/                    # photos cropped from the PDF's collages
 ├─ scripts/
 │  ├─ generate-seed.ts              # data/wishlist.ts → supabase/migrations/…_import_wishlist.sql
@@ -82,7 +91,9 @@ baby-registry/
 │  └─ create-admin.ts               # creates/promotes an administrator
 ├─ supabase/migrations/
 │  ├─ 20261116000100_registry_schema.sql   # tables, RLS, reservation functions, realtime, storage
-│  └─ 20261116000200_import_wishlist.sql   # generated product import (idempotent)
+│  ├─ 20261116000200_import_wishlist.sql   # generated product import (idempotent)
+│  ├─ 20261117000100_guest_pledges.sql     # "My gifts": guest keys + get_guest_pledges()
+│  └─ 20261117000200_product_links_and_peaches.sql  # generated: direct product links, shop search, "Baby Peaches"
 ├─ src/
 │  ├─ app/(public)/…                # registry pages
 │  ├─ app/admin/…                   # login, dashboard, exports

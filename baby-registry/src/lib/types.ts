@@ -20,6 +20,8 @@ export interface Retailer {
   slug: string;
   name: string;
   website_url: string | null;
+  /** e.g. https://www.momstore.com/ae-en/catalogsearch/result/?q={q} */
+  search_url_template?: string | null;
   phone: string | null;
   notes: string | null;
 }
@@ -41,6 +43,8 @@ export interface GiftRetailer {
   retailer_id: number;
   product_url: string | null;
   url_verified: boolean;
+  /** What exactly the linked page is, e.g. "Iora Air co-sleeper, Beyond Grey". */
+  product_note?: string | null;
   source_note: string | null;
   is_primary: boolean;
 }
@@ -129,6 +133,16 @@ export interface PublicReservation {
   status: ReservationStatus;
   created_at: string;
   guest_first_name: string;
+  gift_id: string | null;
+  gift_slug: string | null;
+  gift_name: string;
+  price_aed: number | null;
+}
+
+export interface GuestPledge {
+  reference: string;
+  status: ReservationStatus;
+  created_at: string;
   gift_id: string | null;
   gift_slug: string | null;
   gift_name: string;

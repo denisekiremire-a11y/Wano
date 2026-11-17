@@ -17,6 +17,14 @@ function RetailerForm({ retailer }: { retailer?: Retailer }) {
       {retailer && <input type="hidden" name="id" value={retailer.id} />}
       <input name="name" required maxLength={120} defaultValue={retailer?.name} placeholder="Shop name" className="field-input" aria-label="Shop name" />
       <input name="websiteUrl" defaultValue={retailer?.website_url ?? ""} placeholder="https://… (verified website)" className="field-input" aria-label="Website" />
+      <input
+        name="searchUrlTemplate"
+        defaultValue={retailer?.search_url_template ?? ""}
+        placeholder="Search page, e.g. https://shop.example/search?q={q}"
+        className="field-input md:col-span-2"
+        aria-label="Search page address"
+        title="Where {q} goes, the gift's name is filled in. Guests see “Search this shop for it” when a gift has no direct link."
+      />
       <input name="phone" maxLength={40} defaultValue={retailer?.phone ?? ""} placeholder="Phone (verified)" className="field-input" aria-label="Phone" />
       <input name="notes" maxLength={1000} defaultValue={retailer?.notes ?? ""} placeholder="Notes" className="field-input" aria-label="Notes" />
       <div className="flex items-center gap-3 md:col-span-2">

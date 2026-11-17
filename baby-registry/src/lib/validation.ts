@@ -85,6 +85,7 @@ export type GiftInput = z.infer<typeof giftSchema>;
 export const giftRetailerSchema = z.object({
   retailerId: z.coerce.number().int().positive(),
   productUrl: httpsUrl,
+  productNote: optionalText(300),
   urlVerified: z.boolean(),
   sourceNote: optionalText(300),
   isPrimary: z.boolean(),
@@ -93,6 +94,9 @@ export const giftRetailerSchema = z.object({
 export const retailerSchema = z.object({
   name: z.unknown().transform((v) => cleanText(v, 120)).pipe(z.string().min(1, "Name is required.")),
   websiteUrl: httpsUrl,
+  searchUrlTemplate: optionalText(500).pipe(
+    z.union([z.null(), z.string().regex(/^https:\/\/\S+\{q\}\S*$/, "The search address must start with https:// and contain {q} where the search words go.")]),
+  ),
   phone: optionalText(40),
   notes: optionalText(1000),
 });

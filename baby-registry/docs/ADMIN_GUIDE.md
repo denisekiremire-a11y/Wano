@@ -10,6 +10,15 @@ Total, available, reserved and purchased counts; the estimated value of the wish
 alternatives) in AED and UGX; the value already reserved or purchased; the original document's
 estimates next to the live totals; gifts waiting to be purchased; and recent reservation activity.
 
+## Knowing when someone reserves
+
+- **Email:** if you've set up Resend (see DEPLOYMENT.md, "Optional: email notifications"), you get
+  an email for every reservation with the gift, the guest's name, contact details, message and a
+  button to the reservations page.
+- **Live dashboard:** any open admin page updates by itself the moment a guest reserves.
+- Guests see everything they've pledged under **My gifts** (`/my-gifts`), so they rarely need to
+  ask you what they promised to buy.
+
 ## Reservations (`/admin/reservations`)
 
 Each row shows the guest's name, email, phone, gift, price at reservation, date and time (Dubai
@@ -41,16 +50,19 @@ Reservations are **never released automatically** unless you turn on expiry in S
   - flags: featured on the homepage, alternative (excluded from totals), counted in the budget or
     full-wishlist selection, and option type (budget-friendly / standard / premium pick, which
     drives the guest filters);
-  - **Where to buy**: link the gift to a shop. Add a **direct product URL** only after you've
-    opened it and checked it, then tick *I've checked this link works*. Without a URL, guests get
-    a clearly labelled Google search instead.
+  - **Where to buy**: link the gift to a shop. Add a **direct product URL** and a short description
+    of what the page is (e.g. "Iora Air, Beyond Grey"). Tick *I've checked this link works* once
+    you've opened it; unchecked links show "link not yet checked" to guests. The gift's best link
+    becomes its **Buy** button. Without a URL, guests get a search on that shop's website.
 - **Add gift** creates a new one. **Delete** removes a gift. A reserved or purchased gift must be
   released first. Its reservation history is kept with the gift's name.
 
 ## Shops (`/admin/retailers`)
 
 The four shops named in the PDF are pre-loaded: Mom Store, Carter's, Carrefour UAE and Centrepoint.
-For each shop you can add its **website**, **phone** and any number of **physical stores** (name,
+For each shop you can add its **website**, its **search page** (an address containing `{q}` where
+the search words go, e.g. `https://www.momstore.com/ae-en/catalogsearch/result/?q={q}`), its
+**phone** and any number of **physical stores** (name,
 mall/area, address, phone, Google Maps link, “details verified” tick). Guests then see those
 stores with a **Directions** button. Until a shop has stores, guests get a “Find *shop* stores in
 Dubai” Google Maps search. Add only details you have checked.

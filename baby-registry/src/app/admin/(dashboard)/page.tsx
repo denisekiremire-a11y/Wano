@@ -94,9 +94,6 @@ export default async function AdminOverview() {
           <p className="mt-1 text-sm">
             Live: budget {formatAED(t.budget)} · full {formatAED(t.full)}
           </p>
-          <Link href="/budget" className="mt-2 inline-block text-xs text-sage-700 hover:underline">
-            See the budget breakdown →
-          </Link>
         </div>
       </div>
 

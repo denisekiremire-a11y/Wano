@@ -36,6 +36,7 @@ export function GiftRetailersEditor({ giftId, links, retailers }: { giftId: stri
                 ) : (
                   <p className="text-xs text-muted">No product link — guests see a search link</p>
                 )}
+                {l.product_note && <p className="text-xs text-ink-soft">{l.product_note}{l.product_url && !l.url_verified ? " · not yet checked" : ""}</p>}
                 {l.source_note && <p className="text-xs text-muted">{l.source_note}</p>}
               </div>
               <button
@@ -68,6 +69,7 @@ export function GiftRetailersEditor({ giftId, links, retailers }: { giftId: stri
           ))}
         </select>
         <input name="productUrl" className="field-input" placeholder="https://… direct product page (optional)" aria-label="Product URL" />
+        <input name="productNote" className="field-input md:col-span-2" placeholder="What the link is, e.g. “Iora Air, Beyond Grey”" maxLength={300} aria-label="Product description" />
         <input name="sourceNote" className="field-input md:col-span-2" placeholder="Note, e.g. “Seen in store at Dubai Mall”" maxLength={300} aria-label="Note" />
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="urlVerified" className="size-4 accent-[var(--color-sage-700)]" /> I’ve checked this link works
