@@ -19,12 +19,27 @@ interface FormState {
 }
 
 const EMPTY: FormState = { name: "", email: "", phone: "", message: "" };
+const REMEMBER_KEY = "registry:guest";
+
+/** Name/email remembered on this device after a reservation (a convenience only). */
+function remembered(): { name: string; email: string } {
+  try {
+    const v = JSON.parse(localStorage.getItem(REMEMBER_KEY) ?? "{}") as { name?: unknown; email?: unknown };
+    return { name: typeof v.name === "string" ? v.name : "", email: typeof v.email === "string" ? v.email : "" };
+  } catch {
+    return { name: "", email: "" };
+  }
+}
 
 export function ReserveDialog({ gift, onClose }: { gift: Gift | null; onClose: () => void }) {
-  const { rate, setGiftStatus } = useRegistry();
+  const { rate, setGiftStatus, signedInEmail } = useRegistry();
   const router = useRouter();
   const [showMore, setShowMore] = useState(false);
-  const [form, setForm] = useState<FormState>(EMPTY);
+  // The dialog is remounted per gift, so this runs each time it opens (client-only).
+  const [form, setForm] = useState<FormState>(() => {
+    const r = remembered();
+    return { ...EMPTY, name: r.name, email: signedInEmail ?? r.email };
+  });
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lostRace, setLostRace] = useState(false);
@@ -55,6 +70,11 @@ export function ReserveDialog({ gift, onClose }: { gift: Gift | null; onClose: (
     startTransition(async () => {
       const res = await reserveGiftAction(fd);
       if (res.ok) {
+        try {
+          localStorage.setItem(REMEMBER_KEY, JSON.stringify({ name: form.name.trim(), email: form.email.trim() }));
+        } catch {
+          /* storage unavailable — fine */
+        }
         setGiftStatus(gift.id, "reserved");
         setForm(EMPTY);
         onClose();

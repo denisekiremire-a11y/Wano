@@ -7,6 +7,8 @@ export type LiveStatus = "connecting" | "live" | "offline" | "disabled";
 
 export interface RegistryContextValue extends RegistryData {
   liveStatus: LiveStatus;
+  /** Email the guest signed in with on My gifts (or used to reserve), if any. */
+  signedInEmail: string | null;
   rate: number | null;
   giftById: (id: string) => Gift | undefined;
   /** Optimistically set a gift's status locally (the realtime event confirms it). */

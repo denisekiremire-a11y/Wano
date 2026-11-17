@@ -1,4 +1,6 @@
 import { connection } from "next/server";
+import { cookies } from "next/headers";
+import { EMAIL_COOKIE, verifyEmailToken } from "@/lib/email-link";
 import { LiveRegistryProvider } from "@/components/registry/LiveRegistryProvider";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
@@ -18,7 +20,12 @@ export default async function PublicLayout({ children }: { children: React.React
     return <ErrorScreen />;
   }
   return (
-    <LiveRegistryProvider initial={data} supabaseUrl={supabaseUrl()!} supabaseKey={supabasePublicKey()!}>
+    <LiveRegistryProvider
+      initial={data}
+      supabaseUrl={supabaseUrl()!}
+      supabaseKey={supabasePublicKey()!}
+      signedInEmail={verifyEmailToken((await cookies()).get(EMAIL_COOKIE)?.value)}
+    >
       <SiteHeader title={data.settings.registry_title} />
       {children}
       <SiteFooter tagline={data.settings.welcome_heading} />
