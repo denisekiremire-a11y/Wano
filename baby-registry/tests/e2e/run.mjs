@@ -54,8 +54,8 @@ const waitFor = async (fn, ms = 8000, label = "condition") => {
 };
 const card = (page, slug) => page.locator(`[data-testid=gift-card][data-gift-slug="${slug}"]`).first();
 const giftId = async (slug) => (await svc.from("gifts").select("id").eq("slug", slug).single()).data.id;
-const serverReserve = async (slug, name) =>
-  (await svc.rpc("reserve_gift", { p_gift_id: await giftId(slug), p_guest_name: name, p_client_hash: `e2e-${randomUUID()}` })).data;
+const serverReserve = async (slug, name, email = null) =>
+  (await svc.rpc("reserve_gift", { p_gift_id: await giftId(slug), p_guest_name: name, p_guest_email: email, p_client_hash: `e2e-${randomUUID()}` })).data;
 
 async function reserveViaUi(page, slug, { name, email = "", phone = "" }) {
   await card(page, slug).getByTestId("reserve-button").click();
@@ -369,6 +369,19 @@ try {
     assert.match(csv, /grace@example\.test/);
     const g = await (await fetch(BASE + "/admin/export/gifts", { headers: { cookie: cookies } })).text();
     assert.equal(g.trim().split("\r\n").length, 78); // header + 77
+  });
+
+  await test("admin clicks a guest's name → sees only that guest's pledges, with a count", async () => {
+    const a = await serverReserve("clevasleep-swaddle", "Cousin Two Gifts", "two.gifts@example.test");
+    const b = await serverReserve("kenva-dresser", "Cousin Two Gifts", "Two.Gifts@example.test");
+    await admin.reload();
+    await admin.locator(`[data-testid=reservation-row][data-reference="${a.reference}"]`).getByTestId("guest-name").click();
+    await admin.getByTestId("guest-filter").waitFor();
+    assert.match(await admin.getByTestId("guest-pledge-count").textContent(), /2 gifts/);
+    const refs = await admin.getByTestId("reservation-row").evaluateAll((els) => els.map((e) => e.dataset.reference).sort());
+    assert.deepEqual(refs, [a.reference, b.reference].sort());
+    await admin.getByTestId("clear-guest-filter").click();
+    assert.ok((await admin.getByTestId("reservation-row").count()) > 2);
   });
 
   await test("admin deletes a cancelled reservation; live ones have no Delete button", async () => {

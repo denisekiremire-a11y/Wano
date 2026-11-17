@@ -25,6 +25,9 @@ estimates next to the live totals; gifts waiting to be purchased; and recent res
 
 Each row shows the guest's name, email, phone, gift, price at reservation, date and time (Dubai
 time), reference and status. Search by name, email, phone, gift or reference, and filter by status.
+**Click a guest's name** to see everything that person has reserved (matched by email), with a
+count and an estimated total. A "*N* gifts" tag next to a name shows who has pledged more than one.
+**Show everyone** goes back to the full list.
 
 | Action | What it does |
 | --- | --- |
