@@ -10,7 +10,7 @@ import {
   type ActionResult,
 } from "@/app/actions/admin";
 import { normalise } from "@/lib/filters";
-import { formatAED } from "@/lib/currency";
+import { formatPrice } from "@/lib/currency";
 import { formatDateTime } from "@/lib/format";
 import type { Reservation, ReservationEvent, ReservationStatus } from "@/lib/types";
 
@@ -115,7 +115,7 @@ export function ReservationsManager({ reservations, events }: { reservations: Re
             <strong data-testid="guest-pledge-count">
               {guestLive.length} {guestLive.length === 1 ? "gift" : "gifts"}
             </strong>{" "}
-            pledged{guestTotal > 0 ? ` (about ${formatAED(guestTotal)})` : ""}
+            pledged{guestTotal > 0 ? ` (about ${formatPrice(guestTotal)})` : ""}
             {guestRows.length > guestLive.length ? `, plus ${guestRows.length - guestLive.length} released or cancelled` : ""}.
           </p>
           <button type="button" className="btn-secondary text-xs" onClick={() => setGuest(null)} data-testid="clear-guest-filter">
@@ -189,7 +189,7 @@ export function ReservationsManager({ reservations, events }: { reservations: Re
                     </td>
                     <td>
                       <p>{r.gift_name_snapshot}</p>
-                      <p className="text-xs text-muted">{formatAED(r.price_aed_snapshot)}</p>
+                      <p className="text-xs text-muted">{formatPrice(r.price_aed_snapshot)}</p>
                     </td>
                     <td className="whitespace-nowrap text-xs">{formatDateTime(r.created_at)}</td>
                     <td className="font-mono text-xs">{r.reference}</td>

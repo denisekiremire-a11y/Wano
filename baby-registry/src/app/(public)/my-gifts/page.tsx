@@ -5,7 +5,7 @@ import { signOutEmailAction } from "@/app/actions/my-gifts";
 import { primaryBuyLink } from "@/lib/links";
 import { GiftImage } from "@/components/registry/GiftImage";
 import { PriceNotice } from "@/components/site/Notices";
-import { formatAED, formatUGX } from "@/lib/currency";
+import { formatPrice } from "@/lib/currency";
 import { getGuestPledges, getPledgesByEmail } from "@/lib/data";
 import { EmailSignInForm } from "@/components/registry/EmailSignInForm";
 import { cookies } from "next/headers";
@@ -41,7 +41,6 @@ export default async function MyGiftsPage({ searchParams }: Props) {
   const closed = pledges.filter((p) => !(p.status === "active" || p.status === "purchased"));
   const toBuy = live.filter((p) => p.status === "active").length;
   const total = live.reduce((a, p) => a + (p.price_aed ?? 0), 0);
-  const rate = data.settings.aed_to_ugx_rate;
   const giftById = new Map(data.gifts.map((g) => [g.id, g]));
 
   return (
@@ -84,8 +83,7 @@ export default async function MyGiftsPage({ searchParams }: Props) {
 
       {live.length > 0 && (
         <p className="mt-3 text-ink-soft" data-testid="pledge-summary">
-          {toBuy > 0 ? `${toBuy} still to buy` : "All bought — thank you!"} · Estimated total {formatAED(total)}
-          {rate ? ` (≈ ${formatUGX(total, rate)})` : ""}
+          {toBuy > 0 ? `${toBuy} still to buy` : "All bought — thank you!"} · Estimated total {formatPrice(total)}
         </p>
       )}
 
@@ -113,8 +111,7 @@ export default async function MyGiftsPage({ searchParams }: Props) {
                 <div className="min-w-0 flex-1">
                   <p className="font-display text-xl leading-tight">{p.gift_name}</p>
                   <p className="mt-0.5 text-sm text-ink-soft">
-                    {formatAED(p.price_aed)}
-                    {rate && p.price_aed !== null ? ` · ≈ ${formatUGX(p.price_aed, rate)}` : ""}
+                    {formatPrice(p.price_aed)}
                   </p>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS[p.status].cls}`}>{STATUS[p.status].label}</span>

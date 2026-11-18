@@ -42,10 +42,10 @@ describe("filters", () => {
   });
 
   it("filters by price bucket using the reference price", () => {
-    const under = run({ price: "under-100" });
+    const under = run({ price: "under-50k" });
     expect(under.length).toBeGreaterThan(0);
-    expect(under.every((g) => (g.reference_price_aed ?? Infinity) < 100)).toBe(true);
-    expect(run({ price: "1500-plus" }).every((g) => g.reference_price_aed! >= 1500)).toBe(true);
+    expect(under.every((g) => (g.reference_price_aed ?? Infinity) < 50_000)).toBe(true);
+    expect(run({ price: "600k-plus" }).every((g) => g.reference_price_aed! >= 600_000)).toBe(true);
   });
 
   it("filters budget-friendly and premium options", () => {

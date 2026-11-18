@@ -113,7 +113,7 @@ export function buildWhereToBuy(
       online.push({
         kind: "search",
         label: own ? `Search ${r.name} for it` : `Search for it at ${r.name}`,
-        href: own ?? googleSearchUrl(`${gift.name} ${r.name} UAE`),
+        href: own ?? googleSearchUrl(`${gift.name} ${r.name} Uganda`),
         retailer: r.name,
         note: own ? `Opens a search on ${r.name}’s website` : "Google search — no product page saved yet",
         verified: false,
@@ -130,19 +130,19 @@ export function buildWhereToBuy(
           address: l.address,
           area: l.area,
           phone: l.phone,
-          href: safeHttpUrl(l.maps_url) ?? mapsSearchUrl([l.name, l.address ?? l.area ?? "Dubai"].join(" ")),
+          href: safeHttpUrl(l.maps_url) ?? mapsSearchUrl([l.name, l.address ?? l.area ?? "Kampala"].join(" ")),
           verified: l.verified,
         });
       }
     } else if (!physical.some((p) => p.retailer === r.name)) {
       physical.push({
         kind: "search",
-        label: `Find ${r.name} stores in Dubai`,
+        label: `Find ${r.name} on Google Maps`,
         retailer: r.name,
         address: null,
         area: null,
         phone: null,
-        href: mapsSearchUrl(`${r.name} Dubai`),
+        href: mapsSearchUrl(`${r.name} Kampala`),
         verified: false,
       });
     }
@@ -151,8 +151,8 @@ export function buildWhereToBuy(
   // Always offer a general search too.
   online.push({
     kind: "search",
-    label: "Search other UAE shops",
-    href: googleSearchUrl(`${gift.name} buy UAE`),
+    label: "Search other shops in Uganda",
+    href: googleSearchUrl(`${gift.name} buy Uganda`),
     retailer: null,
     note: "Google search",
     verified: false,
@@ -160,12 +160,12 @@ export function buildWhereToBuy(
   if (!mine.length) {
     physical.push({
       kind: "search",
-      label: "Find baby stores in Dubai",
+      label: "Find baby stores in Kampala",
       retailer: "Any baby store",
       address: null,
       area: null,
       phone: null,
-      href: mapsSearchUrl("baby store Dubai"),
+      href: mapsSearchUrl("baby store Kampala"),
       verified: false,
     });
   }

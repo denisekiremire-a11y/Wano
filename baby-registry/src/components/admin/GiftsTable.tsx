@@ -91,7 +91,7 @@ export function GiftsTable({ gifts, categories }: { gifts: Gift[]; categories: C
                 </td>
                 <td className="text-sm">{catName.get(g.category_id)}</td>
                 <td className="whitespace-nowrap text-sm">
-                  {priceView(g, null).aed}
+                  {priceView(g).aed}
                   <p className="text-xs text-muted">{g.price_label}</p>
                 </td>
                 <td>

@@ -1,7 +1,7 @@
 import type { Category, Gift, GiftRetailer, Retailer } from "./types";
 import { toNumber } from "./currency";
 
-export type PriceBucket = "all" | "under-100" | "100-500" | "500-1500" | "1500-plus";
+export type PriceBucket = "all" | "under-50k" | "50k-200k" | "200k-600k" | "600k-plus";
 export type TierFilter = "all" | "budget" | "premium";
 export type SortKey = "recommended" | "price-asc" | "price-desc" | "name-asc" | "name-desc";
 
@@ -25,10 +25,10 @@ export const DEFAULT_FILTERS: Filters = {
 
 export const PRICE_BUCKETS: { value: PriceBucket; label: string; min: number; max: number }[] = [
   { value: "all", label: "Any price", min: -Infinity, max: Infinity },
-  { value: "under-100", label: "Under AED 100", min: -Infinity, max: 100 },
-  { value: "100-500", label: "AED 100–500", min: 100, max: 500 },
-  { value: "500-1500", label: "AED 500–1,500", min: 500, max: 1500 },
-  { value: "1500-plus", label: "AED 1,500+", min: 1500, max: Infinity },
+  { value: "under-50k", label: "Under UGX 50,000", min: -Infinity, max: 50_000 },
+  { value: "50k-200k", label: "UGX 50,000–200,000", min: 50_000, max: 200_000 },
+  { value: "200k-600k", label: "UGX 200,000–600,000", min: 200_000, max: 600_000 },
+  { value: "600k-plus", label: "UGX 600,000+", min: 600_000, max: Infinity },
 ];
 
 export const SORT_OPTIONS: { value: SortKey; label: string }[] = [

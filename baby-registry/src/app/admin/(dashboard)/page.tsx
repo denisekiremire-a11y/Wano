@@ -4,7 +4,7 @@ import { ArrowRight, Download } from "lucide-react";
 import { StatusBadge } from "@/components/registry/StatusBadge";
 import { requireAdmin } from "@/lib/admin";
 import { loadAdminCore, loadEvents, loadReservations } from "@/lib/admin-data";
-import { formatAED, formatUGX } from "@/lib/currency";
+import { formatPrice } from "@/lib/currency";
 import { formatDateTime } from "@/lib/format";
 import { countSince, liveTotals, statusCounts } from "@/lib/totals";
 
@@ -20,14 +20,13 @@ const EVENT_LABEL: Record<string, string> = {
 
 export default async function AdminOverview() {
   const { supabase } = await requireAdmin();
-  const [{ gifts, categories, settings }, reservations, events] = await Promise.all([
+  const [{ gifts, categories }, reservations, events] = await Promise.all([
     loadAdminCore(supabase),
     loadReservations(supabase),
     loadEvents(supabase, 25),
   ]);
   const c = statusCounts(gifts);
   const t = liveTotals(gifts, categories);
-  const rate = settings.aed_to_ugx_rate;
   const giftName = new Map(gifts.map((g) => [g.id, g.name]));
   const resById = new Map(reservations.map((r) => [r.id, r]));
   const active = reservations.filter((r) => r.status === "active");
@@ -68,44 +67,23 @@ export default async function AdminOverview() {
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-2">
         <div className="card p-5">
           <p className="eyebrow">Estimated wishlist value</p>
-          <p className="mt-2 font-display text-3xl">{formatAED(t.allExcludingAlternatives)}</p>
-          {rate ? <p className="text-sm text-muted">≈ {formatUGX(t.allExcludingAlternatives, rate)}</p> : null}
+          <p className="mt-2 font-display text-3xl">{formatPrice(t.allExcludingAlternatives)}</p>
           <p className="mt-2 text-xs text-muted">
-            All gifts except alternatives, at sale price / listed price / middle of range. Including alternatives: {formatAED(t.everything)}.
+            All gifts except alternatives, at sale price / listed price / middle of range. Including alternatives: {formatPrice(t.everything)}.
             {t.unpricedItems ? ` ${t.unpricedItems} gift(s) have no price.` : ""}
           </p>
         </div>
         <div className="card p-5">
           <p className="eyebrow">Reserved & purchased value</p>
-          <p className="mt-2 font-display text-3xl">{formatAED(t.reservedValue + t.purchasedValue)}</p>
+          <p className="mt-2 font-display text-3xl">{formatPrice(t.reservedValue + t.purchasedValue)}</p>
           <p className="mt-2 text-xs text-muted">
-            Reserved {formatAED(t.reservedValue)} · Purchased {formatAED(t.purchasedValue)}
-          </p>
-        </div>
-        <div className="card p-5">
-          <p className="eyebrow">Original document estimates</p>
-          <p className="mt-2 text-sm">
-            Budget <strong>~AED {settings.doc_budget_total_aed?.toLocaleString("en-US")}</strong> · Full{" "}
-            <strong>~AED {settings.doc_full_total_aed?.toLocaleString("en-US")}</strong>
-          </p>
-          <p className="mt-1 text-sm">
-            Live: budget {formatAED(t.budget)} · full {formatAED(t.full)}
+            Reserved {formatPrice(t.reservedValue)} · Purchased {formatPrice(t.purchasedValue)}
           </p>
         </div>
       </div>
-
-      {!rate && (
-        <div className="rounded-2xl border border-clay/30 bg-blush/60 p-4 text-sm text-clay-dark">
-          No AED → UGX exchange rate is set, so guests only see AED prices.{" "}
-          <Link href="/admin/settings" className="font-medium underline">
-            Set the rate
-          </Link>
-          .
-        </div>
-      )}
 
       <div className="grid gap-6 lg:grid-cols-5">
         <section className="card p-5 lg:col-span-3">
@@ -186,7 +164,7 @@ export default async function AdminOverview() {
                     <StatusBadge status="available" /> {cc.available} <StatusBadge status="reserved" /> {cc.reserved}{" "}
                     <StatusBadge status="purchased" /> {cc.purchased}
                   </td>
-                  <td className="text-right tabular-nums">{formatAED(row.liveAllExcludingAlternatives)}</td>
+                  <td className="text-right tabular-nums">{formatPrice(row.liveAllExcludingAlternatives)}</td>
                 </tr>
               );
             })}

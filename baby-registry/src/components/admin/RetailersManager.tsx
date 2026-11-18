@@ -47,7 +47,7 @@ function LocationForm({ retailerId, location }: { retailerId: number; location?:
     <form action={action} className="grid gap-2 md:grid-cols-3">
       <input type="hidden" name="retailerId" value={retailerId} />
       {location && <input type="hidden" name="id" value={location.id} />}
-      <input name="name" required maxLength={160} defaultValue={location?.name} placeholder="Store name, e.g. Mom Store – Dubai Mall" className="field-input md:col-span-2" aria-label="Store name" />
+      <input name="name" required maxLength={160} defaultValue={location?.name} placeholder="Store name, e.g. Peekaboo – Acacia Mall" className="field-input md:col-span-2" aria-label="Store name" />
       <input name="area" maxLength={160} defaultValue={location?.area ?? ""} placeholder="Area / mall" className="field-input" aria-label="Area" />
       <input name="address" maxLength={400} defaultValue={location?.address ?? ""} placeholder="Address (verified)" className="field-input md:col-span-2" aria-label="Address" />
       <input name="phone" maxLength={40} defaultValue={location?.phone ?? ""} placeholder="Phone (verified)" className="field-input" aria-label="Phone" />
@@ -106,7 +106,7 @@ export function RetailersManager({ retailers, locations, linkCounts }: { retaile
                 </div>
               ))}
             {locations.every((l) => l.retailer_id !== r.id) && (
-              <p className="text-xs text-muted">No stores yet — guests see a Google Maps search for “{r.name} Dubai”.</p>
+              <p className="text-xs text-muted">No stores yet — guests see a Google Maps search for “{r.name}”.</p>
             )}
             <details>
               <summary className="cursor-pointer text-sm text-sage-700">Add a store</summary>

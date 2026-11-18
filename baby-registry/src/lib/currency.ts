@@ -1,8 +1,24 @@
 /**
- * AED is the reference currency (the list was made in Dubai). UGX is derived from an
- * administrator-configured rate — never a hard-coded or assumed one. When no rate is
- * configured every UGX helper returns null and the UI shows AED only.
+ * The registry's one currency. Gifts now come from Peekaboo Uganda (peekaboo.ug), whose prices
+ * are in Ugandan shillings, so every price is stored and shown in UGX. (The database columns keep
+ * their historical `_aed` names; they hold amounts in this currency.)
+ *
+ * The AED→UGX conversion helpers below are kept for the stored rate history only; no page
+ * converts prices any more.
  */
+export const CURRENCY = "UGX";
+
+const moneyFmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+
+export function formatAmount(amount: number): string {
+  return moneyFmt.format(amount);
+}
+
+/** e.g. "UGX 1,006,800"; "—" when there is no amount. */
+export function formatPrice(amount: number | string | null | undefined): string {
+  const n = toNumber(amount);
+  return n === null ? "—" : `${CURRENCY} ${formatAmount(n)}`;
+}
 
 const aedInt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 const aedDec = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });

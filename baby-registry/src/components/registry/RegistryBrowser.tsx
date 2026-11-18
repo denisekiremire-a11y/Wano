@@ -51,7 +51,7 @@ export function RegistryBrowser({ fixedCategory, initialQuery = "", headingId }:
             type="search"
             value={filters.q}
             onChange={(e) => set("q", e.target.value)}
-            placeholder="Search, e.g. “bath”, “monitor”, “Doona”"
+            placeholder="Search, e.g. “bath”, “monitor”, “stroller”"
             className="field-input py-3 pl-12 text-base"
             data-testid="search-input"
           />

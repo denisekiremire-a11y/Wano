@@ -1,8 +1,8 @@
 # Baby Gift Registry — “Baby Peaches”
 
 A private, shareable baby gift registry built from **Baby_List.pdf**. Guests open one link, browse
-the wishlist (AED, plus UGX once you set a rate), reserve a gift without an account, and buy it
-online or in a Dubai store. Reservations are atomic and appear live for every visitor. The family
+the wishlist (prices in UGX), reserve a gift without an account, and buy it from Peekaboo Uganda
+(peekaboo.ug) or anywhere they like. Reservations are atomic and appear live for every visitor. The family
 manages everything from a private admin dashboard.
 
 **Stack:** Next.js 16 (App Router, TypeScript) · Tailwind CSS v4 · Supabase (Postgres, Auth,
@@ -10,7 +10,7 @@ Realtime, Storage) · Lucide icons · Vercel.
 
 | Guide | What's in it |
 | --- | --- |
-| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Step-by-step: Supabase project, migrations, admin account, env vars, exchange rate, Vercel, custom domain, launch checks |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Step-by-step: Supabase project, migrations, admin account, env vars, Vercel, custom domain, launch checks |
 | [docs/ADMIN_GUIDE.md](docs/ADMIN_GUIDE.md) | Day-to-day use of the dashboard: reservations, products, shops, currency, exports |
 | [docs/DATA_NOTES.md](docs/DATA_NOTES.md) | Exactly how the PDF was imported, what was missing, and how totals are calculated |
 | [docs/TESTING.md](docs/TESTING.md) | Running the unit, database/security and end-to-end tests locally |
@@ -30,7 +30,7 @@ Realtime, Storage) · Lucide icons · Vercel.
 | `/admin/reservations` | Admin | All reservations with guest details; purchase / cancel / release / delete; history; search; CSV |
 | `/admin/gifts`, `/admin/gifts/new`, `/admin/gifts/[id]` | Admin | Product management, image upload, shopping links |
 | `/admin/retailers` | Admin | Shops: verified websites, store addresses, phone numbers, map links |
-| `/admin/settings` | Admin | AED→UGX rate, welcome text, price notice, optional expiry, spam limits |
+| `/admin/settings` | Admin | Welcome text, price notice, optional expiry, spam limits |
 | `/admin/export/reservations`, `/admin/export/gifts` | Admin | CSV downloads |
 
 ## How the important parts work
@@ -42,7 +42,7 @@ Realtime, Storage) · Lucide icons · Vercel.
   (`one live reservation per gift`) is a second, independent guarantee. Tests fire 30 simultaneous
   API calls and 25 parallel open transactions at one gift: exactly one wins every time.
 - **Real time.** Every open registry page subscribes to Supabase Realtime `postgres_changes` on
-  `gifts` (and `registry_settings` for the exchange rate). It catches up on reconnect or when a
+  `gifts` (and `registry_settings`). It catches up on reconnect or when a
   phone wakes up. It does not poll.
 - **Privacy.** Row Level Security: guests can read only catalogue tables. Reservations, guest
   names, emails, phones, messages, activity history and spam-throttle data are readable only by
@@ -64,8 +64,10 @@ Realtime, Storage) · Lucide icons · Vercel.
 - **Emails (optional, via your Gmail).** The family gets an email for every reservation; guests who
   give their email get a confirmation with a signed link that signs them in to My gifts. Emails are sent after the response,
   so they never slow down or undo a reservation.
-- **Direct "Buy" links.** 37 gifts link straight to the exact product page at Mom Store, Mamas &
-  Papas UAE, Mumzworld or Carrefour UAE (35 opened and checked; see docs/DATA_NOTES.md). Others
+- **Peekaboo Uganda products, in UGX.** Every gift is a product from Peekaboo Uganda, with its own
+  photo, UGX price and a "Buy" link straight to its page (all 77 opened and checked on
+  18 November 2026; see docs/DATA_NOTES.md). Where Peekaboo doesn't sell the original pick (e.g.
+  Doona, Bugaboo, Cybex), the closest Peekaboo item replaced it and its description says so. Others
   open a search on the shop's own website. Nothing is invented: unchecked links say so.
 - **Easy to use.** One-screen reservation form; the list shows gifts that are still available by
   default (with a live count), and price/sort/type filters live under "More filters".
@@ -87,16 +89,19 @@ npm run dev                     # http://localhost:3000
 baby-registry/
 ├─ data/wishlist.ts                 # source of truth for the PDF import (77 options, 7 categories)
 ├─ data/product-links.ts            # researched direct product links (source for the links migration)
+├─ data/peekaboo-products.json      # the 77 Peekaboo Uganda products (source for the Peekaboo migration)
 ├─ public/gifts/                    # photos cropped from the PDF's collages
 ├─ scripts/
 │  ├─ generate-seed.ts              # data/wishlist.ts → supabase/migrations/…_import_wishlist.sql
+│  ├─ generate-peekaboo-sql.ts      # data/peekaboo-products.json → …_peekaboo_uganda.sql
 │  ├─ extract-pdf-images.py         # crops the photos out of the PDF's collage images
 │  └─ create-admin.ts               # creates/promotes an administrator
 ├─ supabase/migrations/
 │  ├─ 20261116000100_registry_schema.sql   # tables, RLS, reservation functions, realtime, storage
 │  ├─ 20261116000200_import_wishlist.sql   # generated product import (idempotent)
 │  ├─ 20261117000100_guest_pledges.sql     # "My gifts": guest keys + get_guest_pledges()
-│  └─ 20261117000200_product_links_and_peaches.sql  # generated: direct product links, shop search, "Baby Peaches"
+│  ├─ 20261117000200_product_links_and_peaches.sql  # generated: direct product links, shop search, "Baby Peaches"
+│  └─ 20261118000100_peekaboo_uganda.sql            # generated: Peekaboo Uganda products, UGX only
 ├─ src/
 │  ├─ app/(public)/…                # registry pages
 │  ├─ app/admin/…                   # login, dashboard, exports

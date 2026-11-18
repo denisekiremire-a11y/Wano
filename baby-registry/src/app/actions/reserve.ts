@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { after } from "next/server";
 import { cookies, headers } from "next/headers";
 import { EMAIL_COOKIE, createEmailToken, emailCookieOptions } from "@/lib/email-link";
-import { formatAED } from "@/lib/currency";
+import { formatPrice } from "@/lib/currency";
 import { ensureGuestKey } from "@/lib/guest-key";
 import { notifyReservation } from "@/lib/notify";
 import { siteUrl } from "@/lib/site-url";
@@ -112,7 +112,7 @@ export async function reserveGiftAction(formData: FormData): Promise<ReserveResu
         reference: res.reference!,
         giftName: res.gift_name!,
         giftSlug: res.gift_slug ?? null,
-        priceText: formatAED(res.price_aed),
+        priceText: formatPrice(res.price_aed),
         guestName: input.name,
         guestEmail: input.email,
         guestPhone: input.phone,
