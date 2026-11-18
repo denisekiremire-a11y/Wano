@@ -5,7 +5,7 @@
  *   npm run test:e2e
  *
  * Uses the Playwright that is installed on the machine. Creates its own admin account with the
- * service key from .env.local. Expects a freshly reset database (all 77 gifts available).
+ * service key from .env.local. Expects a freshly reset database (all 78 gifts available: 77 from the list + the convertible crib).
  */
 import { createRequire } from "node:module";
 import { createHmac, randomUUID } from "node:crypto";
@@ -122,12 +122,12 @@ try {
     `B url=${B.url()} indicators=${JSON.stringify(await B.$$eval("[data-testid=live-indicator]", (els) => els.map((e) => e.dataset.live + (e.offsetParent ? "" : "(hidden)"))).catch((e) => e.message))} cards=${await B.locator("[data-testid=gift-card]").count()}`;
   B.on("console", (m) => { if (/realtime|websocket|channel/i.test(m.text())) console.log("    [B console]", m.text().slice(0, 200)); });
 
-  await test("homepage shows welcome, progress and 77 gifts with no login", async () => {
+  await test("homepage shows welcome, progress and 78 gifts with no login", async () => {
     assert.match(await A.locator("h1").textContent(), /Made with love for little Peaches/);
     assert.match(await A.locator("header").textContent(), /Baby Peaches/);
-    assert.equal(await A.getByTestId("stat-total").textContent(), "77");
-    assert.equal(await A.getByTestId("stat-available").textContent(), "77");
-    assert.equal(await A.getByTestId("result-count").textContent(), "77 gifts still available");
+    assert.equal(await A.getByTestId("stat-total").textContent(), "78");
+    assert.equal(await A.getByTestId("stat-available").textContent(), "78");
+    assert.equal(await A.getByTestId("result-count").textContent(), "78 gifts still available");
     await waitFor(async () => (await A.getByTestId("live-indicator").getAttribute("data-live")) === "live", 10000, "realtime connection");
   });
 
@@ -191,7 +191,7 @@ try {
     assert.equal(await buy.getAttribute("target"), "_blank");
     // Every gift has its own Peekaboo product page.
     const buyHrefs = await A.locator("#collection [data-testid=buy-link]").evaluateAll((as) => as.map((a) => a.href));
-    assert.equal(buyHrefs.length, 77);
+    assert.equal(buyHrefs.length, 78);
     assert.ok(buyHrefs.every((h) => h.startsWith("https://www.peekaboo.ug/products/")));
     await card(A, "doona-plus-grey-hound").getByTestId("where-button").click();
     const panel = A.locator("dialog[open] [data-testid=where-to-buy]");
@@ -342,7 +342,7 @@ try {
     await admin.getByLabel("Password").fill(adminPassword);
     await admin.getByRole("button", { name: "Sign in" }).click();
     await admin.waitForURL(BASE + "/admin");
-    assert.equal(await admin.getByTestId("admin-stat-total").textContent(), "77");
+    assert.equal(await admin.getByTestId("admin-stat-total").textContent(), "78");
     assert.equal(await admin.getByTestId("admin-stat-reserved").textContent(), "4");
     await admin.locator("[data-testid=activity]:visible").first().waitFor();
   });
@@ -382,7 +382,7 @@ try {
     assert.match(csv, /Reference,Status,Gift/);
     assert.match(csv, /grace@example\.test/);
     const g = await (await fetch(BASE + "/admin/export/gifts", { headers: { cookie: cookies } })).text();
-    assert.equal(g.trim().split("\r\n").length, 78); // header + 77
+    assert.equal(g.trim().split("\r\n").length, 79); // header + 78
   });
 
   await test("admin clicks a guest's name → sees only that guest's pledges, with a count", async () => {
