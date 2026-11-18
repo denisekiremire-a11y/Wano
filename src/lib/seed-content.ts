@@ -86,7 +86,7 @@ Buy a bundle, not pay-as-you-go — it's a fraction of the cost. A weekly 5–10
 
 ## The options
 
-**Ride-hailing apps** — the easiest for a first-time visitor. SafeBoda is Wano's ride partner: book straight from the arrivals hall once you have SIM data (the Wano stand sets both up in one stop); fixed upfront pricing means no negotiation.
+**Ride-hailing apps** — the easiest for a first-time visitor. Pamoja Rides is Wano's ride partner: book straight from the arrivals hall once you have SIM data (the Wano stand sets both up in one stop); fixed upfront pricing means no negotiation.
 
 **Airport taxis** — parked directly outside arrivals. Agree the fare before getting in; it isn't metered.
 
@@ -481,9 +481,9 @@ const DEMO_LISTINGS: DemoListingSpec[] = [
   },
   // Restaurants
   {
-    type: "restaurant", businessName: "Mama Ashanti Kitchen", location: "Kampala",
+    type: "restaurant", businessName: "Mama Zawadi Kitchen", location: "Kampala",
     vendorDescription: "A family-run West African and Ugandan fusion kitchen.",
-    title: "Mama Ashanti Kitchen", description: "Hearty Ugandan and West African dishes in a lively, no-frills dining room.",
+    title: "Mama Zawadi Kitchen", description: "Hearty Ugandan and West African dishes in a lively, no-frills dining room.",
     priceMinor: 35000, priceUnit: "/person",
     restaurant: { cuisine: "Ugandan, West African", priceRange: "Mid-range", hours: "11am–10pm daily" },
   },
@@ -970,7 +970,7 @@ export async function seedDemoInfluencer() {
 }
 
 /** One-time (safe to re-run) demo bootstrap for the two Match Day prizes
- * requested for launch: a Fun Zone game-day win (20% off at Le Chateau
+ * requested for launch: a Fun Zone game-day win (20% off at La Promenade
  * Brasserie) and an XP draw grand prize (two nights in Jinja plus a
  * Bujagali Falls excursion, redeemed at Jinja Riverside Hotel). Matches by
  * listing title + source, so re-running never creates duplicates. */
@@ -980,10 +980,10 @@ export async function seedDemoRewards() {
   const [restaurant] = await db
     .select({ id: listings.id })
     .from(listings)
-    .where(eq(listings.title, "Le Chateau Brasserie"))
+    .where(eq(listings.title, "La Promenade Brasserie"))
     .limit(1);
   if (!restaurant) {
-    results.push("Skipped Fun Zone prize — \"Le Chateau Brasserie\" listing not found.");
+    results.push("Skipped Fun Zone prize — \"La Promenade Brasserie\" listing not found.");
   } else {
     const [existing] = await db
       .select({ id: rewards.id })
@@ -1000,7 +1000,7 @@ export async function seedDemoRewards() {
       results.push("Fun Zone prize already exists.");
     } else {
       await db.insert(rewards).values({
-        title: "20% off at Le Chateau Brasserie",
+        title: "20% off at La Promenade Brasserie",
         description: "A Fun Zone game-day win.",
         targetType: "listing",
         targetId: restaurant.id,
@@ -1009,7 +1009,7 @@ export async function seedDemoRewards() {
         source: "funzone",
         defaultValidityDays: 30,
       });
-      results.push("Created Fun Zone prize: 20% off at Le Chateau Brasserie.");
+      results.push("Created Fun Zone prize: 20% off at La Promenade Brasserie.");
     }
   }
 
@@ -1339,7 +1339,7 @@ const JOURNEY_DETAILS: Record<
       {
         dayNumber: 1,
         orderIndex: 1,
-        listingTitle: "Le Chateau Brasserie",
+        listingTitle: "La Promenade Brasserie",
         stopType: "eat",
         note: "Round off the day with Ugandan and continental dishes.",
       },

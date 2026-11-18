@@ -68,7 +68,7 @@ export async function runDemoInfluencerBackfillAction() {
 }
 
 /** One-time (safe to re-run) demo bootstrap for the launch Match Day
- * prizes: a Fun Zone win at Le Chateau Brasserie, and the XP draw grand
+ * prizes: a Fun Zone win at La Promenade Brasserie, and the XP draw grand
  * prize at Jinja Riverside Hotel. */
 export async function runDemoRewardsBackfillAction() {
   const session = await requireAdminLevel("super");

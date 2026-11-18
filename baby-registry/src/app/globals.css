@@ -1,0 +1,139 @@
+@import "tailwindcss";
+
+/* Warm ivory, cream, soft beige and muted sage. */
+@theme {
+  --color-ivory: #fbf8f3;
+  --color-cream: #f5efe6;
+  --color-linen: #ede4d6;
+  --color-beige: #e2d5c2;
+  --color-sand: #c9b79c;
+  --color-taupe: #8c7d6b;
+  --color-ink: #2f2a25;
+  --color-ink-soft: #5b5148;
+  --color-muted: #7d7266;
+  --color-sage-50: #f1f3ee;
+  --color-sage-100: #e3e8dd;
+  --color-sage-200: #c9d2bf;
+  --color-sage-400: #95a487;
+  --color-sage-600: #6b7b5e;
+  --color-sage-700: #56644b;
+  --color-sage-800: #444f3c;
+  /* Neutral accents only (gender-neutral theme): oat, warm taupe and walnut — no pinks. */
+  --color-blush: #efe8dc;   /* oat */
+  --color-clay: #a2896d;    /* warm taupe */
+  --color-clay-dark: #6f5a45; /* walnut */
+  /* Error / destructive states: a muted brick, kept distinct so warnings stay readable. */
+  --color-rose-50: #f5ece6;
+  --color-rose-700: #8c4a3c;
+
+  --font-display: "Cormorant Garamond", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --shadow-soft: 0 1px 2px rgb(47 42 37 / 0.04), 0 8px 24px -12px rgb(47 42 37 / 0.12);
+  --shadow-lift: 0 2px 4px rgb(47 42 37 / 0.05), 0 18px 40px -18px rgb(47 42 37 / 0.22);
+
+  --radius-card: 1.25rem;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    background: var(--color-ivory);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+    font-variant-numeric: lining-nums;
+    text-wrap: balance;
+  }
+  ::selection {
+    background: var(--color-sage-200);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-sage-600);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  dialog::backdrop {
+    background: rgb(47 42 37 / 0.45);
+    backdrop-filter: blur(3px);
+  }
+}
+
+@utility btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+@utility btn-primary {
+    @apply btn bg-sage-700 text-white hover:bg-sage-800;
+  }
+
+@utility btn-secondary {
+    @apply btn border border-beige bg-white/70 text-ink hover:border-sand hover:bg-white;
+  }
+
+@utility btn-ghost {
+    @apply btn text-ink-soft hover:bg-cream;
+  }
+
+@utility btn-danger {
+    @apply btn border border-rose-700/30 bg-rose-50 text-rose-700 hover:bg-rose-700 hover:text-white;
+  }
+
+@utility card {
+    @apply rounded-[var(--radius-card)] border border-linen bg-white shadow-[var(--shadow-soft)];
+  }
+
+@utility field-label {
+    @apply mb-1.5 block text-sm font-medium text-ink;
+  }
+
+@utility field-input {
+    @apply w-full rounded-xl border border-beige bg-white px-3.5 py-2.5 text-[15px] text-ink placeholder:text-muted/70 transition-colors focus:border-sage-400 focus:outline-none focus:ring-2 focus:ring-sage-200;
+  }
+
+@utility field-hint {
+    @apply mt-1 text-xs text-muted;
+  }
+
+@utility eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-taupe;
+  }
+
+@utility chip {
+    @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 py-1.5 text-sm transition-colors;
+  }
+
+@utility chip-off {
+    @apply chip border-linen bg-white/70 text-ink-soft hover:border-sand;
+  }
+
+@utility chip-on {
+    @apply chip border-sage-700 bg-sage-700 text-white;
+  }
+
+@layer components {
+  .admin-table {
+    @apply w-full text-left text-sm;
+  }
+  .admin-table th {
+    @apply border-b border-linen px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted;
+  }
+  .admin-table td {
+    @apply border-b border-linen/70 px-3 py-3 align-top;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
