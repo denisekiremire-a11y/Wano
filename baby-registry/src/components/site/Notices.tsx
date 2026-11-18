@@ -14,21 +14,10 @@ export function PriceNotice({ settings, compact }: { settings: RegistrySettings;
   );
 }
 
-export function CurrencyNote({ settings }: { settings: RegistrySettings }) {
-  const rate = settings.aed_to_ugx_rate;
-  if (!rate || rate <= 0) {
-    return (
-      <p className="text-xs text-muted" data-testid="currency-note">
-        Prices are shown in UAE dirhams (AED), the currency of the original list. Ugandan shilling (UGX) amounts will appear once the
-        family sets an exchange rate.
-      </p>
-    );
-  }
+export function CurrencyNote() {
   return (
     <p className="text-xs text-muted" data-testid="currency-note">
-      AED prices are the original reference prices. UGX amounts are approximate, converted at 1 AED ≈{" "}
-      {new Intl.NumberFormat("en-US", { maximumFractionDigits: 4 }).format(rate)} UGX
-      {settings.rate_updated_at ? ` (rate set ${formatDate(settings.rate_updated_at)})` : ""}.
+      Prices are in Ugandan shillings (UGX), as listed by Peekaboo Uganda.
     </p>
   );
 }

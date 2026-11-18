@@ -41,7 +41,14 @@ npx supabase db push                       # applies supabase/migrations/*.sql i
 **Option B, dashboard only:** open **SQL Editor** and run each file in `supabase/migrations/`
 **in order**, pasting the full contents into a new query each time:
 `20261116000100_registry_schema.sql`, `20261116000200_import_wishlist.sql`,
-`20261117000100_guest_pledges.sql`, `20261117000200_product_links_and_peaches.sql`.
+`20261117000100_guest_pledges.sql`, `20261117000200_product_links_and_peaches.sql`,
+`20261118000100_peekaboo_uganda.sql`.
+
+> **Switching an existing registry to Peekaboo Uganda:** first release or cancel every active or
+> purchased reservation (Admin → Reservations), then run `20261118000100_peekaboo_uganda.sql`. It
+> refuses to run while any gift is still reserved, so nobody's pledge silently becomes a different
+> product. It replaces all 77 gifts with their Peekaboo products, switches prices to UGX and
+> removes the UAE shops.
 
 > **Already deployed with only the first two files?** Run the other two, in this order:
 > `20261117000100_guest_pledges.sql` ("My gifts"), then
@@ -140,13 +147,10 @@ Vercel project, separate from any existing Wano deployment.
 In **Supabase → Authentication → URL Configuration**, set **Site URL** to your final address
 (from step 8, or the vercel.app URL until then).
 
-## 7. Set the AED → UGX exchange rate
+## 7. Prices are in UGX
 
-Sign in at `https://<your-site>/admin/login` → **Settings → Currency**. Enter today's rate
-(UGX per 1 AED from your bank or a currency site), optionally its source, and **Save rate**. UGX
-amounts appear immediately on every open page, labelled approximate. Update it whenever you like.
-Each change is timestamped and kept in the rate history. Until a rate is set, guests see AED only,
-with a note that UGX will follow.
+All prices come from Peekaboo Uganda in Ugandan shillings; there is no exchange rate to set.
+To update a price, use **Admin → Gifts → Edit**.
 
 ## 8. Connect a custom domain (optional)
 

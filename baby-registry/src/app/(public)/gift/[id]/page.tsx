@@ -30,7 +30,7 @@ export default async function GiftPage({ params }: Params) {
       <GiftDetail giftId={gift.id} />
       <div className="mt-10 space-y-2">
         <PriceNotice settings={data.settings} compact />
-        <CurrencyNote settings={data.settings} />
+        <CurrencyNote />
       </div>
     </main>
   );

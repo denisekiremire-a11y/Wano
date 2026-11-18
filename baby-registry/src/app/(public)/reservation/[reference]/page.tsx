@@ -121,7 +121,7 @@ export default async function ReservationPage({ params, searchParams }: Props) {
 
       <div className="mt-6 space-y-2">
         <PriceNotice settings={data.settings} compact />
-        <CurrencyNote settings={data.settings} />
+        <CurrencyNote />
       </div>
 
       {gift && (

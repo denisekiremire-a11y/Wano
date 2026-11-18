@@ -18,7 +18,7 @@ export default async function RegistryPage({ searchParams }: { searchParams: Pro
       </div>
       <div className="mt-6 space-y-2">
         <PriceNotice settings={settings} />
-        <CurrencyNote settings={settings} />
+        <CurrencyNote />
       </div>
       <div className="mt-6">
         <RegistryBrowser initialQuery={q} />

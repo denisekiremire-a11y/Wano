@@ -116,7 +116,7 @@ export function GiftForm({ gift, categories, supabaseUrl, supabaseKey }: Props) 
 
       <section className="card grid gap-4 p-5 md:grid-cols-4">
         <div className="md:col-span-4">
-          <h2 className="text-2xl">Price (AED)</h2>
+          <h2 className="text-2xl">Price (UGX)</h2>
           <p className="text-sm text-muted">
             Use a single price, a sale price, or an estimated range. Leave unknown values blank — never guess an exact price for a range.
           </p>

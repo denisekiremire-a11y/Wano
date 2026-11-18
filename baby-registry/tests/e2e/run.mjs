@@ -52,8 +52,14 @@ const waitFor = async (fn, ms = 8000, label = "condition") => {
     await new Promise((r) => setTimeout(r, 150));
   }
 };
-const card = (page, slug) => page.locator(`[data-testid=gift-card][data-gift-slug="${slug}"]`).first();
-const giftId = async (slug) => (await svc.from("gifts").select("id").eq("slug", slug).single()).data.id;
+// The wishlist's gifts were replaced by Peekaboo Uganda products (new slugs). Tests keep using the
+// original wishlist slugs and resolve them here.
+const PEEKABOO = JSON.parse(readFileSync(new URL("../../data/peekaboo-products.json", import.meta.url), "utf8")).products;
+const NEW_SLUG = Object.fromEntries(PEEKABOO.map((p) => [p.giftSlug, p.slug]));
+const S = (slug) => NEW_SLUG[slug] ?? slug;
+const P = (slug) => PEEKABOO.find((p) => p.giftSlug === slug);
+const card = (page, slug) => page.locator(`[data-testid=gift-card][data-gift-slug="${S(slug)}"]`).first();
+const giftId = async (slug) => (await svc.from("gifts").select("id").eq("slug", S(slug)).single()).data.id;
 const serverReserve = async (slug, name, email = null) =>
   (await svc.rpc("reserve_gift", { p_gift_id: await giftId(slug), p_guest_name: name, p_guest_email: email, p_client_hash: `e2e-${randomUUID()}` })).data;
 
@@ -125,16 +131,20 @@ try {
     await waitFor(async () => (await A.getByTestId("live-indicator").getAttribute("data-live")) === "live", 10000, "realtime connection");
   });
 
-  await test("price notice and AED-only currency note are shown before a rate is configured", async () => {
-    assert.match(await A.getByTestId("price-notice").first().textContent(), /24 October 2026.*double-check/);
-    assert.match(await A.getByTestId("currency-note").first().textContent(), /will appear once/);
+  await test("prices are in UGX only, from Peekaboo Uganda, with a dated notice", async () => {
+    assert.match(await A.getByTestId("price-notice").first().textContent(), /Peekaboo Uganda.*18 November 2026.*check/);
+    assert.match(await A.getByTestId("currency-note").first().textContent(), /Ugandan shillings \(UGX\)/);
     assert.equal(await A.getByTestId("price-ugx").count(), 0);
+    const prices = await A.locator("#collection [data-testid=price-aed]").allTextContents();
+    assert.ok(prices.length > 0 && prices.every((p) => /^\s*(Estimated range )?UGX [0-9,]+/.test(p)), prices.slice(0, 5).join(" | "));
+    assert.equal(await card(A, "doona-plus-grey-hound").getByTestId("price-aed").textContent(), "UGX 1,006,800");
+    assert.equal((await A.content()).includes("AED"), false, "no AED anywhere on the page");
   });
 
   await test("search works (accent-insensitive) and empty state appears", async () => {
-    await A.getByTestId("search-input").fill("bjorn");
+    await A.getByTestId("search-input").fill("BRÉZZA");
     await waitFor(async () => (await A.locator("#collection [data-testid=gift-card]").count()) === 1, 4000, "1 result");
-    assert.match(await A.locator("#collection [data-testid=gift-card] h3").textContent(), /BabyBjörn Bouncer/);
+    assert.match(await A.locator("#collection [data-testid=gift-card] h3").textContent(), /Baby Brezza Safe \+ Smart bottle warmer/);
     await A.getByTestId("search-input").fill("zzzzzz");
     await A.locator("[data-testid=empty-state]:visible").first().waitFor();
     await A.getByTestId("search-input").fill("");
@@ -148,17 +158,17 @@ try {
     await waitFor(async () => (await grid.getByTestId("gift-card").count()) === 16, 4000, "16 clothing gifts");
     await grid.getByRole("button", { name: "Everything" }).click();
     await grid.getByTestId("more-filters").click();
-    await grid.getByTestId("price-filter").selectOption("1500-plus");
+    await grid.getByTestId("price-filter").selectOption("600k-plus");
     const prices = await grid.locator("[data-testid=gift-card] [data-testid=price-aed]").allTextContents();
-    assert.ok(prices.length > 0 && prices.every((p) => Number(p.replace(/[^0-9.–-]/g, "").split(/[–-]/)[0]) >= 1500 || /–/.test(p)), prices.join(" | "));
+    assert.ok(prices.length > 0 && prices.every((p) => Number(p.replace(/[^0-9.–-]/g, "").split(/[–-]/)[0]) >= 600000 || /–/.test(p)), prices.join(" | "));
     await grid.getByTestId("price-filter").selectOption("all");
     await grid.getByTestId("tier-filter").selectOption("premium");
     assert.ok((await grid.getByTestId("gift-card").count()) > 0);
     await grid.getByTestId("tier-filter").selectOption("all");
     await grid.getByTestId("sort-select").selectOption("price-desc");
-    assert.match(await grid.locator("[data-testid=gift-card] h3").first().textContent(), /Kikka Boo Goya Platinum/);
+    assert.match(await grid.locator("[data-testid=gift-card] h3").first().textContent(), /Babymoov Swoon Motion electric swing/);
     await grid.getByTestId("sort-select").selectOption("name-asc");
-    assert.match(await grid.locator("[data-testid=gift-card] h3").first().textContent(), /^4moms mamaRoo/);
+    assert.match(await grid.locator("[data-testid=gift-card] h3").first().textContent(), /^Baby Brezza Safe \+ Smart bottle warmer/);
     await grid.getByTestId("sort-select").selectOption("recommended");
   });
 
@@ -172,24 +182,28 @@ try {
     await p.context().close();
   });
 
-  await test("'Buy' goes straight to the exact product page; other shops use their own search", async () => {
-    const DOONA = "https://mamasandpapas.ae/doona-infant-car-seat-grey-hound-218794628.html";
+  await test("'Buy' goes straight to the exact product page at Peekaboo Uganda", async () => {
+    const PIBI = P("doona-plus-grey-hound").url;
+    assert.match(PIBI, /^https:\/\/www\.peekaboo\.ug\/products\//);
     const buy = card(A, "doona-plus-grey-hound").getByTestId("buy-link");
-    assert.equal(await buy.getAttribute("href"), DOONA);
-    assert.match(await buy.textContent(), /Buy at Mamas & Papas UAE/);
+    assert.equal(await buy.getAttribute("href"), PIBI);
+    assert.match(await buy.textContent(), /Buy at Peekaboo Uganda/);
     assert.equal(await buy.getAttribute("target"), "_blank");
+    // Every gift has its own Peekaboo product page.
+    const buyHrefs = await A.locator("#collection [data-testid=buy-link]").evaluateAll((as) => as.map((a) => a.href));
+    assert.equal(buyHrefs.length, 77);
+    assert.ok(buyHrefs.every((h) => h.startsWith("https://www.peekaboo.ug/products/")));
     await card(A, "doona-plus-grey-hound").getByTestId("where-button").click();
     const panel = A.locator("dialog[open] [data-testid=where-to-buy]");
     await panel.waitFor();
     const hrefs = await panel.locator("a").evaluateAll((as) => as.map((a) => [a.textContent.trim(), a.href, a.target, a.rel, a.dataset.kind]));
-    assert.equal(hrefs[0][1], DOONA, JSON.stringify(hrefs[0]));
+    assert.equal(hrefs[0][1], PIBI, JSON.stringify(hrefs[0]));
     assert.equal(hrefs[0][4], "product");
-    assert.ok(hrefs.some(([t, h]) => /Search Mom Store for it/.test(t) && h.startsWith("https://www.momstore.com/ae-en/catalogsearch/result/?q=Doona")), JSON.stringify(hrefs));
-    assert.ok(hrefs.some(([, h]) => h === "https://www.google.com/maps/search/?api=1&query=Mom%20Store%20Dubai"));
+    assert.ok(hrefs.some(([t, h]) => /Search other shops in Uganda/.test(t) && h.startsWith("https://www.google.com/search?q=")), JSON.stringify(hrefs));
+    assert.ok(hrefs.some(([, h]) => h === "https://www.google.com/maps/search/?api=1&query=Peekaboo%20Uganda%20Kampala"), JSON.stringify(hrefs));
+    assert.ok(hrefs.every(([, h]) => !/momstore|mamasandpapas|mumzworld|carrefouruae|carters|Dubai|UAE/i.test(h)), JSON.stringify(hrefs));
     assert.ok(hrefs.every(([, h, t, r]) => t === "_blank" && r.includes("noopener") && h.startsWith("https://")));
     await A.keyboard.press("Escape");
-    // A gift with no single product page gets no Buy button, just Where to buy.
-    assert.equal(await card(A, "play-gym").getByTestId("buy-link").count(), 0);
   });
 
   await test("a gift reserved by someone else disappears from an open 'Still available' list, live", async () => {
@@ -227,8 +241,8 @@ try {
     assert.match(reference, /^GIFT-[A-Z2-9]{5}-[A-Z2-9]{5}$/);
     const body = await A.locator("main").textContent();
     assert.match(body, /Thank you, Aunt!/);
-    assert.match(body, /Doona\+ \(Grey Hound\)/);
-    assert.match(body, /AED 3,199/);
+    assert.match(body, /Pibi 4-in-1 stroller & car seat/);
+    assert.match(body, /UGX 1,006,800/);
     await A.locator("[data-testid=purchase-reminder]:visible").first().waitFor();
     await A.locator("[data-testid=where-to-buy]:visible").first().waitFor();
   });
@@ -248,7 +262,7 @@ try {
 
   await test("a reserved gift cannot be reserved again (detail page has no reserve button)", async () => {
     const p = await newPage();
-    await p.goto(BASE + "/gift/doona-plus-grey-hound");
+    await p.goto(BASE + `/gift/${S("doona-plus-grey-hound")}`);
     await p.locator("[data-testid=unavailable-note]:visible").first().waitFor();
     assert.equal(await p.getByTestId("reserve-button").count(), 0);
     await p.context().close();
@@ -336,7 +350,7 @@ try {
   await test("admin sees guest details on the reservations page and can search", async () => {
     await admin.goto(BASE + "/admin/reservations");
     const row = admin.locator(`[data-testid=reservation-row][data-reference="${reference}"]`);
-    assert.match(await row.textContent(), /Aunt Grace Example.*grace@example\.test.*\+971 50 123 4567.*Doona/s);
+    assert.match(await row.textContent(), /Aunt Grace Example.*grace@example\.test.*\+971 50 123 4567.*Pibi 4-in-1/s);
     // Full name: the same browser later reserves again with the remembered email, by design.
     await admin.getByTestId("res-search").fill("aunt grace");
     assert.equal(await admin.getByTestId("reservation-row").count(), 1);
@@ -400,16 +414,11 @@ try {
     assert.equal((await svc.from("reservations").select("id").eq("status", "purchased")).data.length >= 1, true);
   });
 
-  await test("admin sets the AED→UGX rate → UGX prices appear for guests", async () => {
+  await test("settings no longer offer an exchange rate (UGX only)", async () => {
     await admin.goto(BASE + "/admin/settings");
-    await admin.getByLabel("1 AED = ? UGX").fill("1000");
-    await admin.getByRole("button", { name: "Save rate" }).click();
-    await admin.getByText(/Exchange rate saved/).waitFor();
-    await waitFor(async () => (await B.getByTestId("price-ugx").count()) > 0, 8000, "UGX via realtime");
-    const doona = await card(B, "doona-plus-grey-hound").getByTestId("price-ugx").textContent();
-    assert.equal(doona.trim(), "≈ UGX 3,199,000");
-    await B.reload();
-    assert.match(await B.getByTestId("currency-note").first().textContent(), /approximate.*1 AED ≈ 1,000 UGX/);
+    await admin.getByRole("heading", { name: "Registry" }).waitFor();
+    assert.equal(await admin.getByText(/1 AED = \? UGX|Save rate/).count(), 0);
+    assert.equal((await admin.content()).includes("AED"), false);
   });
 
   await test("admin creates, edits and deletes a gift", async () => {
@@ -425,7 +434,7 @@ try {
     await admin.getByTestId("save-gift").click();
     await admin.getByTestId("form-status").filter({ hasText: "Gift saved" }).waitFor();
     await waitFor(async () => (await card(B, "e2e-test-rattle").count()) === 1, 8000, "new gift live on registry");
-    await waitFor(async () => /AED 55/.test(await card(B, "e2e-test-rattle").getByTestId("price-aed").textContent()), 8000, "edited price live");
+    await waitFor(async () => /UGX 55/.test(await card(B, "e2e-test-rattle").getByTestId("price-aed").textContent()), 8000, "edited price live");
     await admin.goto(BASE + "/admin/gifts");
     admin.once("dialog", (d) => d.accept());
     await admin.locator('[data-testid=admin-gift-row][data-slug="e2e-test-rattle"]').getByRole("button", { name: /Delete/ }).click();
@@ -436,14 +445,15 @@ try {
     const id = await giftId("skip-hop-moby");
     await admin.goto(`${BASE}/admin/gifts/${id}`);
     const form = admin.getByTestId("link-form");
-    await form.locator("select[name=retailerId]").selectOption({ label: "Mom Store" });
+    await form.locator("select[name=retailerId]").selectOption({ label: "Peekaboo Uganda" });
     await form.getByLabel("Product URL").fill("https://shop.example.test/skip-hop-moby");
     await form.getByLabel(/checked this link/).check();
     await form.getByRole("button", { name: /Save shop link/ }).click();
     await admin.getByText("Shopping link saved.").waitFor();
     const p = await newPage();
-    await p.goto(BASE + "/gift/skip-hop-moby");
-    const link = p.getByRole("link", { name: /Buy at Mom Store/ });
+    await p.goto(BASE + `/gift/${S("skip-hop-moby")}`);
+    const link = p.locator("[data-testid=buy-link]:visible").first();
+    assert.match(await link.textContent(), /Buy at Peekaboo Uganda/);
     assert.equal(await link.getAttribute("href"), "https://shop.example.test/skip-hop-moby");
     await p.context().close();
   });
@@ -451,7 +461,7 @@ try {
   console.log("\nMobile");
   await test("mobile: no horizontal scrolling on key pages, and reserving works on a phone", async () => {
     const m = await newPage({ ...devices["iPhone 13"] });
-    for (const path of ["/", "/registry", "/registry/travel", "/gift/maxi-cosi-iora-air", "/my-gifts", `/reservation/${reference}`, "/admin/login"]) {
+    for (const path of ["/", "/registry", "/registry/travel", `/gift/${S("maxi-cosi-iora-air")}`, "/my-gifts", `/reservation/${reference}`, "/admin/login"]) {
       await m.goto(BASE + path);
       const over = await m.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       assert.ok(over <= 0, `${path} overflows by ${over}px`);
@@ -505,7 +515,7 @@ try {
     assert.match(await g.locator("h1").first().textContent(), /You’ve pledged 2 gifts/);
     assert.match(await g.locator("[data-testid=linked-email]:visible").first().textContent(), /Signed in as pledging\.guest@example\.test/);
     const names = await g.locator("[data-testid=pledge]:visible p.font-display").allTextContents();
-    assert.deepEqual(names, ["Socks", "Hats"]);
+    assert.deepEqual(names, [P("socks").name, P("hats").name]);
     assert.match(await g.locator("[data-testid=pledge-summary]:visible").first().textContent(), /2 still to buy/);
     assert.equal(await g.locator("[data-testid=personal-link]").count(), 0, "no confusing personal-link box");
     await g.context().close();
@@ -546,7 +556,7 @@ try {
     await x.goto(BASE + "/registry/feeding");
     await reserveViaUi(x, "mam-easy-start-starter-set", { name: "No Email Guest" });
     await x.goto(BASE + "/my-gifts");
-    await x.getByText("MAM Easy Start starter set").first().waitFor();
+    await x.getByText(P("mam-easy-start-starter-set").name).first().waitFor();
     await x.locator("[data-testid=email-signin-form]:visible").first().waitFor(); // can still sign in to see more
     await x.context().close();
   });
@@ -555,7 +565,7 @@ try {
     const y = await newPage({ ...devices["iPhone 13"] });
     await y.goto(`${BASE}/my-gifts/e/${emailToken(PLEDGER)}`);
     await y.waitForURL(/\/my-gifts$/); // token moved into a cookie, out of the address bar
-    await y.getByText("Hats").first().waitFor();
+    await y.getByText(P("hats").name).first().waitFor();
     await y.context().close();
 
     const z = await newPage();
@@ -568,7 +578,7 @@ try {
   });
 
   await test("My gifts follows the family's updates (purchased)", async () => {
-    const ref = (await svc.from("reservations").select("id, reference").eq("gift_name_snapshot", "Hats").eq("status", "active").single()).data;
+    const ref = (await svc.from("reservations").select("id, reference").eq("gift_name_snapshot", P("hats").name).eq("status", "active").single()).data;
     const c = await (await browser.newContext()).newPage();
     await signIn(c, PLEDGER);
     await admin.goto(BASE + "/admin/reservations");

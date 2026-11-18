@@ -12,8 +12,8 @@ describe("where to buy", () => {
     const links: GiftRetailer[] = [{ id: "l1", gift_id: "g1", retailer_id: 1, product_url: null, url_verified: false, source_note: "Shortlisted in store", is_primary: true }];
     const w = buildWhereToBuy(gift, links, retailers, []);
     expect(w.online.every((o) => o.kind === "search")).toBe(true);
-    expect(w.online[0].href).toBe("https://www.google.com/search?q=Doona%2B%20(Grey%20Hound)%20Mom%20Store%20UAE");
-    expect(w.physical[0]).toMatchObject({ kind: "search", href: "https://www.google.com/maps/search/?api=1&query=Mom%20Store%20Dubai" });
+    expect(w.online[0].href).toBe("https://www.google.com/search?q=Doona%2B%20(Grey%20Hound)%20Mom%20Store%20Uganda");
+    expect(w.physical[0]).toMatchObject({ kind: "search", href: "https://www.google.com/maps/search/?api=1&query=Mom%20Store%20Kampala" });
   });
 
   it("uses verified links and store locations when the admin adds them", () => {
@@ -27,7 +27,7 @@ describe("where to buy", () => {
   it("offers general searches when no retailer is known", () => {
     const w = buildWhereToBuy({ id: "g2", name: "Play gym" }, [], retailers, []);
     expect(w.online).toHaveLength(1);
-    expect(w.physical[0].href).toBe(mapsSearchUrl("baby store Dubai"));
+    expect(w.physical[0].href).toBe(mapsSearchUrl("baby store Kampala"));
   });
 
   it("refuses non-http(s) links", () => {

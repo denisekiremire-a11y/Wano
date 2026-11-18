@@ -3,13 +3,14 @@ import type { Gift } from "@/lib/types";
 
 interface Props {
   gift: Gift;
-  rate: number | null;
+  /** No longer used (UGX only); kept so callers needn't change. */
+  rate?: number | null;
   size?: "sm" | "lg";
   showBasis?: boolean;
 }
 
-export function PriceBlock({ gift, rate, size = "sm", showBasis = true }: Props) {
-  const v = priceView(gift, rate);
+export function PriceBlock({ gift, size = "sm", showBasis = true }: Props) {
+  const v = priceView(gift);
   const big = size === "lg";
   return (
     <div className="space-y-0.5">

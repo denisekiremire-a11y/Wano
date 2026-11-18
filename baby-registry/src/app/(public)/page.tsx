@@ -42,7 +42,7 @@ export default async function HomePage() {
           {[
             ["1", "Choose a gift", "Browse the list and pick something you love. No account needed."],
             ["2", "Reserve it", "Add your name so nobody else picks the same gift. It disappears from the list for everyone instantly."],
-            ["3", "Buy it your way", "Tap “Buy” to go straight to the product in a UAE shop — or buy it anywhere you like."],
+            ["3", "Buy it your way", "Tap “Buy” to go straight to the product at Peekaboo Uganda — or buy it anywhere you like."],
           ].map(([n, t, d]) => (
             <div key={n} className="rounded-2xl border border-linen bg-white/60 p-5">
               <span className="font-display text-3xl text-sage-600">{n}</span>
@@ -79,7 +79,7 @@ export default async function HomePage() {
           </h2>
           <div className="mb-5 space-y-2">
             <PriceNotice settings={settings} />
-            <CurrencyNote settings={settings} />
+            <CurrencyNote />
           </div>
           <RegistryBrowser />
         </section>

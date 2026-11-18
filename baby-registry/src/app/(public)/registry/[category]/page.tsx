@@ -37,7 +37,7 @@ export default async function CategoryPage({ params }: Params) {
       </div>
       <div className="mt-6 space-y-2">
         <PriceNotice settings={settings} compact />
-        <CurrencyNote settings={settings} />
+        <CurrencyNote />
       </div>
       <div className="mt-6">
         <RegistryBrowser key={category.slug} fixedCategory={category.slug} />

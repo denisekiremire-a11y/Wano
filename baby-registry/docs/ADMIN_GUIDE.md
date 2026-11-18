@@ -7,7 +7,7 @@ top right).
 ## Overview (`/admin`)
 
 Total, available, reserved and purchased counts; the estimated value of the wishlist (excluding
-alternatives) in AED and UGX; the value already reserved or purchased; the original document's
+alternatives) in UGX; the value already reserved or purchased; the original document's
 estimates next to the live totals; gifts waiting to be purchased; and recent reservation activity.
 
 ## Knowing when someone reserves
@@ -65,18 +65,16 @@ Reservations are **never released automatically** unless you turn on expiry in S
 
 ## Shops (`/admin/retailers`)
 
-The four shops named in the PDF are pre-loaded: Mom Store, Carter's, Carrefour UAE and Centrepoint.
+**Peekaboo Uganda** (peekaboo.ug) is pre-loaded, and every gift links to its product page there.
+You can add other shops too.
 For each shop you can add its **website**, its **search page** (an address containing `{q}` where
 the search words go, e.g. `https://www.momstore.com/ae-en/catalogsearch/result/?q={q}`), its
 **phone** and any number of **physical stores** (name,
 mall/area, address, phone, Google Maps link, “details verified” tick). Guests then see those
-stores with a **Directions** button. Until a shop has stores, guests get a “Find *shop* stores in
-Dubai” Google Maps search. Add only details you have checked.
+stores with a **Directions** button. Until a shop has stores, guests get a Google Maps search for the shop. Add only details you have checked.
 
 ## Settings (`/admin/settings`)
 
-- **Currency:** the AED→UGX rate and its source. Saving updates every open page instantly;
-  clearing the field returns the site to AED-only. A rate history is kept.
 - **Registry text:** title, welcome heading and text, and the price notice shown to guests.
 - **Optional reservation expiry:** off by default. If you turn it on and set a number of hours,
   reservations not yet marked purchased are released automatically once a day after that time.

@@ -134,3 +134,21 @@ Prices and stock change; the registry never claims an item is in stock.
   to Mom Store). Unbranded extras have no retailer.
 - **No exchange rate.** The UGX conversion stays off until you set a rate.
 - **Stock availability** isn't recorded anywhere, and the registry never claims an item is in stock.
+
+## November 2026: switched to Peekaboo Uganda (UGX)
+
+On 18 November 2026 every gift was replaced with a product from **Peekaboo Uganda**
+(peekaboo.ug), and the registry now shows prices in **UGX only**.
+
+- **Source:** Peekaboo's public catalogue (`https://www.peekaboo.ug/products.json`, 2,289
+  products). The 77 chosen products are saved in `data/peekaboo-products.json`, with the original
+  gift each one replaces; `data/peekaboo-picks.json` holds the choices and short names.
+- **Matching:** the same brand where Peekaboo sells it, otherwise the closest equivalent; the
+  gift's description then says what the original pick was (e.g. "Doona+ was the original pick").
+  Neutral colours were chosen where there was a choice.
+- **Nothing invented:** names, UGX prices, photos and links all come from Peekaboo's listing. Every
+  product link was opened and returned successfully on 18 November 2026.
+- **Stock:** 17 of the 77 were shown as sold out that day; their notes say so. Stock changes, so
+  admins can swap a gift any time in Admin → Gifts.
+- **Prices:** the price is Peekaboo's listed price on that day. The database columns still have
+  their historical `_aed` names but hold UGX.
